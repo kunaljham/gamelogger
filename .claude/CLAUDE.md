@@ -11,21 +11,38 @@ The developer is new to web development and is using this project to learn. When
 
 ## Tech Stack
 
+**Frontend:**
 - **Framework:** Next.js 16 (App Router)
 - **Styling:** Tailwind CSS v4
 - **Deployment:** Vercel at https://gamelogger.app
-- **Testing:** Playwright (integration tests)
+- **Testing:** Playwright (E2E tests)
+
+**Backend:**
+- **Language:** Go 1.22
+- **Router:** chi
+- **Database:** PostgreSQL (via pgx)
+- **Email:** Resend
+- **Deployment:** Railway (planned)
+- **Testing:** Go testing + testify
 
 ## Commands
 
-- `npm run dev` - Start dev server at localhost:3000
+**Frontend:**
+- `npm run dev` - Start frontend at localhost:3000
 - `npm run build` - Production build
 - `npm run lint` - Run ESLint
-- `npx playwright test` - Run integration tests
-- `npx playwright test --ui` - Run tests with interactive UI
+- `npx playwright test` - Run E2E tests
+
+**Backend (from /backend directory):**
+- `make dev` - Start backend at localhost:8080 (also starts PostgreSQL)
+- `make test` - Run unit tests
+- `make test-int` - Run integration tests
+- `make migrate-up` - Run database migrations
+- `make db` - Start PostgreSQL container
 
 ## Project Structure
 
+**Frontend (src/app/):**
 ```
 src/app/
 ├── page.tsx                    # Landing page with "Get Started" CTA
@@ -37,6 +54,23 @@ src/app/
 │   └── page.tsx                # Home feed (empty state)
 ├── layout.tsx                  # Root layout with Geist fonts
 └── globals.css                 # Theme variables (zinc palette, dark mode)
+```
+
+**Backend (backend/):**
+```
+backend/
+├── cmd/server/main.go          # Entry point
+├── internal/
+│   ├── config/                 # Environment config
+│   ├── database/               # DB connection + migrations
+│   ├── handlers/               # HTTP handlers
+│   ├── models/                 # Data structures
+│   ├── services/               # Business logic (email, etc.)
+│   └── repository/             # Database queries
+├── testutil/                   # Test helpers
+├── docker-compose.yml          # Local PostgreSQL
+├── Makefile                    # Dev commands
+└── .env.example                # Environment template
 ```
 
 ## Design System
@@ -55,13 +89,19 @@ src/app/
 - Responsive and dark mode ready
 - Dev button to simulate sign-in link click
 - Playwright integration tests for sign-in flow
+- Go backend foundation (config, database, health check)
+- Database schema (users, sessions, magic_links, matches, games)
+
+### In Progress
+- Backend authentication endpoints
 
 ### Not Yet Implemented
-- Backend authentication (magic link emails)
-- Database for users and matches
+- Magic link email sending (Resend integration)
+- Match CRUD API endpoints
+- Frontend API integration
 - Match logging form
 - Match feed display
-- Opponent invitations
+- Railway deployment
 
 ## MVP Requirements (from spec)
 
