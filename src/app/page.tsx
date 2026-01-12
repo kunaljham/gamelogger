@@ -45,6 +45,13 @@ export default function Home() {
             </p>
           </div>
         </div>
+
+        <a
+          href="/login"
+          className="inline-block rounded-full bg-zinc-900 px-8 py-3 text-base font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+        >
+          Get Started
+        </a>
       </main>
     </div>
   );
