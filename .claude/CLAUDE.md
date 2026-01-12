@@ -2,6 +2,13 @@
 
 A squash match tracking app. See README.md for full specification.
 
+## Working Style
+
+The developer is new to web development and is using this project to learn. When making changes:
+- Explain what you're doing and why
+- Introduce new concepts (frameworks, patterns, tools) when they come up
+- Keep explanations concise but clear
+
 ## Tech Stack
 
 - **Framework:** Next.js 16 (App Router)
