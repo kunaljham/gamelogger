@@ -14,12 +14,15 @@ The developer is new to web development and is using this project to learn. When
 - **Framework:** Next.js 16 (App Router)
 - **Styling:** Tailwind CSS v4
 - **Deployment:** Vercel at https://gamelogger.app
+- **Testing:** Playwright (integration tests)
 
 ## Commands
 
 - `npm run dev` - Start dev server at localhost:3000
 - `npm run build` - Production build
 - `npm run lint` - Run ESLint
+- `npx playwright test` - Run integration tests
+- `npx playwright test --ui` - Run tests with interactive UI
 
 ## Project Structure
 
@@ -51,6 +54,7 @@ src/app/
 - Sign-in flow UI (email input → check email → feed)
 - Responsive and dark mode ready
 - Dev button to simulate sign-in link click
+- Playwright integration tests for sign-in flow
 
 ### Not Yet Implemented
 - Backend authentication (magic link emails)
