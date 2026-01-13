@@ -1,6 +1,6 @@
 module github.com/kunaljham/gamelogger/backend
 
-go 1.22
+go 1.24
 
 require (
 	github.com/caarlos0/env/v10 v10.0.0
