@@ -62,9 +62,9 @@ func main() {
 	// Routes
 	r.Get("/api/health", h.HealthCheck)
 
-	// Auth routes (to be implemented)
+	// Auth routes
 	r.Route("/api/auth", func(r chi.Router) {
-		// r.Post("/send-link", h.SendMagicLink)
+		r.Post("/send-link", h.SendMagicLink)
 		// r.Get("/verify", h.VerifyMagicLink)
 		// r.With(h.AuthMiddleware).Post("/logout", h.Logout)
 		// r.With(h.AuthMiddleware).Get("/me", h.GetCurrentUser)
