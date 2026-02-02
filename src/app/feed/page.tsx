@@ -1,4 +1,25 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+
 export default function Feed() {
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    try {
+      await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/logout`,
+        {
+          method: "POST",
+          credentials: "include",
+        }
+      );
+    } catch {
+      // Even if the API call fails, still redirect to landing page
+    }
+    router.push("/");
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-50 to-zinc-100 dark:from-zinc-900 dark:to-zinc-950">
       {/* Header */}
@@ -7,12 +28,12 @@ export default function Feed() {
           <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">
             GameLogger
           </h1>
-          <a
-            href="/"
+          <button
+            onClick={handleSignOut}
             className="text-sm text-zinc-500 transition-colors hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
           >
             Sign out
-          </a>
+          </button>
         </div>
       </header>
 
