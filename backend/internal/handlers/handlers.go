@@ -13,6 +13,7 @@ type Handler struct {
 	cfg             *config.Config
 	userRepo        *repository.UserRepository
 	magicLinkRepo   *repository.MagicLinkRepository
+	sessionRepo     *repository.SessionRepository
 	emailService    services.EmailService
 }
 
@@ -21,6 +22,7 @@ func New(db *pgxpool.Pool, cfg *config.Config) *Handler {
 	// Create repositories
 	userRepo := repository.NewUserRepository(db)
 	magicLinkRepo := repository.NewMagicLinkRepository(db)
+	sessionRepo := repository.NewSessionRepository(db)
 
 	// Create email service
 	emailService := services.NewResendEmailService(
@@ -35,23 +37,7 @@ func New(db *pgxpool.Pool, cfg *config.Config) *Handler {
 		cfg:             cfg,
 		userRepo:        userRepo,
 		magicLinkRepo:   magicLinkRepo,
-		emailService:    emailService,
-	}
-}
-
-// NewWithDependencies creates a Handler with custom dependencies (for testing).
-func NewWithDependencies(
-	db *pgxpool.Pool,
-	cfg *config.Config,
-	userRepo *repository.UserRepository,
-	magicLinkRepo *repository.MagicLinkRepository,
-	emailService services.EmailService,
-) *Handler {
-	return &Handler{
-		db:              db,
-		cfg:             cfg,
-		userRepo:        userRepo,
-		magicLinkRepo:   magicLinkRepo,
+		sessionRepo:     sessionRepo,
 		emailService:    emailService,
 	}
 }

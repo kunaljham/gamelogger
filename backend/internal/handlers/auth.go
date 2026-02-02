@@ -86,6 +86,134 @@ func (h *Handler) SendMagicLink(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// VerifyMagicLink handles GET /api/auth/verify?token=xxx.
+// This is the endpoint the email link points to. It:
+// 1. Looks up the magic link by token
+// 2. Checks it hasn't expired or been used
+// 3. Marks the magic link as used
+// 4. Finds or creates the user
+// 5. Creates a session
+// 6. Sets an HTTP-only cookie with the session token
+// 7. Redirects to the frontend
+func (h *Handler) VerifyMagicLink(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("token")
+	if token == "" {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Token is required"})
+		return
+	}
+
+	// Look up the magic link
+	link, err := h.magicLinkRepo.FindByToken(r.Context(), token)
+	if err != nil {
+		slog.Warn("Magic link not found", "error", err)
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid or expired link"})
+		return
+	}
+
+	// Check if expired or already used
+	if link.IsExpired() {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "This link has expired"})
+		return
+	}
+	if link.IsUsed() {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "This link has already been used"})
+		return
+	}
+
+	// Mark the magic link as used so it can't be reused
+	if err := h.magicLinkRepo.MarkUsed(r.Context(), token); err != nil {
+		slog.Error("Failed to mark magic link as used", "error", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to process request"})
+		return
+	}
+
+	// Find or create the user by email
+	user, err := h.userRepo.FindOrCreateByEmail(r.Context(), link.Email)
+	if err != nil {
+		slog.Error("Failed to find/create user", "error", err, "email", link.Email)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to process request"})
+		return
+	}
+
+	// Generate a session token
+	sessionToken, err := generateSecureToken(32)
+	if err != nil {
+		slog.Error("Failed to generate session token", "error", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to process request"})
+		return
+	}
+
+	// Create the session in the database
+	expiresAt := time.Now().Add(h.cfg.SessionExpiry)
+	_, err = h.sessionRepo.Create(r.Context(), user.ID, sessionToken, expiresAt)
+	if err != nil {
+		slog.Error("Failed to create session", "error", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to process request"})
+		return
+	}
+
+	// Set the session cookie. HTTP-only means JavaScript can't access it,
+	// which protects against XSS attacks. Secure means it only sends over HTTPS.
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session",
+		Value:    sessionToken,
+		Path:     "/",
+		Domain:   h.cfg.CookieDomain,
+		Expires:  expiresAt,
+		HttpOnly: true,
+		Secure:   h.cfg.IsProduction(),
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	slog.Info("User signed in", "email", link.Email, "user_id", user.ID)
+
+	// Redirect to the frontend feed page
+	http.Redirect(w, r, h.cfg.FrontendURL+"/feed", http.StatusFound)
+}
+
+// GetCurrentUser handles GET /api/auth/me.
+// Returns the currently authenticated user's info.
+func (h *Handler) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
+	// The auth middleware puts the user in the request context
+	user, ok := UserFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "Not authenticated"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, user)
+}
+
+// Logout handles POST /api/auth/logout.
+// Deletes the session and clears the cookie.
+func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
+	// Read the session cookie
+	cookie, err := r.Cookie("session")
+	if err != nil {
+		writeJSON(w, http.StatusOK, sendLinkResponse{Message: "Logged out"})
+		return
+	}
+
+	// Delete the session from the database
+	if err := h.sessionRepo.DeleteByToken(r.Context(), cookie.Value); err != nil {
+		slog.Warn("Failed to delete session", "error", err)
+	}
+
+	// Clear the cookie by setting it to expire immediately
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session",
+		Value:    "",
+		Path:     "/",
+		Domain:   h.cfg.CookieDomain,
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   h.cfg.IsProduction(),
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	writeJSON(w, http.StatusOK, sendLinkResponse{Message: "Logged out"})
+}
+
 // writeJSON writes a JSON response with the given status code.
 func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
