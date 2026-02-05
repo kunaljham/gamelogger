@@ -103,6 +103,9 @@ backend/
 - Match feed display
 - Railway deployment
 
+### Ideas to Explore
+- **Remotion demo video:** Use Remotion (React-based video framework) with Claude Code prompting to create a programmatic demo video of GameLogger
+
 ## MVP Requirements (from spec)
 
 1. Email-based authentication via magic links
