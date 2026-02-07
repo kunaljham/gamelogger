@@ -70,14 +70,22 @@ func main() {
 		r.With(h.AuthMiddleware).Get("/me", h.GetCurrentUser)
 	})
 
-	// Match routes (to be implemented)
+	// Match routes — all require authentication
 	r.Route("/api/matches", func(r chi.Router) {
-		// r.Use(h.AuthMiddleware)
-		// r.Get("/", h.ListMatches)
-		// r.Post("/", h.CreateMatch)
-		// r.Get("/{id}", h.GetMatch)
-		// r.Put("/{id}", h.UpdateMatch)
-		// r.Delete("/{id}", h.DeleteMatch)
+		r.Use(h.AuthMiddleware)
+		r.Get("/", h.ListMatches)
+		r.Post("/", h.CreateMatch)
+		r.Get("/{id}", h.GetMatch)
+		r.Put("/{id}", h.UpdateMatch)
+		r.Delete("/{id}", h.DeleteMatch)
+	})
+
+	// Opponent routes — all require authentication
+	r.Route("/api/opponents", func(r chi.Router) {
+		r.Use(h.AuthMiddleware)
+		r.Get("/", h.ListOpponents)
+		r.Post("/", h.CreateOpponent)
+		r.Put("/{id}", h.UpdateOpponent)
 	})
 
 	// Create HTTP server
