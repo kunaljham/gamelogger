@@ -164,7 +164,7 @@ func (h *Handler) ListMatches(w http.ResponseWriter, r *http.Request) {
 		cursor = &parsed
 	}
 
-	matches, err := h.matchRepo.ListByUser(r.Context(), user.ID, limit, cursor)
+	matches, err := h.matchRepo.ListByUser(r.Context(), user.ID, user.Email, limit, cursor)
 	if err != nil {
 		slog.Error("Failed to list matches", "error", err)
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to list matches"})
@@ -210,8 +210,10 @@ func (h *Handler) GetMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Only the owner can view their matches
-	if match.UserID != user.ID {
+	// User can view if they're the owner OR the opponent
+	isOwner := match.UserID == user.ID
+	isOpponent := match.Opponent != nil && match.Opponent.Email != nil && *match.Opponent.Email == user.Email
+	if !isOwner && !isOpponent {
 		writeJSON(w, http.StatusNotFound, errorResponse{Error: "Match not found"})
 		return
 	}

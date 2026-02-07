@@ -105,12 +105,14 @@ func (r *MatchRepository) FindByID(ctx context.Context, id uuid.UUID) (*models.M
 }
 
 // ListByUser returns a paginated list of matches for a user, newest first.
+// Includes matches the user created AND matches where they are the opponent.
 // Uses cursor-based pagination: pass the last match's played_at as the cursor
 // to get the next page.
-func (r *MatchRepository) ListByUser(ctx context.Context, userID uuid.UUID, limit int, cursor *time.Time) ([]models.Match, error) {
+func (r *MatchRepository) ListByUser(ctx context.Context, userID uuid.UUID, userEmail string, limit int, cursor *time.Time) ([]models.Match, error) {
 	var rows pgx.Rows
 	var err error
 
+	// Match if user created it OR if user's email matches the opponent's email
 	if cursor != nil {
 		rows, err = r.db.Query(ctx, `
 			SELECT m.id, m.user_id, m.opponent_id, m.match_type, m.played_at, m.notes,
@@ -118,10 +120,10 @@ func (r *MatchRepository) ListByUser(ctx context.Context, userID uuid.UUID, limi
 			       o.id, o.user_id, o.email, o.name, o.is_registered, o.created_at, o.updated_at
 			FROM matches m
 			JOIN opponents o ON o.id = m.opponent_id
-			WHERE m.user_id = $1 AND m.played_at < $2
+			WHERE (m.user_id = $1 OR o.email = $2) AND m.played_at < $3
 			ORDER BY m.played_at DESC
-			LIMIT $3
-		`, userID, *cursor, limit)
+			LIMIT $4
+		`, userID, userEmail, *cursor, limit)
 	} else {
 		rows, err = r.db.Query(ctx, `
 			SELECT m.id, m.user_id, m.opponent_id, m.match_type, m.played_at, m.notes,
@@ -129,10 +131,10 @@ func (r *MatchRepository) ListByUser(ctx context.Context, userID uuid.UUID, limi
 			       o.id, o.user_id, o.email, o.name, o.is_registered, o.created_at, o.updated_at
 			FROM matches m
 			JOIN opponents o ON o.id = m.opponent_id
-			WHERE m.user_id = $1
+			WHERE m.user_id = $1 OR o.email = $2
 			ORDER BY m.played_at DESC
-			LIMIT $2
-		`, userID, limit)
+			LIMIT $3
+		`, userID, userEmail, limit)
 	}
 	if err != nil {
 		return nil, err
