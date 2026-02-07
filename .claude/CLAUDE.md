@@ -22,7 +22,7 @@ The developer is new to web development and is using this project to learn. When
 - **Router:** chi
 - **Database:** PostgreSQL (via pgx)
 - **Email:** Resend
-- **Deployment:** Railway (planned)
+- **Deployment:** Railway
 - **Testing:** Go testing + testify
 
 ## Commands
@@ -87,21 +87,20 @@ backend/
 - Landing page with feature list
 - Sign-in flow UI (email input → check email → feed)
 - Responsive and dark mode ready
-- Dev button to simulate sign-in link click
 - Playwright integration tests for sign-in flow
-- Go backend foundation (config, database, health check)
-- Database schema (users, sessions, magic_links, matches, games)
-
-### In Progress
-- Backend authentication endpoints
+- Backend auth (magic links, sessions, logout) — fully working
+- Backend match CRUD API with squash scoring validation
+- Backend opponent CRUD API
+- Database schema (users, sessions, magic_links, matches, games, opponents)
+- Route protection middleware (frontend)
+- Railway deployment (backend)
+- Vercel deployment (frontend)
 
 ### Not Yet Implemented
-- Magic link email sending (Resend integration)
-- Match CRUD API endpoints
-- Frontend API integration
-- Match logging form
-- Match feed display
-- Railway deployment
+- Frontend match logging form
+- Frontend match feed display
+- Frontend opponent management UI
+- Frontend match detail/edit/delete views
 
 ### Ideas to Explore
 - **Remotion demo video:** Use Remotion (React-based video framework) with Claude Code prompting to create a programmatic demo video of GameLogger
