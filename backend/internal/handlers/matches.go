@@ -369,11 +369,13 @@ type updateNotesRequest struct {
 func resolveNotesForViewer(match *models.Match, userID uuid.UUID, userEmail string) {
 	if match.UserID == userID {
 		match.Notes = match.CreatorNotes
-	} else if match.Opponent != nil && match.Opponent.Email != nil && *match.Opponent.Email == userEmail {
-		match.Notes = match.OpponentNotes
-	} else {
-		match.Notes = nil
+		return
 	}
+	if match.Opponent != nil && match.Opponent.Email != nil && *match.Opponent.Email == userEmail {
+		match.Notes = match.OpponentNotes
+		return
+	}
+	match.Notes = nil
 }
 
 // UpdateMatchNotes handles PUT /api/matches/{id}/notes.
@@ -408,7 +410,6 @@ func (h *Handler) UpdateMatchNotes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	match.ComputeResult()
 	resolveNotesForViewer(match, user.ID, user.Email)
 	writeJSON(w, http.StatusOK, match)
 }

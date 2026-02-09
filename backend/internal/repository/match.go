@@ -180,7 +180,7 @@ func (r *MatchRepository) Update(ctx context.Context, match *models.Match) (*mod
 	}
 	defer tx.Rollback(ctx)
 
-	// Update the match
+	// Update the match (only creator_notes is set here; opponent_notes is preserved)
 	err = tx.QueryRow(ctx, `
 		UPDATE matches
 		SET opponent_id = $1, match_type = $2, played_at = $3, creator_notes = $4, user_won = $5
@@ -255,14 +255,16 @@ func (r *MatchRepository) UpdateNotes(ctx context.Context, matchID uuid.UUID, us
 		&m.UserWon, &m.CreatedAt, &m.UpdatedAt,
 	)
 	if err == nil {
-		// Fetch opponent and games
 		if err := r.fetchMatchDetails(ctx, &m, &opp); err != nil {
 			return nil, err
 		}
 		return &m, nil
 	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, err // real DB error, don't fall through
+	}
 
-	// Try updating as opponent (by email match)
+	// Not the creator — try updating as opponent (by email match)
 	err = r.db.QueryRow(ctx, `
 		UPDATE matches SET opponent_notes = $1
 		WHERE id = $2 AND opponent_id IN (SELECT id FROM opponents WHERE email = $3)
