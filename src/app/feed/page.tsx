@@ -23,10 +23,15 @@ export default function Feed() {
       const params = new URLSearchParams();
       if (cursor) params.set("cursor", cursor);
 
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/matches?${params}`,
-        { credentials: "include" }
-      );
+      // Run fetch and a minimum delay in parallel so the skeleton
+      // is always visible for at least 500ms (avoids a jarring flash).
+      const [res] = await Promise.all([
+        fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/matches?${params}`,
+          { credentials: "include" }
+        ),
+        new Promise((r) => setTimeout(r, 500)),
+      ]);
 
       if (!res.ok) {
         throw new Error(`Failed to load matches (${res.status})`);
