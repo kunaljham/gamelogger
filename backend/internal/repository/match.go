@@ -36,12 +36,12 @@ func (r *MatchRepository) Create(ctx context.Context, match *models.Match) (*mod
 
 	// Insert the match
 	err = tx.QueryRow(ctx, `
-		INSERT INTO matches (user_id, opponent_id, match_type, played_at, notes, user_won)
+		INSERT INTO matches (user_id, opponent_id, match_type, played_at, creator_notes, user_won)
 		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id, user_id, opponent_id, match_type, played_at, notes, user_won, created_at, updated_at
-	`, match.UserID, match.OpponentID, match.MatchType, match.PlayedAt, match.Notes, match.UserWon).Scan(
+		RETURNING id, user_id, opponent_id, match_type, played_at, creator_notes, opponent_notes, user_won, created_at, updated_at
+	`, match.UserID, match.OpponentID, match.MatchType, match.PlayedAt, match.CreatorNotes, match.UserWon).Scan(
 		&match.ID, &match.UserID, &match.OpponentID, &match.MatchType,
-		&match.PlayedAt, &match.Notes, &match.UserWon, &match.CreatedAt, &match.UpdatedAt,
+		&match.PlayedAt, &match.CreatorNotes, &match.OpponentNotes, &match.UserWon, &match.CreatedAt, &match.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -74,14 +74,14 @@ func (r *MatchRepository) FindByID(ctx context.Context, id uuid.UUID) (*models.M
 	var opp models.Opponent
 
 	err := r.db.QueryRow(ctx, `
-		SELECT m.id, m.user_id, m.opponent_id, m.match_type, m.played_at, m.notes,
+		SELECT m.id, m.user_id, m.opponent_id, m.match_type, m.played_at, m.creator_notes, m.opponent_notes,
 		       m.user_won, m.created_at, m.updated_at,
 		       o.id, o.user_id, o.email, o.name, o.is_registered, o.created_at, o.updated_at
 		FROM matches m
 		JOIN opponents o ON o.id = m.opponent_id
 		WHERE m.id = $1
 	`, id).Scan(
-		&m.ID, &m.UserID, &m.OpponentID, &m.MatchType, &m.PlayedAt, &m.Notes,
+		&m.ID, &m.UserID, &m.OpponentID, &m.MatchType, &m.PlayedAt, &m.CreatorNotes, &m.OpponentNotes,
 		&m.UserWon, &m.CreatedAt, &m.UpdatedAt,
 		&opp.ID, &opp.UserID, &opp.Email, &opp.Name, &opp.IsRegistered,
 		&opp.CreatedAt, &opp.UpdatedAt,
@@ -115,7 +115,7 @@ func (r *MatchRepository) ListByUser(ctx context.Context, userID uuid.UUID, user
 	// Match if user created it OR if user's email matches the opponent's email
 	if cursor != nil {
 		rows, err = r.db.Query(ctx, `
-			SELECT m.id, m.user_id, m.opponent_id, m.match_type, m.played_at, m.notes,
+			SELECT m.id, m.user_id, m.opponent_id, m.match_type, m.played_at, m.creator_notes, m.opponent_notes,
 			       m.user_won, m.created_at, m.updated_at,
 			       o.id, o.user_id, o.email, o.name, o.is_registered, o.created_at, o.updated_at
 			FROM matches m
@@ -126,7 +126,7 @@ func (r *MatchRepository) ListByUser(ctx context.Context, userID uuid.UUID, user
 		`, userID, userEmail, *cursor, limit)
 	} else {
 		rows, err = r.db.Query(ctx, `
-			SELECT m.id, m.user_id, m.opponent_id, m.match_type, m.played_at, m.notes,
+			SELECT m.id, m.user_id, m.opponent_id, m.match_type, m.played_at, m.creator_notes, m.opponent_notes,
 			       m.user_won, m.created_at, m.updated_at,
 			       o.id, o.user_id, o.email, o.name, o.is_registered, o.created_at, o.updated_at
 			FROM matches m
@@ -146,7 +146,7 @@ func (r *MatchRepository) ListByUser(ctx context.Context, userID uuid.UUID, user
 		var m models.Match
 		var opp models.Opponent
 		if err := rows.Scan(
-			&m.ID, &m.UserID, &m.OpponentID, &m.MatchType, &m.PlayedAt, &m.Notes,
+			&m.ID, &m.UserID, &m.OpponentID, &m.MatchType, &m.PlayedAt, &m.CreatorNotes, &m.OpponentNotes,
 			&m.UserWon, &m.CreatedAt, &m.UpdatedAt,
 			&opp.ID, &opp.UserID, &opp.Email, &opp.Name, &opp.IsRegistered,
 			&opp.CreatedAt, &opp.UpdatedAt,
@@ -183,12 +183,12 @@ func (r *MatchRepository) Update(ctx context.Context, match *models.Match) (*mod
 	// Update the match
 	err = tx.QueryRow(ctx, `
 		UPDATE matches
-		SET opponent_id = $1, match_type = $2, played_at = $3, notes = $4, user_won = $5
+		SET opponent_id = $1, match_type = $2, played_at = $3, creator_notes = $4, user_won = $5
 		WHERE id = $6 AND user_id = $7
-		RETURNING id, user_id, opponent_id, match_type, played_at, notes, user_won, created_at, updated_at
-	`, match.OpponentID, match.MatchType, match.PlayedAt, match.Notes, match.UserWon, match.ID, match.UserID).Scan(
+		RETURNING id, user_id, opponent_id, match_type, played_at, creator_notes, opponent_notes, user_won, created_at, updated_at
+	`, match.OpponentID, match.MatchType, match.PlayedAt, match.CreatorNotes, match.UserWon, match.ID, match.UserID).Scan(
 		&match.ID, &match.UserID, &match.OpponentID, &match.MatchType,
-		&match.PlayedAt, &match.Notes, &match.UserWon, &match.CreatedAt, &match.UpdatedAt,
+		&match.PlayedAt, &match.CreatorNotes, &match.OpponentNotes, &match.UserWon, &match.CreatedAt, &match.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrMatchNotFound
@@ -235,6 +235,74 @@ func (r *MatchRepository) Delete(ctx context.Context, id uuid.UUID, userID uuid.
 	if result.RowsAffected() == 0 {
 		return ErrMatchNotFound
 	}
+	return nil
+}
+
+// UpdateNotes sets the viewer's notes on a match. If the user is the creator,
+// it updates creator_notes. If the user is the opponent (by email), it updates
+// opponent_notes. Returns the full match or ErrMatchNotFound if neither.
+func (r *MatchRepository) UpdateNotes(ctx context.Context, matchID uuid.UUID, userID uuid.UUID, userEmail string, notes *string) (*models.Match, error) {
+	var m models.Match
+	var opp models.Opponent
+
+	// Try updating as creator first
+	err := r.db.QueryRow(ctx, `
+		UPDATE matches SET creator_notes = $1
+		WHERE id = $2 AND user_id = $3
+		RETURNING id, user_id, opponent_id, match_type, played_at, creator_notes, opponent_notes, user_won, created_at, updated_at
+	`, notes, matchID, userID).Scan(
+		&m.ID, &m.UserID, &m.OpponentID, &m.MatchType, &m.PlayedAt, &m.CreatorNotes, &m.OpponentNotes,
+		&m.UserWon, &m.CreatedAt, &m.UpdatedAt,
+	)
+	if err == nil {
+		// Fetch opponent and games
+		if err := r.fetchMatchDetails(ctx, &m, &opp); err != nil {
+			return nil, err
+		}
+		return &m, nil
+	}
+
+	// Try updating as opponent (by email match)
+	err = r.db.QueryRow(ctx, `
+		UPDATE matches SET opponent_notes = $1
+		WHERE id = $2 AND opponent_id IN (SELECT id FROM opponents WHERE email = $3)
+		RETURNING id, user_id, opponent_id, match_type, played_at, creator_notes, opponent_notes, user_won, created_at, updated_at
+	`, notes, matchID, userEmail).Scan(
+		&m.ID, &m.UserID, &m.OpponentID, &m.MatchType, &m.PlayedAt, &m.CreatorNotes, &m.OpponentNotes,
+		&m.UserWon, &m.CreatedAt, &m.UpdatedAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrMatchNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if err := r.fetchMatchDetails(ctx, &m, &opp); err != nil {
+		return nil, err
+	}
+	return &m, nil
+}
+
+// fetchMatchDetails loads the opponent and games for a match.
+func (r *MatchRepository) fetchMatchDetails(ctx context.Context, m *models.Match, opp *models.Opponent) error {
+	err := r.db.QueryRow(ctx, `
+		SELECT id, user_id, email, name, is_registered, created_at, updated_at
+		FROM opponents WHERE id = $1
+	`, m.OpponentID).Scan(
+		&opp.ID, &opp.UserID, &opp.Email, &opp.Name, &opp.IsRegistered,
+		&opp.CreatedAt, &opp.UpdatedAt,
+	)
+	if err != nil {
+		return err
+	}
+	m.Opponent = opp
+
+	games, err := r.fetchGames(ctx, m.ID)
+	if err != nil {
+		return err
+	}
+	m.Games = games
 	return nil
 }
 

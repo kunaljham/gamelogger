@@ -80,6 +80,7 @@ func main() {
 		r.Post("/", h.CreateMatch)
 		r.Get("/{id}", h.GetMatch)
 		r.Put("/{id}", h.UpdateMatch)
+		r.Put("/{id}/notes", h.UpdateMatchNotes)
 		r.Delete("/{id}", h.DeleteMatch)
 	})
 

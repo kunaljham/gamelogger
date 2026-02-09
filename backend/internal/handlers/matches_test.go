@@ -384,3 +384,102 @@ func TestValidateGames_Empty(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "At least one game")
 }
+
+// --- resolveNotesForViewer tests ---
+
+func TestResolveNotesForViewer_Creator(t *testing.T) {
+	creatorID := uuid.New()
+	creatorNotes := "my creator notes"
+	oppNotes := "opponent notes"
+	oppEmail := "opp@example.com"
+
+	match := &models.Match{
+		UserID:        creatorID,
+		CreatorNotes:  &creatorNotes,
+		OpponentNotes: &oppNotes,
+		Opponent:      &models.Opponent{Email: &oppEmail},
+	}
+
+	resolveNotesForViewer(match, creatorID, "creator@example.com")
+
+	require.NotNil(t, match.Notes)
+	assert.Equal(t, "my creator notes", *match.Notes)
+}
+
+func TestResolveNotesForViewer_Opponent(t *testing.T) {
+	creatorID := uuid.New()
+	creatorNotes := "creator notes"
+	oppNotes := "my opponent notes"
+	oppEmail := "opp@example.com"
+
+	match := &models.Match{
+		UserID:        creatorID,
+		CreatorNotes:  &creatorNotes,
+		OpponentNotes: &oppNotes,
+		Opponent:      &models.Opponent{Email: &oppEmail},
+	}
+
+	resolveNotesForViewer(match, uuid.New(), oppEmail)
+
+	require.NotNil(t, match.Notes)
+	assert.Equal(t, "my opponent notes", *match.Notes)
+}
+
+func TestResolveNotesForViewer_Neither(t *testing.T) {
+	creatorID := uuid.New()
+	creatorNotes := "creator notes"
+	oppEmail := "opp@example.com"
+
+	match := &models.Match{
+		UserID:       creatorID,
+		CreatorNotes: &creatorNotes,
+		Opponent:     &models.Opponent{Email: &oppEmail},
+	}
+
+	resolveNotesForViewer(match, uuid.New(), "stranger@example.com")
+
+	assert.Nil(t, match.Notes)
+}
+
+// --- UpdateMatchNotes handler tests ---
+
+func TestUpdateMatchNotes_NotAuthenticated(t *testing.T) {
+	h := matchTestHandler()
+	body, _ := json.Marshal(updateNotesRequest{})
+	req := httptest.NewRequest(http.MethodPut, "/api/matches/"+uuid.New().String()+"/notes", bytes.NewBuffer(body))
+	w := httptest.NewRecorder()
+
+	h.UpdateMatchNotes(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+}
+
+func TestUpdateMatchNotes_InvalidID(t *testing.T) {
+	h := matchTestHandler()
+	body, _ := json.Marshal(updateNotesRequest{})
+	req := matchRequest(http.MethodPut, "/api/matches/not-a-uuid/notes", nil)
+	req = httptest.NewRequest(http.MethodPut, "/api/matches/not-a-uuid/notes", bytes.NewBuffer(body))
+	user := &models.User{ID: uuid.New(), Email: "test@example.com"}
+	ctx := context.WithValue(req.Context(), userContextKey, user)
+	req = req.WithContext(ctx)
+	w := httptest.NewRecorder()
+
+	h.UpdateMatchNotes(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestUpdateMatchNotes_InvalidJSON(t *testing.T) {
+	h := matchTestHandler()
+	// Without chi routing, URLParam returns "" which fails UUID parse → "Invalid match ID".
+	// This is expected: the handler validates the ID before the body.
+	req := httptest.NewRequest(http.MethodPut, "/api/matches/not-a-uuid/notes", bytes.NewBufferString("not json"))
+	user := &models.User{ID: uuid.New(), Email: "test@example.com"}
+	ctx := context.WithValue(req.Context(), userContextKey, user)
+	req = req.WithContext(ctx)
+	w := httptest.NewRecorder()
+
+	h.UpdateMatchNotes(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}

@@ -270,6 +270,13 @@ if [ "$STATUS" = "201" ]; then
   else
     fail "user_won fields: expected true/2/0, got $USER_WON/$USER_WINS/$OPP_WINS"
   fi
+  # Verify creator sees their notes
+  NOTES=$(jq -r '.notes // empty' "$RESPONSE")
+  if [ "$NOTES" = "Test match from API script" ]; then
+    pass "Creator sees their notes on create"
+  else
+    fail "Creator notes: expected 'Test match from API script', got '$NOTES'"
+  fi
 else
   fail "POST /api/matches → expected 201, got $STATUS"
 fi
@@ -466,7 +473,7 @@ api PUT "/api/matches/$MATCH_ID" "{
   ]
 }"
 if [ "$STATUS" = "200" ]; then
-  NOTES=$(jq -r '.notes' "$RESPONSE")
+  NOTES=$(jq -r '.notes // empty' "$RESPONSE")
   GAME_COUNT=$(jq '.games | length' "$RESPONSE")
   if [ "$NOTES" = "Updated notes" ] && [ "$GAME_COUNT" = "3" ]; then
     pass "PUT /api/matches/$MATCH_ID → 200 (3 games, notes updated)"
@@ -561,6 +568,42 @@ else
     fail "User 2 GET cross-user match → expected 200, got $STATUS"
   fi
 
+  # --- Per-user notes isolation ---
+
+  # User 2 (opponent) should NOT see user 1's (creator's) notes
+  NOTES=$(jq -r '.notes // "null"' "$RESPONSE")
+  if [ "$NOTES" = "null" ]; then
+    pass "User 2 does NOT see creator's notes (notes=null)"
+  else
+    fail "User 2 should not see creator notes, got: $NOTES"
+  fi
+
+  # User 2 sets their own notes via PUT /api/matches/{id}/notes
+  api PUT "/api/matches/$CROSS_MATCH_ID/notes" '{"notes": "Opponent private notes"}'
+  if [ "$STATUS" = "200" ]; then
+    NOTES=$(jq -r '.notes // empty' "$RESPONSE")
+    if [ "$NOTES" = "Opponent private notes" ]; then
+      pass "User 2 set notes via PUT /notes → 200, sees own notes"
+    else
+      fail "User 2 PUT /notes → notes mismatch: $NOTES"
+    fi
+  else
+    fail "User 2 PUT /notes → expected 200, got $STATUS"
+  fi
+
+  # User 2 fetches match again — still sees their notes
+  api GET "/api/matches/$CROSS_MATCH_ID"
+  if [ "$STATUS" = "200" ]; then
+    NOTES=$(jq -r '.notes // empty' "$RESPONSE")
+    if [ "$NOTES" = "Opponent private notes" ]; then
+      pass "User 2 re-fetch shows their own notes"
+    else
+      fail "User 2 re-fetch notes mismatch: $NOTES"
+    fi
+  else
+    fail "User 2 re-fetch → expected 200, got $STATUS"
+  fi
+
   # User 2 should NOT be able to delete user 1's match
   api DELETE "/api/matches/$CROSS_MATCH_ID"
   if [ "$STATUS" = "404" ]; then
@@ -575,6 +618,19 @@ fi
 
 # Restore user 1's cookie jar
 COOKIE_JAR="$SAVED_COOKIE_JAR"
+
+# User 1 still sees their own creator notes (not opponent's)
+api GET "/api/matches/$CROSS_MATCH_ID"
+if [ "$STATUS" = "200" ]; then
+  NOTES=$(jq -r '.notes // empty' "$RESPONSE")
+  if [ "$NOTES" = "Cross-user visibility test" ]; then
+    pass "User 1 still sees their creator notes (not opponent's)"
+  else
+    fail "User 1 notes mismatch: expected 'Cross-user visibility test', got '$NOTES'"
+  fi
+else
+  fail "User 1 GET cross-user match → expected 200, got $STATUS"
+fi
 
 # ---------------------------------------------------------------------------
 # 13. Matches: Delete

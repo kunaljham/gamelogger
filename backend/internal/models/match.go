@@ -23,7 +23,9 @@ type Match struct {
 	Opponent     *Opponent `json:"opponent,omitempty"`
 	MatchType    string    `json:"match_type"`
 	PlayedAt     time.Time `json:"played_at"`
-	Notes        *string   `json:"notes,omitempty"`
+	Notes         *string   `json:"notes,omitempty"`   // resolved per-viewer by handler
+	CreatorNotes  *string   `json:"-"`                 // DB column, never serialized
+	OpponentNotes *string   `json:"-"`                 // DB column, never serialized
 	Games        []Game    `json:"games"`
 	UserWon      bool      `json:"user_won"`                // stored in DB
 	UserWins     int       `json:"user_wins"`                // computed, not stored

@@ -112,12 +112,12 @@ func (h *Handler) CreateMatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	match := &models.Match{
-		UserID:     user.ID,
-		OpponentID: opponentID,
-		MatchType:  req.MatchType,
-		PlayedAt:   playedAt,
-		Notes:      req.Notes,
-		Games:      games,
+		UserID:       user.ID,
+		OpponentID:   opponentID,
+		MatchType:    req.MatchType,
+		PlayedAt:     playedAt,
+		CreatorNotes: req.Notes,
+		Games:        games,
 	}
 
 	// Compute user_won from validated games before persisting
@@ -133,6 +133,7 @@ func (h *Handler) CreateMatch(w http.ResponseWriter, r *http.Request) {
 	// Attach opponent data and populate computed fields for the response
 	created.Opponent = opponent
 	created.ComputeResult()
+	resolveNotesForViewer(created, user.ID, user.Email)
 
 	writeJSON(w, http.StatusCreated, created)
 }
@@ -179,9 +180,10 @@ func (h *Handler) ListMatches(w http.ResponseWriter, r *http.Request) {
 		matches = []models.Match{}
 	}
 
-	// Populate computed fields (user_wins, opponent_wins) from games
+	// Populate computed fields and resolve per-viewer notes
 	for i := range matches {
 		matches[i].ComputeResult()
+		resolveNotesForViewer(&matches[i], user.ID, user.Email)
 	}
 
 	// Build cursor for next page: use the last match's played_at
@@ -228,6 +230,7 @@ func (h *Handler) GetMatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	match.ComputeResult()
+	resolveNotesForViewer(match, user.ID, user.Email)
 	writeJSON(w, http.StatusOK, match)
 }
 
@@ -299,13 +302,13 @@ func (h *Handler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	match := &models.Match{
-		ID:         id,
-		UserID:     user.ID,
-		OpponentID: opponentID,
-		MatchType:  req.MatchType,
-		PlayedAt:   playedAt,
-		Notes:      req.Notes,
-		Games:      games,
+		ID:           id,
+		UserID:       user.ID,
+		OpponentID:   opponentID,
+		MatchType:    req.MatchType,
+		PlayedAt:     playedAt,
+		CreatorNotes: req.Notes,
+		Games:        games,
 	}
 
 	// Compute user_won from validated games before persisting
@@ -324,6 +327,7 @@ func (h *Handler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 
 	updated.Opponent = opponent
 	updated.ComputeResult()
+	resolveNotesForViewer(updated, user.ID, user.Email)
 	writeJSON(w, http.StatusOK, updated)
 }
 
@@ -352,6 +356,61 @@ func (h *Handler) DeleteMatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Match deleted"})
+}
+
+// --- Notes ---
+
+type updateNotesRequest struct {
+	Notes *string `json:"notes"`
+}
+
+// resolveNotesForViewer sets match.Notes to the viewer's own notes.
+// Creator sees creator_notes, opponent sees opponent_notes, others see nil.
+func resolveNotesForViewer(match *models.Match, userID uuid.UUID, userEmail string) {
+	if match.UserID == userID {
+		match.Notes = match.CreatorNotes
+	} else if match.Opponent != nil && match.Opponent.Email != nil && *match.Opponent.Email == userEmail {
+		match.Notes = match.OpponentNotes
+	} else {
+		match.Notes = nil
+	}
+}
+
+// UpdateMatchNotes handles PUT /api/matches/{id}/notes.
+// Allows both the creator and the opponent to set their own private notes.
+func (h *Handler) UpdateMatchNotes(w http.ResponseWriter, r *http.Request) {
+	user, ok := UserFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "Not authenticated"})
+		return
+	}
+
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid match ID"})
+		return
+	}
+
+	var req updateNotesRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid request body"})
+		return
+	}
+
+	match, err := h.matchRepo.UpdateNotes(r.Context(), id, user.ID, user.Email, req.Notes)
+	if err != nil {
+		if err == repository.ErrMatchNotFound {
+			writeJSON(w, http.StatusNotFound, errorResponse{Error: "Match not found"})
+			return
+		}
+		slog.Error("Failed to update match notes", "error", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to update notes"})
+		return
+	}
+
+	match.ComputeResult()
+	resolveNotesForViewer(match, user.ID, user.Email)
+	writeJSON(w, http.StatusOK, match)
 }
 
 // --- Validation helpers ---
