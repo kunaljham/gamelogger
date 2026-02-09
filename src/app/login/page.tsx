@@ -4,9 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function Login() {
-  const [email, setEmail] = useState("");
+  const isDevMode = process.env.NEXT_PUBLIC_DEV_MODE === "true";
+  const [email, setEmail] = useState(isDevMode ? "seed-user@example.com" : "");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [devLoading, setDevLoading] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -77,6 +79,47 @@ export default function Login() {
             {loading ? "Sending..." : "Continue"}
           </button>
         </form>
+
+        {isDevMode && (
+          <div className="mt-6 border-t border-zinc-200 pt-6 dark:border-zinc-700">
+            <p className="mb-3 text-xs text-zinc-500 dark:text-zinc-400">
+              Development only
+            </p>
+            <button
+              type="button"
+              disabled={devLoading || !email}
+              onClick={async () => {
+                setError("");
+                setDevLoading(true);
+                try {
+                  const res = await fetch(
+                    `${process.env.NEXT_PUBLIC_API_URL}/api/auth/dev-login`,
+                    {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ email }),
+                      credentials: "include",
+                    }
+                  );
+                  if (!res.ok) {
+                    const data = await res.json();
+                    throw new Error(data.error || "Dev login failed");
+                  }
+                  router.push("/feed");
+                } catch (err) {
+                  setError(
+                    err instanceof Error ? err.message : "Dev login failed"
+                  );
+                } finally {
+                  setDevLoading(false);
+                }
+              }}
+              className="w-full rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-base font-medium text-amber-900 transition-colors hover:bg-amber-100 disabled:opacity-50 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200 dark:hover:bg-amber-900"
+            >
+              {devLoading ? "Signing in..." : "Dev Sign In"}
+            </button>
+          </div>
+        )}
       </main>
     </div>
   );

@@ -214,6 +214,79 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, sendLinkResponse{Message: "Logged out"})
 }
 
+// DevLogin handles POST /api/auth/dev-login.
+// It creates a session directly without requiring a magic link email.
+// This endpoint only works in development mode — defense in depth check
+// in addition to the route not being registered in production.
+func (h *Handler) DevLogin(w http.ResponseWriter, r *http.Request) {
+	// Defense in depth: even if the route is somehow registered in production,
+	// refuse to process the request.
+	if !h.cfg.IsDevelopment() {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Parse request body
+	var req sendLinkRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		slog.Warn("Invalid request body", "error", err)
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid request body"})
+		return
+	}
+
+	// Normalize and validate email
+	email := strings.ToLower(strings.TrimSpace(req.Email))
+	if email == "" {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Email is required"})
+		return
+	}
+	if !emailRegex.MatchString(email) {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid email format"})
+		return
+	}
+
+	// Find or create the user by email
+	user, err := h.userRepo.FindOrCreateByEmail(r.Context(), email)
+	if err != nil {
+		slog.Error("Failed to find/create user", "error", err, "email", email)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to process request"})
+		return
+	}
+
+	// Generate a session token
+	sessionToken, err := generateSecureToken(32)
+	if err != nil {
+		slog.Error("Failed to generate session token", "error", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to process request"})
+		return
+	}
+
+	// Create the session in the database
+	expiresAt := time.Now().Add(h.cfg.SessionExpiry)
+	_, err = h.sessionRepo.Create(r.Context(), user.ID, sessionToken, expiresAt)
+	if err != nil {
+		slog.Error("Failed to create session", "error", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to process request"})
+		return
+	}
+
+	// Set the session cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session",
+		Value:    sessionToken,
+		Path:     "/",
+		Domain:   h.cfg.CookieDomain,
+		Expires:  expiresAt,
+		HttpOnly: true,
+		Secure:   false, // Always false — this endpoint only runs in development
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	slog.Info("Dev login", "email", email, "user_id", user.ID)
+
+	writeJSON(w, http.StatusOK, user)
+}
+
 // writeJSON writes a JSON response with the given status code.
 func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
