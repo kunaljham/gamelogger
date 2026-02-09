@@ -98,6 +98,7 @@ backend/
 - Dev-mode auto-login (`POST /api/auth/dev-login`, gated behind `IsDevelopment()`)
 - Frontend match feed display with loading skeletons, empty state, and cursor-based pagination
 - Seed data script (`backend/seed-data.sh`)
+- Per-user match notes (creator and opponent each have private notes, resolved via `PUT /api/matches/{id}/notes`)
 
 ### Not Yet Implemented
 - Frontend match logging form

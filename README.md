@@ -28,7 +28,7 @@ A web-based squash match tracker designed to help users log friendly matches wit
 - Automatic profile creation for opponents when matches are logged
 
 **Match Recording**
-- Final score logging with notes
+- Final score logging with private per-user notes
 - Best of 3 or Best of 5 format options
 - Individual game scores tracked
 - Chronological feed organization
