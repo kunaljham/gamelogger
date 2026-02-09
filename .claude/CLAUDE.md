@@ -95,10 +95,12 @@ backend/
 - Route protection middleware (frontend)
 - Railway deployment (backend)
 - Vercel deployment (frontend)
+- Dev-mode auto-login (`POST /api/auth/dev-login`, gated behind `IsDevelopment()`)
+- Frontend match feed display with loading skeletons, empty state, and cursor-based pagination
+- Seed data script (`backend/seed-data.sh`)
 
 ### Not Yet Implemented
 - Frontend match logging form
-- Frontend match feed display
 - Frontend opponent management UI
 - Frontend match detail/edit/delete views
 
