@@ -34,7 +34,7 @@ export default function MatchCard({ match }: { match: Match }) {
               : "font-medium text-red-600 dark:text-red-400"
           }
         >
-          {didWin ? "Won" : "Lost"} {userWins}-{opponentWins}
+          {didWin ? "🏆 Won" : "👎 Lost"} {userWins}-{opponentWins}
         </span>
         <span className="text-zinc-300 dark:text-zinc-600">·</span>
         <span className="text-zinc-500 dark:text-zinc-400">
