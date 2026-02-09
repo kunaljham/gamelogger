@@ -17,14 +17,31 @@ type Game struct {
 
 // Match represents a squash match between the user and an opponent.
 type Match struct {
-	ID         uuid.UUID `json:"id"`
-	UserID     uuid.UUID `json:"user_id"`
-	OpponentID uuid.UUID `json:"opponent_id"`
-	Opponent   *Opponent `json:"opponent,omitempty"`
-	MatchType  string    `json:"match_type"`
-	PlayedAt   time.Time `json:"played_at"`
-	Notes      *string   `json:"notes,omitempty"`
-	Games      []Game    `json:"games"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	ID           uuid.UUID `json:"id"`
+	UserID       uuid.UUID `json:"user_id"`
+	OpponentID   uuid.UUID `json:"opponent_id"`
+	Opponent     *Opponent `json:"opponent,omitempty"`
+	MatchType    string    `json:"match_type"`
+	PlayedAt     time.Time `json:"played_at"`
+	Notes        *string   `json:"notes,omitempty"`
+	Games        []Game    `json:"games"`
+	UserWon      bool      `json:"user_won"`                // stored in DB
+	UserWins     int       `json:"user_wins"`                // computed, not stored
+	OpponentWins int       `json:"opponent_wins"`            // computed, not stored
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+// ComputeResult sets UserWon, UserWins, and OpponentWins from the Games slice.
+func (m *Match) ComputeResult() {
+	m.UserWins = 0
+	m.OpponentWins = 0
+	for _, g := range m.Games {
+		if g.UserScore > g.OpponentScore {
+			m.UserWins++
+		} else {
+			m.OpponentWins++
+		}
+	}
+	m.UserWon = m.UserWins > m.OpponentWins
 }

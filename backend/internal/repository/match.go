@@ -36,12 +36,12 @@ func (r *MatchRepository) Create(ctx context.Context, match *models.Match) (*mod
 
 	// Insert the match
 	err = tx.QueryRow(ctx, `
-		INSERT INTO matches (user_id, opponent_id, match_type, played_at, notes)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id, user_id, opponent_id, match_type, played_at, notes, created_at, updated_at
-	`, match.UserID, match.OpponentID, match.MatchType, match.PlayedAt, match.Notes).Scan(
+		INSERT INTO matches (user_id, opponent_id, match_type, played_at, notes, user_won)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id, user_id, opponent_id, match_type, played_at, notes, user_won, created_at, updated_at
+	`, match.UserID, match.OpponentID, match.MatchType, match.PlayedAt, match.Notes, match.UserWon).Scan(
 		&match.ID, &match.UserID, &match.OpponentID, &match.MatchType,
-		&match.PlayedAt, &match.Notes, &match.CreatedAt, &match.UpdatedAt,
+		&match.PlayedAt, &match.Notes, &match.UserWon, &match.CreatedAt, &match.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -75,14 +75,14 @@ func (r *MatchRepository) FindByID(ctx context.Context, id uuid.UUID) (*models.M
 
 	err := r.db.QueryRow(ctx, `
 		SELECT m.id, m.user_id, m.opponent_id, m.match_type, m.played_at, m.notes,
-		       m.created_at, m.updated_at,
+		       m.user_won, m.created_at, m.updated_at,
 		       o.id, o.user_id, o.email, o.name, o.is_registered, o.created_at, o.updated_at
 		FROM matches m
 		JOIN opponents o ON o.id = m.opponent_id
 		WHERE m.id = $1
 	`, id).Scan(
 		&m.ID, &m.UserID, &m.OpponentID, &m.MatchType, &m.PlayedAt, &m.Notes,
-		&m.CreatedAt, &m.UpdatedAt,
+		&m.UserWon, &m.CreatedAt, &m.UpdatedAt,
 		&opp.ID, &opp.UserID, &opp.Email, &opp.Name, &opp.IsRegistered,
 		&opp.CreatedAt, &opp.UpdatedAt,
 	)
@@ -116,7 +116,7 @@ func (r *MatchRepository) ListByUser(ctx context.Context, userID uuid.UUID, user
 	if cursor != nil {
 		rows, err = r.db.Query(ctx, `
 			SELECT m.id, m.user_id, m.opponent_id, m.match_type, m.played_at, m.notes,
-			       m.created_at, m.updated_at,
+			       m.user_won, m.created_at, m.updated_at,
 			       o.id, o.user_id, o.email, o.name, o.is_registered, o.created_at, o.updated_at
 			FROM matches m
 			JOIN opponents o ON o.id = m.opponent_id
@@ -127,7 +127,7 @@ func (r *MatchRepository) ListByUser(ctx context.Context, userID uuid.UUID, user
 	} else {
 		rows, err = r.db.Query(ctx, `
 			SELECT m.id, m.user_id, m.opponent_id, m.match_type, m.played_at, m.notes,
-			       m.created_at, m.updated_at,
+			       m.user_won, m.created_at, m.updated_at,
 			       o.id, o.user_id, o.email, o.name, o.is_registered, o.created_at, o.updated_at
 			FROM matches m
 			JOIN opponents o ON o.id = m.opponent_id
@@ -147,7 +147,7 @@ func (r *MatchRepository) ListByUser(ctx context.Context, userID uuid.UUID, user
 		var opp models.Opponent
 		if err := rows.Scan(
 			&m.ID, &m.UserID, &m.OpponentID, &m.MatchType, &m.PlayedAt, &m.Notes,
-			&m.CreatedAt, &m.UpdatedAt,
+			&m.UserWon, &m.CreatedAt, &m.UpdatedAt,
 			&opp.ID, &opp.UserID, &opp.Email, &opp.Name, &opp.IsRegistered,
 			&opp.CreatedAt, &opp.UpdatedAt,
 		); err != nil {
@@ -183,12 +183,12 @@ func (r *MatchRepository) Update(ctx context.Context, match *models.Match) (*mod
 	// Update the match
 	err = tx.QueryRow(ctx, `
 		UPDATE matches
-		SET opponent_id = $1, match_type = $2, played_at = $3, notes = $4
-		WHERE id = $5 AND user_id = $6
-		RETURNING id, user_id, opponent_id, match_type, played_at, notes, created_at, updated_at
-	`, match.OpponentID, match.MatchType, match.PlayedAt, match.Notes, match.ID, match.UserID).Scan(
+		SET opponent_id = $1, match_type = $2, played_at = $3, notes = $4, user_won = $5
+		WHERE id = $6 AND user_id = $7
+		RETURNING id, user_id, opponent_id, match_type, played_at, notes, user_won, created_at, updated_at
+	`, match.OpponentID, match.MatchType, match.PlayedAt, match.Notes, match.UserWon, match.ID, match.UserID).Scan(
 		&match.ID, &match.UserID, &match.OpponentID, &match.MatchType,
-		&match.PlayedAt, &match.Notes, &match.CreatedAt, &match.UpdatedAt,
+		&match.PlayedAt, &match.Notes, &match.UserWon, &match.CreatedAt, &match.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrMatchNotFound

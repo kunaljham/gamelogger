@@ -120,6 +120,9 @@ func (h *Handler) CreateMatch(w http.ResponseWriter, r *http.Request) {
 		Games:      games,
 	}
 
+	// Compute user_won from validated games before persisting
+	match.ComputeResult()
+
 	created, err := h.matchRepo.Create(r.Context(), match)
 	if err != nil {
 		slog.Error("Failed to create match", "error", err)
@@ -127,8 +130,9 @@ func (h *Handler) CreateMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Attach opponent data to the response
+	// Attach opponent data and populate computed fields for the response
 	created.Opponent = opponent
+	created.ComputeResult()
 
 	writeJSON(w, http.StatusCreated, created)
 }
@@ -175,6 +179,11 @@ func (h *Handler) ListMatches(w http.ResponseWriter, r *http.Request) {
 		matches = []models.Match{}
 	}
 
+	// Populate computed fields (user_wins, opponent_wins) from games
+	for i := range matches {
+		matches[i].ComputeResult()
+	}
+
 	// Build cursor for next page: use the last match's played_at
 	resp := listMatchesResponse{Matches: matches}
 	if len(matches) == limit {
@@ -218,6 +227,7 @@ func (h *Handler) GetMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	match.ComputeResult()
 	writeJSON(w, http.StatusOK, match)
 }
 
@@ -298,6 +308,9 @@ func (h *Handler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 		Games:      games,
 	}
 
+	// Compute user_won from validated games before persisting
+	match.ComputeResult()
+
 	updated, err := h.matchRepo.Update(r.Context(), match)
 	if err != nil {
 		if err == repository.ErrMatchNotFound {
@@ -310,6 +323,7 @@ func (h *Handler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	updated.Opponent = opponent
+	updated.ComputeResult()
 	writeJSON(w, http.StatusOK, updated)
 }
 
