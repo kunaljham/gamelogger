@@ -14,7 +14,7 @@ export default function MatchCard({ match }: { match: Match }) {
   const totalGames = match.match_type === "bo3" ? 3 : 5;
 
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white px-5 py-4 dark:border-zinc-800 dark:bg-zinc-900">
+    <div className={`rounded-xl border bg-white px-5 py-4 dark:bg-zinc-900 ${didWin ? "border-emerald-300 dark:border-emerald-700" : "border-red-300 dark:border-red-700"}`}>
       {/* Row 1: Opponent name + date */}
       <div className="flex items-center justify-between">
         <span className="font-semibold text-zinc-900 dark:text-zinc-50">
@@ -27,14 +27,8 @@ export default function MatchCard({ match }: { match: Match }) {
 
       {/* Row 2: Win/loss result + match type */}
       <div className="mt-1 flex items-center gap-2 text-sm">
-        <span
-          className={
-            didWin
-              ? "font-medium text-emerald-600 dark:text-emerald-400"
-              : "font-medium text-red-600 dark:text-red-400"
-          }
-        >
-          {didWin ? "🏆 Won" : "👎 Lost"} {userWins}-{opponentWins}
+        <span className="font-medium text-zinc-700 dark:text-zinc-300">
+          {didWin ? "Won" : "Lost"} {userWins}-{opponentWins}
         </span>
         <span className="text-zinc-300 dark:text-zinc-600">·</span>
         <span className="text-zinc-500 dark:text-zinc-400">
@@ -46,7 +40,7 @@ export default function MatchCard({ match }: { match: Match }) {
       <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm text-zinc-600 dark:text-zinc-400">
         {match.games.map((game) => (
           <span key={game.game_number}>
-            G{game.game_number}: {game.user_score}-{game.opponent_score}
+            {game.user_score}-{game.opponent_score}
           </span>
         ))}
       </div>
