@@ -180,9 +180,9 @@ func (h *Handler) ListMatches(w http.ResponseWriter, r *http.Request) {
 		matches = []models.Match{}
 	}
 
-	// Populate computed fields and resolve per-viewer notes
+	// Populate computed fields from the viewer's perspective
 	for i := range matches {
-		matches[i].ComputeResult()
+		resolveScoresForViewer(&matches[i], user.ID, user.Email)
 		resolveNotesForViewer(&matches[i], user.ID, user.Email)
 	}
 
@@ -229,7 +229,7 @@ func (h *Handler) GetMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	match.ComputeResult()
+	resolveScoresForViewer(match, user.ID, user.Email)
 	resolveNotesForViewer(match, user.ID, user.Email)
 	writeJSON(w, http.StatusOK, match)
 }
@@ -326,7 +326,7 @@ func (h *Handler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	updated.Opponent = opponent
-	updated.ComputeResult()
+	resolveScoresForViewer(updated, user.ID, user.Email)
 	resolveNotesForViewer(updated, user.ID, user.Email)
 	writeJSON(w, http.StatusOK, updated)
 }
@@ -356,6 +356,27 @@ func (h *Handler) DeleteMatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Match deleted"})
+}
+
+// --- Score/Result Resolution ---
+
+// resolveScoresForViewer flips game scores when the viewer is the opponent,
+// then recomputes UserWon/UserWins/OpponentWins so everything is from the
+// viewer's perspective. If the viewer is the creator (or neither party),
+// scores stay as-is — ComputeResult() is still called to populate the
+// computed fields.
+func resolveScoresForViewer(match *models.Match, userID uuid.UUID, userEmail string) {
+	isOpponent := match.UserID != userID &&
+		match.Opponent != nil && match.Opponent.Email != nil && *match.Opponent.Email == userEmail
+
+	if isOpponent {
+		for i := range match.Games {
+			match.Games[i].UserScore, match.Games[i].OpponentScore =
+				match.Games[i].OpponentScore, match.Games[i].UserScore
+		}
+	}
+
+	match.ComputeResult()
 }
 
 // --- Notes ---
@@ -410,6 +431,7 @@ func (h *Handler) UpdateMatchNotes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	resolveScoresForViewer(match, user.ID, user.Email)
 	resolveNotesForViewer(match, user.ID, user.Email)
 	writeJSON(w, http.StatusOK, match)
 }

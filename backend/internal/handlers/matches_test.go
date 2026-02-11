@@ -385,6 +385,87 @@ func TestValidateGames_Empty(t *testing.T) {
 	assert.Contains(t, err.Error(), "At least one game")
 }
 
+// --- resolveScoresForViewer tests ---
+
+func TestResolveScoresForViewer_Creator(t *testing.T) {
+	creatorID := uuid.New()
+	oppEmail := "opp@example.com"
+
+	match := &models.Match{
+		UserID:   creatorID,
+		Opponent: &models.Opponent{Email: &oppEmail},
+		Games: []models.Game{
+			{GameNumber: 1, UserScore: 11, OpponentScore: 7},
+			{GameNumber: 2, UserScore: 9, OpponentScore: 11},
+			{GameNumber: 3, UserScore: 11, OpponentScore: 5},
+		},
+	}
+
+	resolveScoresForViewer(match, creatorID, "creator@example.com")
+
+	// Scores stay from creator's perspective
+	assert.Equal(t, 11, match.Games[0].UserScore)
+	assert.Equal(t, 7, match.Games[0].OpponentScore)
+	assert.Equal(t, 9, match.Games[1].UserScore)
+	assert.Equal(t, 11, match.Games[1].OpponentScore)
+	assert.Equal(t, 11, match.Games[2].UserScore)
+	assert.Equal(t, 5, match.Games[2].OpponentScore)
+	assert.True(t, match.UserWon)
+	assert.Equal(t, 2, match.UserWins)
+	assert.Equal(t, 1, match.OpponentWins)
+}
+
+func TestResolveScoresForViewer_Opponent(t *testing.T) {
+	creatorID := uuid.New()
+	oppEmail := "opp@example.com"
+
+	match := &models.Match{
+		UserID:   creatorID,
+		Opponent: &models.Opponent{Email: &oppEmail},
+		Games: []models.Game{
+			{GameNumber: 1, UserScore: 11, OpponentScore: 7},
+			{GameNumber: 2, UserScore: 9, OpponentScore: 11},
+			{GameNumber: 3, UserScore: 11, OpponentScore: 5},
+		},
+	}
+
+	resolveScoresForViewer(match, uuid.New(), oppEmail)
+
+	// Scores are flipped — opponent now sees from their perspective
+	assert.Equal(t, 7, match.Games[0].UserScore)
+	assert.Equal(t, 11, match.Games[0].OpponentScore)
+	assert.Equal(t, 11, match.Games[1].UserScore)
+	assert.Equal(t, 9, match.Games[1].OpponentScore)
+	assert.Equal(t, 5, match.Games[2].UserScore)
+	assert.Equal(t, 11, match.Games[2].OpponentScore)
+	assert.False(t, match.UserWon)
+	assert.Equal(t, 1, match.UserWins)
+	assert.Equal(t, 2, match.OpponentWins)
+}
+
+func TestResolveScoresForViewer_Neither(t *testing.T) {
+	creatorID := uuid.New()
+	oppEmail := "opp@example.com"
+
+	match := &models.Match{
+		UserID:   creatorID,
+		Opponent: &models.Opponent{Email: &oppEmail},
+		Games: []models.Game{
+			{GameNumber: 1, UserScore: 11, OpponentScore: 7},
+			{GameNumber: 2, UserScore: 11, OpponentScore: 9},
+		},
+	}
+
+	resolveScoresForViewer(match, uuid.New(), "stranger@example.com")
+
+	// Scores unchanged (defaults to creator's perspective)
+	assert.Equal(t, 11, match.Games[0].UserScore)
+	assert.Equal(t, 7, match.Games[0].OpponentScore)
+	assert.True(t, match.UserWon)
+	assert.Equal(t, 2, match.UserWins)
+	assert.Equal(t, 0, match.OpponentWins)
+}
+
 // --- resolveNotesForViewer tests ---
 
 func TestResolveNotesForViewer_Creator(t *testing.T) {
