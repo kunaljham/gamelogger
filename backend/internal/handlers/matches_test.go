@@ -522,6 +522,75 @@ func TestResolveNotesForViewer_Neither(t *testing.T) {
 	assert.Nil(t, match.Notes)
 }
 
+// --- resolveOpponentForViewer tests ---
+
+func TestResolveOpponentForViewer_Creator(t *testing.T) {
+	creatorID := uuid.New()
+	oppEmail := "opp@example.com"
+	creatorName := "Seed User"
+
+	match := &models.Match{
+		UserID:      creatorID,
+		CreatorName: &creatorName,
+		Opponent:    &models.Opponent{Name: "Alice Chen", Email: &oppEmail},
+	}
+
+	resolveOpponentForViewer(match, creatorID, "creator@example.com")
+
+	// Creator sees the original opponent name
+	assert.Equal(t, "Alice Chen", match.Opponent.Name)
+}
+
+func TestResolveOpponentForViewer_Opponent(t *testing.T) {
+	creatorID := uuid.New()
+	oppEmail := "opp@example.com"
+	creatorName := "Seed User"
+
+	match := &models.Match{
+		UserID:      creatorID,
+		CreatorName: &creatorName,
+		Opponent:    &models.Opponent{Name: "Alice Chen", Email: &oppEmail},
+	}
+
+	resolveOpponentForViewer(match, uuid.New(), oppEmail)
+
+	// Opponent sees the creator's name instead of their own
+	assert.Equal(t, "Seed User", match.Opponent.Name)
+}
+
+func TestResolveOpponentForViewer_OpponentCreatorNameNil(t *testing.T) {
+	creatorID := uuid.New()
+	oppEmail := "opp@example.com"
+
+	match := &models.Match{
+		UserID:      creatorID,
+		CreatorName: nil,
+		Opponent:    &models.Opponent{Name: "Alice Chen", Email: &oppEmail},
+	}
+
+	resolveOpponentForViewer(match, uuid.New(), oppEmail)
+
+	// Falls back to "Unknown" when creator hasn't set a name
+	assert.Equal(t, "Unknown", match.Opponent.Name)
+}
+
+func TestResolveOpponentForViewer_Neither(t *testing.T) {
+	creatorID := uuid.New()
+	oppEmail := "opp@example.com"
+	creatorName := "Seed User"
+
+	match := &models.Match{
+		UserID:      creatorID,
+		CreatorName: &creatorName,
+		Opponent:    &models.Opponent{Name: "Alice Chen", Email: &oppEmail},
+	}
+
+	resolveOpponentForViewer(match, uuid.New(), "stranger@example.com")
+
+	// Stranger sees the original opponent name (shouldn't happen in practice)
+	assert.Equal(t, "Alice Chen", match.Opponent.Name)
+}
+
 // --- UpdateMatchNotes handler tests ---
 
 func TestUpdateMatchNotes_NotAuthenticated(t *testing.T) {

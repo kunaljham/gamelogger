@@ -76,15 +76,18 @@ func (r *MatchRepository) FindByID(ctx context.Context, id uuid.UUID) (*models.M
 	err := r.db.QueryRow(ctx, `
 		SELECT m.id, m.user_id, m.opponent_id, m.match_type, m.played_at, m.creator_notes, m.opponent_notes,
 		       m.user_won, m.created_at, m.updated_at,
-		       o.id, o.user_id, o.email, o.name, o.is_registered, o.created_at, o.updated_at
+		       o.id, o.user_id, o.email, o.name, o.is_registered, o.created_at, o.updated_at,
+		       u.name
 		FROM matches m
 		JOIN opponents o ON o.id = m.opponent_id
+		JOIN users u ON u.id = m.user_id
 		WHERE m.id = $1
 	`, id).Scan(
 		&m.ID, &m.UserID, &m.OpponentID, &m.MatchType, &m.PlayedAt, &m.CreatorNotes, &m.OpponentNotes,
 		&m.UserWon, &m.CreatedAt, &m.UpdatedAt,
 		&opp.ID, &opp.UserID, &opp.Email, &opp.Name, &opp.IsRegistered,
 		&opp.CreatedAt, &opp.UpdatedAt,
+		&m.CreatorName,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrMatchNotFound
@@ -117,9 +120,11 @@ func (r *MatchRepository) ListByUser(ctx context.Context, userID uuid.UUID, user
 		rows, err = r.db.Query(ctx, `
 			SELECT m.id, m.user_id, m.opponent_id, m.match_type, m.played_at, m.creator_notes, m.opponent_notes,
 			       m.user_won, m.created_at, m.updated_at,
-			       o.id, o.user_id, o.email, o.name, o.is_registered, o.created_at, o.updated_at
+			       o.id, o.user_id, o.email, o.name, o.is_registered, o.created_at, o.updated_at,
+			       u.name
 			FROM matches m
 			JOIN opponents o ON o.id = m.opponent_id
+			JOIN users u ON u.id = m.user_id
 			WHERE (m.user_id = $1 OR o.email = $2) AND m.played_at < $3
 			ORDER BY m.played_at DESC
 			LIMIT $4
@@ -128,9 +133,11 @@ func (r *MatchRepository) ListByUser(ctx context.Context, userID uuid.UUID, user
 		rows, err = r.db.Query(ctx, `
 			SELECT m.id, m.user_id, m.opponent_id, m.match_type, m.played_at, m.creator_notes, m.opponent_notes,
 			       m.user_won, m.created_at, m.updated_at,
-			       o.id, o.user_id, o.email, o.name, o.is_registered, o.created_at, o.updated_at
+			       o.id, o.user_id, o.email, o.name, o.is_registered, o.created_at, o.updated_at,
+			       u.name
 			FROM matches m
 			JOIN opponents o ON o.id = m.opponent_id
+			JOIN users u ON u.id = m.user_id
 			WHERE m.user_id = $1 OR o.email = $2
 			ORDER BY m.played_at DESC
 			LIMIT $3
@@ -150,6 +157,7 @@ func (r *MatchRepository) ListByUser(ctx context.Context, userID uuid.UUID, user
 			&m.UserWon, &m.CreatedAt, &m.UpdatedAt,
 			&opp.ID, &opp.UserID, &opp.Email, &opp.Name, &opp.IsRegistered,
 			&opp.CreatedAt, &opp.UpdatedAt,
+			&m.CreatorName,
 		); err != nil {
 			return nil, err
 		}
@@ -286,7 +294,7 @@ func (r *MatchRepository) UpdateNotes(ctx context.Context, matchID uuid.UUID, us
 	return &m, nil
 }
 
-// fetchMatchDetails loads the opponent and games for a match.
+// fetchMatchDetails loads the opponent, creator name, and games for a match.
 func (r *MatchRepository) fetchMatchDetails(ctx context.Context, m *models.Match, opp *models.Opponent) error {
 	err := r.db.QueryRow(ctx, `
 		SELECT id, user_id, email, name, is_registered, created_at, updated_at
@@ -299,6 +307,12 @@ func (r *MatchRepository) fetchMatchDetails(ctx context.Context, m *models.Match
 		return err
 	}
 	m.Opponent = opp
+
+	// Fetch creator name for opponent viewer resolution
+	err = r.db.QueryRow(ctx, `SELECT name FROM users WHERE id = $1`, m.UserID).Scan(&m.CreatorName)
+	if err != nil {
+		return err
+	}
 
 	games, err := r.fetchGames(ctx, m.ID)
 	if err != nil {

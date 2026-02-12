@@ -26,6 +26,7 @@ type Match struct {
 	Notes         *string   `json:"notes,omitempty"`   // resolved per-viewer by handler
 	CreatorNotes  *string   `json:"-"`                 // DB column, never serialized
 	OpponentNotes *string   `json:"-"`                 // DB column, never serialized
+	CreatorName   *string   `json:"-"`                 // from users table, for opponent viewer resolution
 	Games        []Game    `json:"games"`
 	UserWon      bool      `json:"user_won"`                // stored in DB
 	UserWins     int       `json:"user_wins"`                // computed, not stored

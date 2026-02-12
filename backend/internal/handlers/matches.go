@@ -184,6 +184,7 @@ func (h *Handler) ListMatches(w http.ResponseWriter, r *http.Request) {
 	for i := range matches {
 		resolveScoresForViewer(&matches[i], user.ID, user.Email)
 		resolveNotesForViewer(&matches[i], user.ID, user.Email)
+		resolveOpponentForViewer(&matches[i], user.ID, user.Email)
 	}
 
 	// Build cursor for next page: use the last match's played_at
@@ -231,6 +232,7 @@ func (h *Handler) GetMatch(w http.ResponseWriter, r *http.Request) {
 
 	resolveScoresForViewer(match, user.ID, user.Email)
 	resolveNotesForViewer(match, user.ID, user.Email)
+	resolveOpponentForViewer(match, user.ID, user.Email)
 	writeJSON(w, http.StatusOK, match)
 }
 
@@ -328,6 +330,7 @@ func (h *Handler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 	updated.Opponent = opponent
 	resolveScoresForViewer(updated, user.ID, user.Email)
 	resolveNotesForViewer(updated, user.ID, user.Email)
+	resolveOpponentForViewer(updated, user.ID, user.Email)
 	writeJSON(w, http.StatusOK, updated)
 }
 
@@ -377,6 +380,22 @@ func resolveScoresForViewer(match *models.Match, userID uuid.UUID, userEmail str
 	}
 
 	match.ComputeResult()
+}
+
+// resolveOpponentForViewer replaces the opponent name with the creator's name
+// when the viewer is the opponent. From the opponent's perspective, the "other
+// player" is the match creator, not the opponent record (which is themselves).
+func resolveOpponentForViewer(match *models.Match, userID uuid.UUID, userEmail string) {
+	isOpponent := match.UserID != userID &&
+		match.Opponent != nil && match.Opponent.Email != nil && *match.Opponent.Email == userEmail
+
+	if isOpponent {
+		if match.CreatorName != nil {
+			match.Opponent.Name = *match.CreatorName
+		} else {
+			match.Opponent.Name = "Unknown"
+		}
+	}
 }
 
 // --- Notes ---
@@ -433,6 +452,7 @@ func (h *Handler) UpdateMatchNotes(w http.ResponseWriter, r *http.Request) {
 
 	resolveScoresForViewer(match, user.ID, user.Email)
 	resolveNotesForViewer(match, user.ID, user.Email)
+	resolveOpponentForViewer(match, user.ID, user.Email)
 	writeJSON(w, http.StatusOK, match)
 }
 
