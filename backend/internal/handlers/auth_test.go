@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -178,6 +179,107 @@ func TestGetCurrentUser_WithUserInContext(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, user.Email, resp.Email)
 	assert.Equal(t, user.ID, resp.ID)
+}
+
+func TestUpdateCurrentUser_NoUserInContext(t *testing.T) {
+	h, _ := newTestHandler()
+
+	body, _ := json.Marshal(updateUserRequest{Name: "Test User"})
+	req := httptest.NewRequest(http.MethodPut, "/api/auth/me", bytes.NewBuffer(body))
+	w := httptest.NewRecorder()
+
+	h.UpdateCurrentUser(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+
+	var resp errorResponse
+	err := json.NewDecoder(w.Body).Decode(&resp)
+	require.NoError(t, err)
+	assert.Equal(t, "Not authenticated", resp.Error)
+}
+
+func TestUpdateCurrentUser_InvalidJSON(t *testing.T) {
+	h, _ := newTestHandler()
+
+	req := httptest.NewRequest(http.MethodPut, "/api/auth/me", bytes.NewBufferString("not json"))
+	w := httptest.NewRecorder()
+
+	user := &models.User{ID: uuid.New(), Email: "test@example.com"}
+	ctx := context.WithValue(req.Context(), userContextKey, user)
+	req = req.WithContext(ctx)
+
+	h.UpdateCurrentUser(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var resp errorResponse
+	err := json.NewDecoder(w.Body).Decode(&resp)
+	require.NoError(t, err)
+	assert.Equal(t, "Invalid request body", resp.Error)
+}
+
+func TestUpdateCurrentUser_EmptyName(t *testing.T) {
+	h, _ := newTestHandler()
+
+	body, _ := json.Marshal(updateUserRequest{Name: ""})
+	req := httptest.NewRequest(http.MethodPut, "/api/auth/me", bytes.NewBuffer(body))
+	w := httptest.NewRecorder()
+
+	user := &models.User{ID: uuid.New(), Email: "test@example.com"}
+	ctx := context.WithValue(req.Context(), userContextKey, user)
+	req = req.WithContext(ctx)
+
+	h.UpdateCurrentUser(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var resp errorResponse
+	err := json.NewDecoder(w.Body).Decode(&resp)
+	require.NoError(t, err)
+	assert.Equal(t, "Name is required", resp.Error)
+}
+
+func TestUpdateCurrentUser_WhitespaceOnlyName(t *testing.T) {
+	h, _ := newTestHandler()
+
+	body, _ := json.Marshal(updateUserRequest{Name: "   "})
+	req := httptest.NewRequest(http.MethodPut, "/api/auth/me", bytes.NewBuffer(body))
+	w := httptest.NewRecorder()
+
+	user := &models.User{ID: uuid.New(), Email: "test@example.com"}
+	ctx := context.WithValue(req.Context(), userContextKey, user)
+	req = req.WithContext(ctx)
+
+	h.UpdateCurrentUser(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var resp errorResponse
+	err := json.NewDecoder(w.Body).Decode(&resp)
+	require.NoError(t, err)
+	assert.Equal(t, "Name is required", resp.Error)
+}
+
+func TestUpdateCurrentUser_NameTooLong(t *testing.T) {
+	h, _ := newTestHandler()
+
+	longName := strings.Repeat("a", 256)
+	body, _ := json.Marshal(updateUserRequest{Name: longName})
+	req := httptest.NewRequest(http.MethodPut, "/api/auth/me", bytes.NewBuffer(body))
+	w := httptest.NewRecorder()
+
+	user := &models.User{ID: uuid.New(), Email: "test@example.com"}
+	ctx := context.WithValue(req.Context(), userContextKey, user)
+	req = req.WithContext(ctx)
+
+	h.UpdateCurrentUser(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var resp errorResponse
+	err := json.NewDecoder(w.Body).Decode(&resp)
+	require.NoError(t, err)
+	assert.Equal(t, "Name must be 255 characters or less", resp.Error)
 }
 
 func TestLogout_NoCookie(t *testing.T) {

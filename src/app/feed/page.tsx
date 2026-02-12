@@ -54,7 +54,26 @@ export default function Feed() {
   };
 
   useEffect(() => {
-    fetchMatches();
+    // Check if the user has set their name yet. If not, redirect to
+    // /complete-profile so they can fill it in before using the app.
+    const checkProfileAndFetch = async () => {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/auth/me`,
+          { credentials: "include" }
+        );
+        if (!res.ok) return;
+        const user = await res.json();
+        if (!user.name) {
+          router.replace("/complete-profile");
+          return;
+        }
+      } catch {
+        // If the check fails, proceed to load matches anyway
+      }
+      fetchMatches();
+    };
+    checkProfileAndFetch();
   }, []);
 
   const handleSignOut = async () => {

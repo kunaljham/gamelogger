@@ -68,6 +68,7 @@ func main() {
 		r.Get("/verify", h.VerifyMagicLink)
 		r.Post("/logout", h.Logout)
 		r.With(h.AuthMiddleware).Get("/me", h.GetCurrentUser)
+		r.With(h.AuthMiddleware).Put("/me", h.UpdateCurrentUser)
 		if cfg.IsDevelopment() {
 			r.Post("/dev-login", h.DevLogin)
 		}

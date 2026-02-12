@@ -9,8 +9,8 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/feed", request.url));
   }
 
-  // Logged-out users visiting /feed → redirect to /login
-  if (!hasSession && pathname === "/feed") {
+  // Logged-out users visiting protected pages → redirect to /login
+  if (!hasSession && (pathname === "/feed" || pathname === "/complete-profile")) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
@@ -19,5 +19,5 @@ export function middleware(request: NextRequest) {
 
 // Only run middleware on these routes (not on static assets, API routes, etc.)
 export const config = {
-  matcher: ["/", "/login", "/feed"],
+  matcher: ["/", "/login", "/feed", "/complete-profile"],
 };

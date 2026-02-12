@@ -184,6 +184,46 @@ func (h *Handler) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, user)
 }
 
+// updateUserRequest is the JSON body for PUT /api/auth/me.
+type updateUserRequest struct {
+	Name string `json:"name"`
+}
+
+// UpdateCurrentUser handles PUT /api/auth/me.
+// Updates the authenticated user's profile (currently just name).
+func (h *Handler) UpdateCurrentUser(w http.ResponseWriter, r *http.Request) {
+	user, ok := UserFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "Not authenticated"})
+		return
+	}
+
+	var req updateUserRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid request body"})
+		return
+	}
+
+	name := strings.TrimSpace(req.Name)
+	if name == "" {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Name is required"})
+		return
+	}
+	if len(name) > 255 {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Name must be 255 characters or less"})
+		return
+	}
+
+	updated, err := h.userRepo.UpdateName(r.Context(), user.ID, name)
+	if err != nil {
+		slog.Error("Failed to update user name", "error", err, "user_id", user.ID)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to update profile"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, updated)
+}
+
 // Logout handles POST /api/auth/logout.
 // Deletes the session and clears the cookie.
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {

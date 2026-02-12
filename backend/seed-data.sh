@@ -93,6 +93,9 @@ if [ "$STATUS" != "302" ]; then
 fi
 echo "   Authenticated!"
 
+api PUT /api/auth/me '{"name": "Seed User"}'
+echo "   Set name: Seed User"
+
 # ---------------------------------------------------------------------------
 # Step 2: Create opponents
 # ---------------------------------------------------------------------------
@@ -263,6 +266,9 @@ if [ "$STATUS" != "302" ]; then
   exit 1
 fi
 echo "   Authenticated as opponent!"
+
+api PUT /api/auth/me '{"name": "Alice Chen"}'
+echo "   Set name: Alice Chen"
 
 echo "5. Adding opponent notes on Alice matches..."
 
