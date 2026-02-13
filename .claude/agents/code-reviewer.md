@@ -36,6 +36,14 @@ Run `git diff HEAD~1` (or `git diff` for uncommitted changes) to see exactly wha
 - Are there race conditions or stale closures?
 - Does the new code break any existing behavior?
 
+**Mobile & Dark Mode:**
+- Do new UI elements use responsive classes (e.g., `sm:`, `md:` breakpoints) so they work on small screens?
+- Are touch targets large enough for mobile (min ~44px)?
+- Is text readable without horizontal scrolling on narrow viewports?
+- Do all new colors/backgrounds have corresponding `dark:` variants?
+- Are hardcoded colors avoided in favor of the zinc palette from the design system?
+- Do new images or icons have appropriate contrast in both light and dark mode?
+
 **Simplicity:**
 - Is there code that could be deleted without losing functionality?
 - Are there abstractions that only have one use?
@@ -74,6 +82,8 @@ Severity levels:
 - **Simplicity** — Could be simpler without losing clarity
 - **Readability** — Harder to understand than it needs to be
 - **Maintainability** — Will cause pain later
+- **Responsive** — Broken or degraded on mobile viewports
+- **Dark mode** — Missing or incorrect dark mode styling
 
 ## Important
 
