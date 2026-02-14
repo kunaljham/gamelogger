@@ -67,6 +67,18 @@ func (h *Handler) CreateOpponent(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Check for duplicate name
+	existing, err := h.opponentRepo.FindByName(r.Context(), user.ID, name)
+	if err != nil && err != repository.ErrOpponentNotFound {
+		slog.Error("Failed to check opponent name", "error", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to create opponent"})
+		return
+	}
+	if existing != nil {
+		writeJSON(w, http.StatusConflict, errorResponse{Error: "An opponent with this name already exists"})
+		return
+	}
+
 	// Check if opponent email is registered as a GameLogger user
 	isRegistered := false
 	if email != nil {
@@ -161,6 +173,18 @@ func (h *Handler) UpdateOpponent(w http.ResponseWriter, r *http.Request) {
 		} else {
 			email = &e
 		}
+	}
+
+	// Check for duplicate name (exclude the opponent being updated)
+	existing, err := h.opponentRepo.FindByName(r.Context(), user.ID, name)
+	if err != nil && err != repository.ErrOpponentNotFound {
+		slog.Error("Failed to check opponent name", "error", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to update opponent"})
+		return
+	}
+	if existing != nil && existing.ID != id {
+		writeJSON(w, http.StatusConflict, errorResponse{Error: "An opponent with this name already exists"})
+		return
 	}
 
 	// Check if the new email is registered
