@@ -57,6 +57,8 @@ export default function CompleteProfile() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
             type="text"
+            autoComplete="given-name"
+            name="given-name"
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
             placeholder="First name"
@@ -67,6 +69,8 @@ export default function CompleteProfile() {
 
           <input
             type="text"
+            autoComplete="family-name"
+            name="family-name"
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
             placeholder="Last name"
