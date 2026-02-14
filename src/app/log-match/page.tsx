@@ -47,7 +47,7 @@ export default function LogMatch() {
   const [comboboxOpen, setComboboxOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const comboboxRef = useRef<HTMLDivElement>(null);
-  const [matchType, setMatchType] = useState<"bo3" | "bo5">("bo3");
+  const matchType = "bo5";
   const [playedAt, setPlayedAt] = useState(
     new Date().toISOString().split("T")[0]
   );
@@ -102,8 +102,8 @@ export default function LogMatch() {
   );
   const showAddOption = trimmedQuery.length > 0 && !exactMatch;
 
-  const requiredWins = matchType === "bo3" ? 2 : 3;
-  const maxGames = matchType === "bo3" ? 3 : 5;
+  const requiredWins = 3;
+  const maxGames = 5;
 
   // Count wins from filled games
   const filledGames = games.filter(
@@ -149,12 +149,6 @@ export default function LogMatch() {
       next[index] = { ...next[index], [field]: value };
       return next;
     });
-  };
-
-  const handleFormatChange = (format: "bo3" | "bo5") => {
-    setMatchType(format);
-    setGames([{ userScore: "", opponentScore: "" }]);
-    setError("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -442,39 +436,6 @@ export default function LogMatch() {
                     )}
                   </ul>
                 )}
-            </div>
-
-            {/* Format toggle */}
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Format
-              </label>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleFormatChange("bo3")}
-                  disabled={loading}
-                  className={`flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors disabled:opacity-50 ${
-                    matchType === "bo3"
-                      ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-50 dark:bg-zinc-50 dark:text-zinc-900"
-                      : "border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                  }`}
-                >
-                  Best of 3
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleFormatChange("bo5")}
-                  disabled={loading}
-                  className={`flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors disabled:opacity-50 ${
-                    matchType === "bo5"
-                      ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-50 dark:bg-zinc-50 dark:text-zinc-900"
-                      : "border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                  }`}
-                >
-                  Best of 5
-                </button>
-              </div>
             </div>
 
             {/* Date played */}
