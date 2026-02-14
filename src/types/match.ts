@@ -39,3 +39,7 @@ export interface ListMatchesResponse {
   matches: Match[];
   next_cursor?: string;
 }
+
+export interface ListOpponentsResponse {
+  opponents: Opponent[];
+}

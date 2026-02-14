@@ -99,12 +99,20 @@ export default function Feed() {
           <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">
             GameLogger
           </h1>
-          <button
-            onClick={handleSignOut}
-            className="text-sm text-zinc-500 transition-colors hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
-          >
-            Sign out
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.push("/log-match")}
+              className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            >
+              Log Match
+            </button>
+            <button
+              onClick={handleSignOut}
+              className="text-sm text-zinc-500 transition-colors hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+            >
+              Sign out
+            </button>
+          </div>
         </div>
       </header>
 
@@ -155,10 +163,10 @@ export default function Feed() {
                 Your match history will appear here
               </p>
               <button
-                className="mt-4 inline-block rounded-full bg-zinc-900 px-6 py-2 text-sm font-medium text-white opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
-                disabled
+                onClick={() => router.push("/log-match")}
+                className="mt-4 inline-block rounded-full bg-zinc-900 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
               >
-                Log a Match (Coming Soon)
+                Log a Match
               </button>
             </div>
           </div>
