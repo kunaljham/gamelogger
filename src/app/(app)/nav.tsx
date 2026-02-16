@@ -20,12 +20,6 @@ export default function Nav() {
           GameLogger
         </Link>
         <div className="flex items-center gap-3">
-          <Link
-            href="/log-match"
-            className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
-            Log Match
-          </Link>
           {user && (
             <Link
               href="/profile"

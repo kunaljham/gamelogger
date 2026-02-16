@@ -269,17 +269,9 @@ export default function LogMatch() {
 
   return (
     <main className="mx-auto w-full max-w-md px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl">
-          Log a Match
-        </h1>
-        <button
-          onClick={() => router.push("/feed")}
-          className="text-sm text-zinc-500 transition-colors hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
-        >
-          Cancel
-        </button>
-      </div>
+      <h1 className="mb-6 text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl">
+        Log a Match
+      </h1>
 
       {opponentsLoading ? (
         <div className="animate-pulse space-y-4">
@@ -536,14 +528,24 @@ export default function LogMatch() {
             <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
           )}
 
-          {/* Submit */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-lg bg-zinc-900 px-4 py-3 text-base font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
-            {loading ? "Logging..." : "Log Match"}
-          </button>
+          {/* Cancel + Submit */}
+          <div className="space-y-3">
+            <button
+              type="button"
+              onClick={() => router.push("/feed")}
+              disabled={loading}
+              className="w-full rounded-lg border border-zinc-300 px-4 py-3 text-base font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-lg bg-zinc-900 px-4 py-3 text-base font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            >
+              {loading ? "Logging..." : "Log Match"}
+            </button>
+          </div>
         </form>
       )}
     </main>

@@ -59,6 +59,16 @@ export default function Feed() {
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-8">
+      {/* Log match button */}
+      <div className="mb-6">
+        <button
+          onClick={() => router.push("/log-match")}
+          className="w-full rounded-lg bg-zinc-900 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+        >
+          Log Match
+        </button>
+      </div>
+
       {/* Error banner */}
       {error && (
         <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/50 dark:text-red-400">
@@ -103,12 +113,6 @@ export default function Feed() {
             <p className="text-sm text-zinc-400 dark:text-zinc-500">
               Your match history will appear here
             </p>
-            <button
-              onClick={() => router.push("/log-match")}
-              className="mt-4 inline-block rounded-full bg-zinc-900 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-            >
-              Log a Match
-            </button>
           </div>
         </div>
       )}
