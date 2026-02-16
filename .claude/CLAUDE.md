@@ -60,7 +60,9 @@ src/
 │       ├── nav.tsx             # Shared nav bar (logo + user avatar)
 │       ├── feed/
 │       │   ├── page.tsx        # Match feed with "Log Match" CTA
-│       │   └── match-card.tsx  # Individual match card component
+│       │   ├── match-card.tsx  # Clickable match card (links to detail)
+│       │   └── [id]/
+│       │       └── page.tsx    # Match detail (view, edit, delete)
 │       ├── log-match/
 │       │   └── page.tsx        # Match logging form
 │       └── profile/
@@ -122,10 +124,10 @@ backend/
 - Shared nav bar and (app) route group for authenticated pages
 - Profile page (name, email, member since, sign out)
 - UserContext for centralized user state and sign-out logic
+- Match detail page with view, inline edit, and delete (confirmation modal)
 
 ### Not Yet Implemented
 - Frontend opponent management UI
-- Frontend match detail/edit/delete views
 
 ### Ideas to Explore
 - **Remotion demo video:** Use Remotion (React-based video framework) with Claude Code prompting to create a programmatic demo video of GameLogger
