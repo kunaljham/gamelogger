@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Match } from "@/types/match";
 
 // Format a date string like "Jun 15, 2025"
@@ -14,7 +15,10 @@ export default function MatchCard({ match }: { match: Match }) {
   const totalGames = match.match_type === "bo3" ? 3 : 5;
 
   return (
-    <div className={`rounded-xl border bg-white px-5 py-4 dark:bg-zinc-900 ${didWin ? "border-emerald-300 dark:border-emerald-700" : "border-red-300 dark:border-red-700"}`}>
+    <Link
+      href={`/feed/${match.id}`}
+      className={`block rounded-xl border bg-white px-5 py-4 transition-colors hover:bg-zinc-50 dark:bg-zinc-900 dark:hover:bg-zinc-800/70 ${didWin ? "border-emerald-300 dark:border-emerald-700" : "border-red-300 dark:border-red-700"}`}
+    >
       {/* Row 1: Opponent name + date */}
       <div className="flex items-center justify-between">
         <span className="font-semibold text-zinc-900 dark:text-zinc-50">
@@ -51,6 +55,6 @@ export default function MatchCard({ match }: { match: Match }) {
           &ldquo;{match.notes}&rdquo;
         </p>
       )}
-    </div>
+    </Link>
   );
 }
