@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useUser } from "@/contexts/user-context";
 import { getInitials } from "@/lib/user";
 
@@ -12,6 +13,31 @@ function formatMemberSince(iso: string): string {
 
 export default function Profile() {
   const { user, loading, signOut } = useUser();
+  const [wins, setWins] = useState(0);
+  const [losses, setLosses] = useState(0);
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  // Fetch win/loss stats from dedicated endpoint
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/matches/stats`,
+          { credentials: "include" }
+        );
+        if (res.ok) {
+          const data: { wins: number; losses: number } = await res.json();
+          setWins(data.wins);
+          setLosses(data.losses);
+        }
+      } catch {
+        // If fetch fails, stats just stay at 0
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
 
   if (loading) {
     return (
@@ -49,6 +75,35 @@ export default function Profile() {
         <p className="mt-1 text-sm text-zinc-400 dark:text-zinc-500">
           Member since {formatMemberSince(user.created_at)}
         </p>
+
+        {/* Win/loss tally */}
+        <div className="mt-6 flex gap-4">
+          {statsLoading ? (
+            <>
+              <div className="h-16 w-24 animate-pulse rounded-lg bg-zinc-200 dark:bg-zinc-700" />
+              <div className="h-16 w-24 animate-pulse rounded-lg bg-zinc-200 dark:bg-zinc-700" />
+            </>
+          ) : (
+            <>
+              <div className="flex flex-col items-center rounded-lg border border-emerald-200 bg-emerald-50 px-5 py-3 dark:border-emerald-800 dark:bg-emerald-950/40">
+                <span className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">
+                  {wins}
+                </span>
+                <span className="text-xs text-emerald-600 dark:text-emerald-500">
+                  {wins === 1 ? "Win" : "Wins"}
+                </span>
+              </div>
+              <div className="flex flex-col items-center rounded-lg border border-red-200 bg-red-50 px-5 py-3 dark:border-red-800 dark:bg-red-950/40">
+                <span className="text-2xl font-bold text-red-700 dark:text-red-400">
+                  {losses}
+                </span>
+                <span className="text-xs text-red-600 dark:text-red-500">
+                  {losses === 1 ? "Loss" : "Losses"}
+                </span>
+              </div>
+            </>
+          )}
+        </div>
 
         {/* Sign out */}
         <button

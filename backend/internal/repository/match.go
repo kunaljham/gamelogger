@@ -322,6 +322,29 @@ func (r *MatchRepository) fetchMatchDetails(ctx context.Context, m *models.Match
 	return nil
 }
 
+// GetUserStats returns the win and loss counts for a user across all matches
+// they participated in — both as creator and as opponent.
+// When the user is the creator, user_won directly reflects their result.
+// When the user is the opponent, user_won is from the creator's perspective,
+// so we flip it: user_won = TRUE means the viewer (opponent) lost.
+func (r *MatchRepository) GetUserStats(ctx context.Context, userID uuid.UUID, userEmail string) (wins int, losses int, err error) {
+	err = r.db.QueryRow(ctx, `
+		SELECT
+			COUNT(*) FILTER (WHERE
+				(m.user_id = $1 AND m.user_won = TRUE) OR
+				(o.email = $2 AND m.user_id != $1 AND m.user_won = FALSE)
+			) AS wins,
+			COUNT(*) FILTER (WHERE
+				(m.user_id = $1 AND m.user_won = FALSE) OR
+				(o.email = $2 AND m.user_id != $1 AND m.user_won = TRUE)
+			) AS losses
+		FROM matches m
+		JOIN opponents o ON o.id = m.opponent_id
+		WHERE m.user_id = $1 OR o.email = $2
+	`, userID, userEmail).Scan(&wins, &losses)
+	return
+}
+
 // fetchGames returns all games for a match, ordered by game number.
 func (r *MatchRepository) fetchGames(ctx context.Context, matchID uuid.UUID) ([]models.Game, error) {
 	rows, err := r.db.Query(ctx, `

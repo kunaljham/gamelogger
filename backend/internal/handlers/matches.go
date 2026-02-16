@@ -44,6 +44,11 @@ type listMatchesResponse struct {
 	NextCursor *string        `json:"next_cursor,omitempty"`
 }
 
+type statsResponse struct {
+	Wins   int `json:"wins"`
+	Losses int `json:"losses"`
+}
+
 const defaultPageSize = 20
 
 // --- Handlers ---
@@ -195,6 +200,25 @@ func (h *Handler) ListMatches(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// GetMatchStats handles GET /api/matches/stats.
+// Returns the authenticated user's win and loss counts.
+func (h *Handler) GetMatchStats(w http.ResponseWriter, r *http.Request) {
+	user, ok := UserFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "Not authenticated"})
+		return
+	}
+
+	wins, losses, err := h.matchRepo.GetUserStats(r.Context(), user.ID, user.Email)
+	if err != nil {
+		slog.Error("Failed to get match stats", "error", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to get match stats"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, statsResponse{Wins: wins, Losses: losses})
 }
 
 // GetMatch handles GET /api/matches/{id}.

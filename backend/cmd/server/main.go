@@ -79,6 +79,7 @@ func main() {
 		r.Use(h.AuthMiddleware)
 		r.Get("/", h.ListMatches)
 		r.Post("/", h.CreateMatch)
+		r.Get("/stats", h.GetMatchStats)
 		r.Get("/{id}", h.GetMatch)
 		r.Put("/{id}", h.UpdateMatch)
 		r.Put("/{id}/notes", h.UpdateMatchNotes)
