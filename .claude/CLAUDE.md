@@ -42,18 +42,37 @@ The developer is new to web development and is using this project to learn. When
 
 ## Project Structure
 
-**Frontend (src/app/):**
+**Frontend (src/):**
 ```
-src/app/
-├── page.tsx                    # Landing page with "Get Started" CTA
-├── login/
-│   ├── page.tsx                # Email input for sign-in
-│   └── check-email/
-│       └── page.tsx            # "Check your email" confirmation
-├── feed/
-│   └── page.tsx                # Home feed (empty state)
-├── layout.tsx                  # Root layout with Geist fonts
-└── globals.css                 # Theme variables (zinc palette, dark mode)
+src/
+├── app/
+│   ├── page.tsx                # Landing page with "Get Started" CTA
+│   ├── layout.tsx              # Root layout with Geist fonts
+│   ├── globals.css             # Theme variables (zinc palette, dark mode)
+│   ├── login/
+│   │   ├── page.tsx            # Email input for sign-in
+│   │   └── check-email/
+│   │       └── page.tsx        # "Check your email" confirmation
+│   ├── complete-profile/
+│   │   └── page.tsx            # Post-signup name entry (outside route group)
+│   └── (app)/                  # Route group — shared layout for authenticated pages
+│       ├── layout.tsx          # Wraps children with UserProvider + Nav + gradient
+│       ├── nav.tsx             # Shared nav bar (logo + user avatar)
+│       ├── feed/
+│       │   ├── page.tsx        # Match feed with "Log Match" CTA
+│       │   └── match-card.tsx  # Individual match card component
+│       ├── log-match/
+│       │   └── page.tsx        # Match logging form
+│       └── profile/
+│           └── page.tsx        # Profile page (name, email, sign out)
+├── contexts/
+│   └── user-context.tsx        # UserProvider + useUser hook (fetches user, sign-out)
+├── lib/
+│   └── user.ts                 # Shared helpers (getInitials)
+├── types/
+│   ├── match.ts                # Match, Game, Opponent types
+│   └── user.ts                 # User type
+└── middleware.ts                # Route protection (redirect logged-out users)
 ```
 
 **Backend (backend/):**
@@ -99,9 +118,12 @@ backend/
 - Frontend match feed display with loading skeletons, empty state, and cursor-based pagination
 - Seed data script (`backend/seed-data.sh`)
 - Per-user match notes (creator and opponent each have private notes, resolved via `PUT /api/matches/{id}/notes`)
+- Frontend match logging form with inline opponent creation
+- Shared nav bar and (app) route group for authenticated pages
+- Profile page (name, email, member since, sign out)
+- UserContext for centralized user state and sign-out logic
 
 ### Not Yet Implemented
-- Frontend match logging form
 - Frontend opponent management UI
 - Frontend match detail/edit/delete views
 
