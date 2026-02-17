@@ -14,7 +14,9 @@ export interface Opponent {
   user_id: string;
   email?: string;
   name: string;
-  is_registered: boolean;
+  status: "unregistered" | "invited" | "registered";
+  invited_at?: string;
+  registered_user_id?: string;
   created_at: string;
   updated_at: string;
 }

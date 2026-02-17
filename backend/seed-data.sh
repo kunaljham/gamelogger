@@ -250,19 +250,12 @@ echo "   Captured ${#ALICE_MATCH_IDS[@]} Alice match IDs for opponent notes."
 # Step 4: Authenticate as opponent and add notes on Alice matches
 # ---------------------------------------------------------------------------
 echo "4. Authenticating as $OPPONENT_EMAIL..."
-api POST /api/auth/send-link "{\"email\": \"$OPPONENT_EMAIL\"}"
-
-TOKEN=$(psql "$DB_URL" -t -A -c \
-  "SELECT token FROM magic_links WHERE email = '$OPPONENT_EMAIL' AND used_at IS NULL ORDER BY created_at DESC LIMIT 1;")
-
-if [ -z "$TOKEN" ]; then
-  echo "   ERROR: Could not find magic link token for opponent."
-  exit 1
-fi
-
-api GET "/api/auth/verify?token=$TOKEN"
-if [ "$STATUS" != "302" ]; then
-  echo "   ERROR: Verify failed for opponent (status $STATUS)"
+# Use dev-login so the sign-in sweep runs synchronously — this ensures
+# registered_user_id is set on Alice's opponent record before we try
+# to add opponent notes (which require the link to exist).
+api POST /api/auth/dev-login "{\"email\": \"$OPPONENT_EMAIL\"}"
+if [ "$STATUS" != "200" ]; then
+  echo "   ERROR: Dev login failed for opponent (status $STATUS)"
   exit 1
 fi
 echo "   Authenticated as opponent!"

@@ -26,12 +26,13 @@ func NewOpponentRepository(db *pgxpool.Pool) *OpponentRepository {
 // Create inserts a new opponent.
 func (r *OpponentRepository) Create(ctx context.Context, opponent *models.Opponent) (*models.Opponent, error) {
 	err := r.db.QueryRow(ctx, `
-		INSERT INTO opponents (user_id, email, name, is_registered)
-		VALUES ($1, $2, $3, $4)
-		RETURNING id, user_id, email, name, is_registered, created_at, updated_at
-	`, opponent.UserID, opponent.Email, opponent.Name, opponent.IsRegistered).Scan(
+		INSERT INTO opponents (user_id, email, name, status, invited_at, registered_user_id)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id, user_id, email, name, status, invited_at, registered_user_id, created_at, updated_at
+	`, opponent.UserID, opponent.Email, opponent.Name, opponent.Status, opponent.InvitedAt, opponent.RegisteredUserID).Scan(
 		&opponent.ID, &opponent.UserID, &opponent.Email, &opponent.Name,
-		&opponent.IsRegistered, &opponent.CreatedAt, &opponent.UpdatedAt,
+		&opponent.Status, &opponent.InvitedAt, &opponent.RegisteredUserID,
+		&opponent.CreatedAt, &opponent.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -43,10 +44,10 @@ func (r *OpponentRepository) Create(ctx context.Context, opponent *models.Oppone
 func (r *OpponentRepository) FindByID(ctx context.Context, id uuid.UUID) (*models.Opponent, error) {
 	var o models.Opponent
 	err := r.db.QueryRow(ctx, `
-		SELECT id, user_id, email, name, is_registered, created_at, updated_at
+		SELECT id, user_id, email, name, status, invited_at, registered_user_id, created_at, updated_at
 		FROM opponents
 		WHERE id = $1
-	`, id).Scan(&o.ID, &o.UserID, &o.Email, &o.Name, &o.IsRegistered, &o.CreatedAt, &o.UpdatedAt)
+	`, id).Scan(&o.ID, &o.UserID, &o.Email, &o.Name, &o.Status, &o.InvitedAt, &o.RegisteredUserID, &o.CreatedAt, &o.UpdatedAt)
 
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrOpponentNotFound
@@ -61,10 +62,10 @@ func (r *OpponentRepository) FindByID(ctx context.Context, id uuid.UUID) (*model
 func (r *OpponentRepository) FindByEmail(ctx context.Context, userID uuid.UUID, email string) (*models.Opponent, error) {
 	var o models.Opponent
 	err := r.db.QueryRow(ctx, `
-		SELECT id, user_id, email, name, is_registered, created_at, updated_at
+		SELECT id, user_id, email, name, status, invited_at, registered_user_id, created_at, updated_at
 		FROM opponents
 		WHERE user_id = $1 AND email = $2
-	`, userID, email).Scan(&o.ID, &o.UserID, &o.Email, &o.Name, &o.IsRegistered, &o.CreatedAt, &o.UpdatedAt)
+	`, userID, email).Scan(&o.ID, &o.UserID, &o.Email, &o.Name, &o.Status, &o.InvitedAt, &o.RegisteredUserID, &o.CreatedAt, &o.UpdatedAt)
 
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrOpponentNotFound
@@ -79,10 +80,10 @@ func (r *OpponentRepository) FindByEmail(ctx context.Context, userID uuid.UUID, 
 func (r *OpponentRepository) FindByName(ctx context.Context, userID uuid.UUID, name string) (*models.Opponent, error) {
 	var o models.Opponent
 	err := r.db.QueryRow(ctx, `
-		SELECT id, user_id, email, name, is_registered, created_at, updated_at
+		SELECT id, user_id, email, name, status, invited_at, registered_user_id, created_at, updated_at
 		FROM opponents
 		WHERE user_id = $1 AND LOWER(name) = LOWER($2)
-	`, userID, name).Scan(&o.ID, &o.UserID, &o.Email, &o.Name, &o.IsRegistered, &o.CreatedAt, &o.UpdatedAt)
+	`, userID, name).Scan(&o.ID, &o.UserID, &o.Email, &o.Name, &o.Status, &o.InvitedAt, &o.RegisteredUserID, &o.CreatedAt, &o.UpdatedAt)
 
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrOpponentNotFound
@@ -96,7 +97,7 @@ func (r *OpponentRepository) FindByName(ctx context.Context, userID uuid.UUID, n
 // ListByUser returns all opponents for a user, ordered by name.
 func (r *OpponentRepository) ListByUser(ctx context.Context, userID uuid.UUID) ([]models.Opponent, error) {
 	rows, err := r.db.Query(ctx, `
-		SELECT id, user_id, email, name, is_registered, created_at, updated_at
+		SELECT id, user_id, email, name, status, invited_at, registered_user_id, created_at, updated_at
 		FROM opponents
 		WHERE user_id = $1
 		ORDER BY name ASC
@@ -109,7 +110,7 @@ func (r *OpponentRepository) ListByUser(ctx context.Context, userID uuid.UUID) (
 	var opponents []models.Opponent
 	for rows.Next() {
 		var o models.Opponent
-		if err := rows.Scan(&o.ID, &o.UserID, &o.Email, &o.Name, &o.IsRegistered, &o.CreatedAt, &o.UpdatedAt); err != nil {
+		if err := rows.Scan(&o.ID, &o.UserID, &o.Email, &o.Name, &o.Status, &o.InvitedAt, &o.RegisteredUserID, &o.CreatedAt, &o.UpdatedAt); err != nil {
 			return nil, err
 		}
 		opponents = append(opponents, o)
@@ -117,16 +118,17 @@ func (r *OpponentRepository) ListByUser(ctx context.Context, userID uuid.UUID) (
 	return opponents, rows.Err()
 }
 
-// Update updates an opponent's name and email.
+// Update updates an opponent's name, email, status, invited_at, and registered_user_id.
 func (r *OpponentRepository) Update(ctx context.Context, opponent *models.Opponent) (*models.Opponent, error) {
 	err := r.db.QueryRow(ctx, `
 		UPDATE opponents
-		SET name = $1, email = $2, is_registered = $3
-		WHERE id = $4 AND user_id = $5
-		RETURNING id, user_id, email, name, is_registered, created_at, updated_at
-	`, opponent.Name, opponent.Email, opponent.IsRegistered, opponent.ID, opponent.UserID).Scan(
+		SET name = $1, email = $2, status = $3, invited_at = $4, registered_user_id = $5
+		WHERE id = $6 AND user_id = $7
+		RETURNING id, user_id, email, name, status, invited_at, registered_user_id, created_at, updated_at
+	`, opponent.Name, opponent.Email, opponent.Status, opponent.InvitedAt, opponent.RegisteredUserID, opponent.ID, opponent.UserID).Scan(
 		&opponent.ID, &opponent.UserID, &opponent.Email, &opponent.Name,
-		&opponent.IsRegistered, &opponent.CreatedAt, &opponent.UpdatedAt,
+		&opponent.Status, &opponent.InvitedAt, &opponent.RegisteredUserID,
+		&opponent.CreatedAt, &opponent.UpdatedAt,
 	)
 
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -138,15 +140,29 @@ func (r *OpponentRepository) Update(ctx context.Context, opponent *models.Oppone
 	return opponent, nil
 }
 
-// CheckRegistered checks if an email exists in the users table.
-// Returns true if a user account exists with that email.
-func (r *OpponentRepository) CheckRegistered(ctx context.Context, email string) (bool, error) {
-	var exists bool
+// FindUserByEmail checks if an email exists in the users table.
+// Returns the user's ID if found, or nil if no user has that email.
+func (r *OpponentRepository) FindUserByEmail(ctx context.Context, email string) (*uuid.UUID, error) {
+	var id uuid.UUID
 	err := r.db.QueryRow(ctx, `
-		SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)
-	`, email).Scan(&exists)
-	if err != nil {
-		return false, err
+		SELECT id FROM users WHERE email = $1
+	`, email).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
 	}
-	return exists, nil
+	if err != nil {
+		return nil, err
+	}
+	return &id, nil
+}
+
+// UpdateStatusByEmail updates all opponents with the given email to "registered"
+// status with the specified user ID. Used by the sign-in sweep to link opponents
+// when a user creates their account. Skips rows that are already correct.
+func (r *OpponentRepository) UpdateStatusByEmail(ctx context.Context, email string, status string, registeredUserID uuid.UUID) error {
+	_, err := r.db.Exec(ctx, `
+		UPDATE opponents SET status = $2, registered_user_id = $3, invited_at = NULL
+		WHERE email = $1 AND (status != 'registered' OR registered_user_id IS DISTINCT FROM $3)
+	`, email, status, registeredUserID)
+	return err
 }

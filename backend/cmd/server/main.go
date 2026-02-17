@@ -92,6 +92,7 @@ func main() {
 		r.Get("/", h.ListOpponents)
 		r.Post("/", h.CreateOpponent)
 		r.Put("/{id}", h.UpdateOpponent)
+		r.Post("/{id}/invite", h.InviteOpponent)
 	})
 
 	// Create HTTP server

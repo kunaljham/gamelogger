@@ -138,7 +138,7 @@ func (h *Handler) CreateMatch(w http.ResponseWriter, r *http.Request) {
 	// Attach opponent data and populate computed fields for the response
 	created.Opponent = opponent
 	created.ComputeResult()
-	resolveNotesForViewer(created, user.ID, user.Email)
+	resolveNotesForViewer(created, user.ID)
 
 	writeJSON(w, http.StatusCreated, created)
 }
@@ -174,7 +174,7 @@ func (h *Handler) ListMatches(w http.ResponseWriter, r *http.Request) {
 		cursor = &parsed
 	}
 
-	matches, err := h.matchRepo.ListByUser(r.Context(), user.ID, user.Email, limit, cursor)
+	matches, err := h.matchRepo.ListByUser(r.Context(), user.ID, limit, cursor)
 	if err != nil {
 		slog.Error("Failed to list matches", "error", err)
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to list matches"})
@@ -187,9 +187,9 @@ func (h *Handler) ListMatches(w http.ResponseWriter, r *http.Request) {
 
 	// Populate computed fields from the viewer's perspective
 	for i := range matches {
-		resolveScoresForViewer(&matches[i], user.ID, user.Email)
-		resolveNotesForViewer(&matches[i], user.ID, user.Email)
-		resolveOpponentForViewer(&matches[i], user.ID, user.Email)
+		resolveScoresForViewer(&matches[i], user.ID)
+		resolveNotesForViewer(&matches[i], user.ID)
+		resolveOpponentForViewer(&matches[i], user.ID)
 	}
 
 	// Build cursor for next page: use the last match's played_at
@@ -211,7 +211,7 @@ func (h *Handler) GetMatchStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	wins, losses, err := h.matchRepo.GetUserStats(r.Context(), user.ID, user.Email)
+	wins, losses, err := h.matchRepo.GetUserStats(r.Context(), user.ID)
 	if err != nil {
 		slog.Error("Failed to get match stats", "error", err)
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to get match stats"})
@@ -248,15 +248,15 @@ func (h *Handler) GetMatch(w http.ResponseWriter, r *http.Request) {
 
 	// User can view if they're the owner OR the opponent
 	isOwner := match.UserID == user.ID
-	isOpponent := match.Opponent != nil && match.Opponent.Email != nil && *match.Opponent.Email == user.Email
+	isOpponent := match.Opponent != nil && match.Opponent.RegisteredUserID != nil && *match.Opponent.RegisteredUserID == user.ID
 	if !isOwner && !isOpponent {
 		writeJSON(w, http.StatusNotFound, errorResponse{Error: "Match not found"})
 		return
 	}
 
-	resolveScoresForViewer(match, user.ID, user.Email)
-	resolveNotesForViewer(match, user.ID, user.Email)
-	resolveOpponentForViewer(match, user.ID, user.Email)
+	resolveScoresForViewer(match, user.ID)
+	resolveNotesForViewer(match, user.ID)
+	resolveOpponentForViewer(match, user.ID)
 	writeJSON(w, http.StatusOK, match)
 }
 
@@ -352,9 +352,9 @@ func (h *Handler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	updated.Opponent = opponent
-	resolveScoresForViewer(updated, user.ID, user.Email)
-	resolveNotesForViewer(updated, user.ID, user.Email)
-	resolveOpponentForViewer(updated, user.ID, user.Email)
+	resolveScoresForViewer(updated, user.ID)
+	resolveNotesForViewer(updated, user.ID)
+	resolveOpponentForViewer(updated, user.ID)
 	writeJSON(w, http.StatusOK, updated)
 }
 
@@ -392,9 +392,9 @@ func (h *Handler) DeleteMatch(w http.ResponseWriter, r *http.Request) {
 // viewer's perspective. If the viewer is the creator (or neither party),
 // scores stay as-is — ComputeResult() is still called to populate the
 // computed fields.
-func resolveScoresForViewer(match *models.Match, userID uuid.UUID, userEmail string) {
+func resolveScoresForViewer(match *models.Match, userID uuid.UUID) {
 	isOpponent := match.UserID != userID &&
-		match.Opponent != nil && match.Opponent.Email != nil && *match.Opponent.Email == userEmail
+		match.Opponent != nil && match.Opponent.RegisteredUserID != nil && *match.Opponent.RegisteredUserID == userID
 
 	if isOpponent {
 		for i := range match.Games {
@@ -409,9 +409,9 @@ func resolveScoresForViewer(match *models.Match, userID uuid.UUID, userEmail str
 // resolveOpponentForViewer replaces the opponent name with the creator's name
 // when the viewer is the opponent. From the opponent's perspective, the "other
 // player" is the match creator, not the opponent record (which is themselves).
-func resolveOpponentForViewer(match *models.Match, userID uuid.UUID, userEmail string) {
+func resolveOpponentForViewer(match *models.Match, userID uuid.UUID) {
 	isOpponent := match.UserID != userID &&
-		match.Opponent != nil && match.Opponent.Email != nil && *match.Opponent.Email == userEmail
+		match.Opponent != nil && match.Opponent.RegisteredUserID != nil && *match.Opponent.RegisteredUserID == userID
 
 	if isOpponent {
 		if match.CreatorName != nil {
@@ -430,12 +430,12 @@ type updateNotesRequest struct {
 
 // resolveNotesForViewer sets match.Notes to the viewer's own notes.
 // Creator sees creator_notes, opponent sees opponent_notes, others see nil.
-func resolveNotesForViewer(match *models.Match, userID uuid.UUID, userEmail string) {
+func resolveNotesForViewer(match *models.Match, userID uuid.UUID) {
 	if match.UserID == userID {
 		match.Notes = match.CreatorNotes
 		return
 	}
-	if match.Opponent != nil && match.Opponent.Email != nil && *match.Opponent.Email == userEmail {
+	if match.Opponent != nil && match.Opponent.RegisteredUserID != nil && *match.Opponent.RegisteredUserID == userID {
 		match.Notes = match.OpponentNotes
 		return
 	}
@@ -463,7 +463,7 @@ func (h *Handler) UpdateMatchNotes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	match, err := h.matchRepo.UpdateNotes(r.Context(), id, user.ID, user.Email, req.Notes)
+	match, err := h.matchRepo.UpdateNotes(r.Context(), id, user.ID, req.Notes)
 	if err != nil {
 		if err == repository.ErrMatchNotFound {
 			writeJSON(w, http.StatusNotFound, errorResponse{Error: "Match not found"})
@@ -474,9 +474,9 @@ func (h *Handler) UpdateMatchNotes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resolveScoresForViewer(match, user.ID, user.Email)
-	resolveNotesForViewer(match, user.ID, user.Email)
-	resolveOpponentForViewer(match, user.ID, user.Email)
+	resolveScoresForViewer(match, user.ID)
+	resolveNotesForViewer(match, user.ID)
+	resolveOpponentForViewer(match, user.ID)
 	writeJSON(w, http.StatusOK, match)
 }
 

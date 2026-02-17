@@ -8,12 +8,18 @@ import (
 
 // Opponent represents a squash opponent that belongs to a user.
 // Email is optional (pointer = nullable), name is required.
+// Status tracks whether this opponent has a GameLogger account:
+//   - "unregistered" — no account (default)
+//   - "invited" — invitation email sent
+//   - "registered" — has a GameLogger account (linked via RegisteredUserID)
 type Opponent struct {
-	ID           uuid.UUID `json:"id"`
-	UserID       uuid.UUID `json:"user_id"`
-	Email        *string   `json:"email,omitempty"`
-	Name         string    `json:"name"`
-	IsRegistered bool      `json:"is_registered"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID               uuid.UUID  `json:"id"`
+	UserID           uuid.UUID  `json:"user_id"`
+	Email            *string    `json:"email,omitempty"`
+	Name             string     `json:"name"`
+	Status           string     `json:"status"`
+	InvitedAt        *time.Time `json:"invited_at,omitempty"`
+	RegisteredUserID *uuid.UUID `json:"registered_user_id,omitempty"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
 }

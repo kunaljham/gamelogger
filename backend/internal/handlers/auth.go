@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
@@ -134,6 +135,16 @@ func (h *Handler) VerifyMagicLink(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to process request"})
 		return
 	}
+
+	// Sign-in sweep: link any opponents with this email to the signed-in user.
+	// Runs asynchronously so it doesn't block the redirect response.
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := h.opponentRepo.UpdateStatusByEmail(ctx, link.Email, "registered", user.ID); err != nil {
+			slog.Error("sign-in sweep failed", "email", link.Email, "error", err)
+		}
+	}()
 
 	// Generate a session token
 	sessionToken, err := generateSecureToken(32)
@@ -291,6 +302,12 @@ func (h *Handler) DevLogin(w http.ResponseWriter, r *http.Request) {
 		slog.Error("Failed to find/create user", "error", err, "email", email)
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to process request"})
 		return
+	}
+
+	// Sign-in sweep: link any opponents with this email to the signed-in user.
+	// For dev-login we do this synchronously since tests depend on the result.
+	if err := h.opponentRepo.UpdateStatusByEmail(r.Context(), email, "registered", user.ID); err != nil {
+		slog.Error("sign-in sweep failed", "email", email, "error", err)
 	}
 
 	// Generate a session token

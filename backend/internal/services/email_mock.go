@@ -42,6 +42,22 @@ func (m *MockEmailService) SendMagicLink(ctx context.Context, email, token strin
 	return nil
 }
 
+// SendInvitation records the invitation instead of actually sending.
+func (m *MockEmailService) SendInvitation(ctx context.Context, toEmail, fromUserName string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.SendError != nil {
+		return m.SendError
+	}
+
+	m.SentEmails = append(m.SentEmails, SentEmail{
+		To:    toEmail,
+		Token: "invitation-from-" + fromUserName,
+	})
+	return nil
+}
+
 // LastSentEmail returns the most recently sent email, or nil if none.
 func (m *MockEmailService) LastSentEmail() *SentEmail {
 	m.mu.Lock()

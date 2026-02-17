@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -79,22 +80,25 @@ func (h *Handler) CreateOpponent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if opponent email is registered as a GameLogger user
-	isRegistered := false
+	// Derive status from email: check if the email belongs to a registered user
+	status := "unregistered"
+	var registeredUserID *uuid.UUID
 	if email != nil {
-		registered, err := h.opponentRepo.CheckRegistered(r.Context(), *email)
+		userID, err := h.opponentRepo.FindUserByEmail(r.Context(), *email)
 		if err != nil {
 			slog.Error("Failed to check registration", "error", err)
-		} else {
-			isRegistered = registered
+		} else if userID != nil {
+			status = "registered"
+			registeredUserID = userID
 		}
 	}
 
 	opponent := &models.Opponent{
-		UserID:       user.ID,
-		Name:         name,
-		Email:        email,
-		IsRegistered: isRegistered,
+		UserID:           user.ID,
+		Name:             name,
+		Email:            email,
+		Status:           status,
+		RegisteredUserID: registeredUserID,
 	}
 
 	created, err := h.opponentRepo.Create(r.Context(), opponent)
@@ -132,7 +136,7 @@ func (h *Handler) ListOpponents(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateOpponent handles PUT /api/opponents/{id}.
-// Updates an opponent's name and/or email.
+// Updates an opponent's name and/or email. Re-derives status on email change.
 func (h *Handler) UpdateOpponent(w http.ResponseWriter, r *http.Request) {
 	user, ok := UserFromContext(r.Context())
 	if !ok {
@@ -187,23 +191,30 @@ func (h *Handler) UpdateOpponent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if the new email is registered
-	isRegistered := false
+	// Derive status from email
+	status := "unregistered"
+	var registeredUserID *uuid.UUID
+	var invitedAt *time.Time
 	if email != nil {
-		registered, err := h.opponentRepo.CheckRegistered(r.Context(), *email)
+		userID, err := h.opponentRepo.FindUserByEmail(r.Context(), *email)
 		if err != nil {
 			slog.Error("Failed to check registration", "error", err)
-		} else {
-			isRegistered = registered
+		} else if userID != nil {
+			status = "registered"
+			registeredUserID = userID
 		}
+		// Clear invited_at on any email change (status is re-derived from scratch)
+		invitedAt = nil
 	}
 
 	opponent := &models.Opponent{
-		ID:           id,
-		UserID:       user.ID,
-		Name:         name,
-		Email:        email,
-		IsRegistered: isRegistered,
+		ID:               id,
+		UserID:           user.ID,
+		Name:             name,
+		Email:            email,
+		Status:           status,
+		InvitedAt:        invitedAt,
+		RegisteredUserID: registeredUserID,
 	}
 
 	updated, err := h.opponentRepo.Update(r.Context(), opponent)
@@ -214,6 +225,77 @@ func (h *Handler) UpdateOpponent(w http.ResponseWriter, r *http.Request) {
 		}
 		slog.Error("Failed to update opponent", "error", err)
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to update opponent"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, updated)
+}
+
+// InviteOpponent handles POST /api/opponents/{id}/invite.
+// Sends an invitation email to an unregistered or previously invited opponent.
+func (h *Handler) InviteOpponent(w http.ResponseWriter, r *http.Request) {
+	user, ok := UserFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "Not authenticated"})
+		return
+	}
+
+	idStr := chi.URLParam(r, "id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid opponent ID"})
+		return
+	}
+
+	// Fetch the opponent
+	opponent, err := h.opponentRepo.FindByID(r.Context(), id)
+	if err != nil {
+		if err == repository.ErrOpponentNotFound {
+			writeJSON(w, http.StatusNotFound, errorResponse{Error: "Opponent not found"})
+			return
+		}
+		slog.Error("Failed to find opponent", "error", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to invite opponent"})
+		return
+	}
+
+	// Verify opponent belongs to user
+	if opponent.UserID != user.ID {
+		writeJSON(w, http.StatusNotFound, errorResponse{Error: "Opponent not found"})
+		return
+	}
+
+	// Validate: must have an email
+	if opponent.Email == nil || *opponent.Email == "" {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Opponent has no email address"})
+		return
+	}
+
+	// Validate: cannot invite already-registered opponent
+	if opponent.Status == "registered" {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Opponent is already registered"})
+		return
+	}
+
+	// Send invitation email
+	userName := "Someone"
+	if user.Name != nil {
+		userName = *user.Name
+	}
+	if err := h.emailService.SendInvitation(r.Context(), *opponent.Email, userName); err != nil {
+		slog.Error("Failed to send invitation email", "error", err, "to", *opponent.Email)
+		// Don't block on email failure — still update status
+	}
+
+	// Update opponent status to invited
+	now := time.Now()
+	opponent.Status = "invited"
+	opponent.InvitedAt = &now
+
+	updated, err := h.opponentRepo.Update(r.Context(), opponent)
+	if err != nil {
+		slog.Error("Failed to update opponent after invite", "error", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to invite opponent"})
 		return
 	}
 

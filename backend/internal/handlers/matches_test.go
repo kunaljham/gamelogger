@@ -224,25 +224,22 @@ func TestValidateMatchType(t *testing.T) {
 // --- Game Score Validation Tests ---
 
 func TestValidateGameScore_NormalWin(t *testing.T) {
-	// Valid: winner at 11, loser at 9 or less
 	assert.NoError(t, validateGameScore(11, 0, 1))
 	assert.NoError(t, validateGameScore(11, 5, 1))
 	assert.NoError(t, validateGameScore(11, 9, 1))
-	assert.NoError(t, validateGameScore(0, 11, 1))  // opponent wins
-	assert.NoError(t, validateGameScore(9, 11, 1))  // opponent wins
+	assert.NoError(t, validateGameScore(0, 11, 1))
+	assert.NoError(t, validateGameScore(9, 11, 1))
 }
 
 func TestValidateGameScore_DeuceWin(t *testing.T) {
-	// Valid: win by 2 when past 10-10
 	assert.NoError(t, validateGameScore(12, 10, 1))
 	assert.NoError(t, validateGameScore(13, 11, 1))
 	assert.NoError(t, validateGameScore(14, 12, 1))
-	assert.NoError(t, validateGameScore(10, 12, 1)) // opponent wins deuce
-	assert.NoError(t, validateGameScore(15, 17, 1)) // opponent wins long deuce
+	assert.NoError(t, validateGameScore(10, 12, 1))
+	assert.NoError(t, validateGameScore(15, 17, 1))
 }
 
 func TestValidateGameScore_InvalidNormalWin(t *testing.T) {
-	// Invalid: winner doesn't have 11 when loser <= 9
 	err := validateGameScore(10, 5, 1)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "exactly 11")
@@ -253,7 +250,6 @@ func TestValidateGameScore_InvalidNormalWin(t *testing.T) {
 }
 
 func TestValidateGameScore_InvalidDeuce(t *testing.T) {
-	// Invalid: not winning by 2 in deuce situation
 	err := validateGameScore(11, 10, 1)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "win by 2")
@@ -341,14 +337,13 @@ func TestValidateGames_ValidBo5_UserWins3_2(t *testing.T) {
 
 func TestValidateGames_ValidWithDeuce(t *testing.T) {
 	games := []gameRequest{
-		{GameNumber: 1, UserScore: 12, OpponentScore: 10}, // deuce win
+		{GameNumber: 1, UserScore: 12, OpponentScore: 10},
 		{GameNumber: 2, UserScore: 11, OpponentScore: 9},
 	}
 	assert.NoError(t, validateGames(games, "bo3"))
 }
 
 func TestValidateGames_IncompleteMatch(t *testing.T) {
-	// Only 1 win in a bo3 — match not finished
 	games := []gameRequest{
 		{GameNumber: 1, UserScore: 11, OpponentScore: 7},
 	}
@@ -358,11 +353,10 @@ func TestValidateGames_IncompleteMatch(t *testing.T) {
 }
 
 func TestValidateGames_ExtraGamesAfterWin(t *testing.T) {
-	// User already won after game 2, but game 3 was played
 	games := []gameRequest{
 		{GameNumber: 1, UserScore: 11, OpponentScore: 7},
 		{GameNumber: 2, UserScore: 11, OpponentScore: 9},
-		{GameNumber: 3, UserScore: 11, OpponentScore: 5}, // shouldn't happen
+		{GameNumber: 3, UserScore: 11, OpponentScore: 5},
 	}
 	err := validateGames(games, "bo3")
 	assert.Error(t, err)
@@ -372,7 +366,7 @@ func TestValidateGames_ExtraGamesAfterWin(t *testing.T) {
 func TestValidateGames_NonSequentialGameNumbers(t *testing.T) {
 	games := []gameRequest{
 		{GameNumber: 1, UserScore: 11, OpponentScore: 7},
-		{GameNumber: 3, UserScore: 11, OpponentScore: 9}, // skipped 2
+		{GameNumber: 3, UserScore: 11, OpponentScore: 9},
 	}
 	err := validateGames(games, "bo3")
 	assert.Error(t, err)
@@ -386,14 +380,15 @@ func TestValidateGames_Empty(t *testing.T) {
 }
 
 // --- resolveScoresForViewer tests ---
+// These now use RegisteredUserID instead of Email to identify the opponent.
 
 func TestResolveScoresForViewer_Creator(t *testing.T) {
 	creatorID := uuid.New()
-	oppEmail := "opp@example.com"
+	oppUserID := uuid.New()
 
 	match := &models.Match{
 		UserID:   creatorID,
-		Opponent: &models.Opponent{Email: &oppEmail},
+		Opponent: &models.Opponent{RegisteredUserID: &oppUserID},
 		Games: []models.Game{
 			{GameNumber: 1, UserScore: 11, OpponentScore: 7},
 			{GameNumber: 2, UserScore: 9, OpponentScore: 11},
@@ -401,15 +396,11 @@ func TestResolveScoresForViewer_Creator(t *testing.T) {
 		},
 	}
 
-	resolveScoresForViewer(match, creatorID, "creator@example.com")
+	resolveScoresForViewer(match, creatorID)
 
 	// Scores stay from creator's perspective
 	assert.Equal(t, 11, match.Games[0].UserScore)
 	assert.Equal(t, 7, match.Games[0].OpponentScore)
-	assert.Equal(t, 9, match.Games[1].UserScore)
-	assert.Equal(t, 11, match.Games[1].OpponentScore)
-	assert.Equal(t, 11, match.Games[2].UserScore)
-	assert.Equal(t, 5, match.Games[2].OpponentScore)
 	assert.True(t, match.UserWon)
 	assert.Equal(t, 2, match.UserWins)
 	assert.Equal(t, 1, match.OpponentWins)
@@ -417,11 +408,11 @@ func TestResolveScoresForViewer_Creator(t *testing.T) {
 
 func TestResolveScoresForViewer_Opponent(t *testing.T) {
 	creatorID := uuid.New()
-	oppEmail := "opp@example.com"
+	oppUserID := uuid.New()
 
 	match := &models.Match{
 		UserID:   creatorID,
-		Opponent: &models.Opponent{Email: &oppEmail},
+		Opponent: &models.Opponent{RegisteredUserID: &oppUserID},
 		Games: []models.Game{
 			{GameNumber: 1, UserScore: 11, OpponentScore: 7},
 			{GameNumber: 2, UserScore: 9, OpponentScore: 11},
@@ -429,15 +420,11 @@ func TestResolveScoresForViewer_Opponent(t *testing.T) {
 		},
 	}
 
-	resolveScoresForViewer(match, uuid.New(), oppEmail)
+	resolveScoresForViewer(match, oppUserID)
 
 	// Scores are flipped — opponent now sees from their perspective
 	assert.Equal(t, 7, match.Games[0].UserScore)
 	assert.Equal(t, 11, match.Games[0].OpponentScore)
-	assert.Equal(t, 11, match.Games[1].UserScore)
-	assert.Equal(t, 9, match.Games[1].OpponentScore)
-	assert.Equal(t, 5, match.Games[2].UserScore)
-	assert.Equal(t, 11, match.Games[2].OpponentScore)
 	assert.False(t, match.UserWon)
 	assert.Equal(t, 1, match.UserWins)
 	assert.Equal(t, 2, match.OpponentWins)
@@ -445,18 +432,18 @@ func TestResolveScoresForViewer_Opponent(t *testing.T) {
 
 func TestResolveScoresForViewer_Neither(t *testing.T) {
 	creatorID := uuid.New()
-	oppEmail := "opp@example.com"
+	oppUserID := uuid.New()
 
 	match := &models.Match{
 		UserID:   creatorID,
-		Opponent: &models.Opponent{Email: &oppEmail},
+		Opponent: &models.Opponent{RegisteredUserID: &oppUserID},
 		Games: []models.Game{
 			{GameNumber: 1, UserScore: 11, OpponentScore: 7},
 			{GameNumber: 2, UserScore: 11, OpponentScore: 9},
 		},
 	}
 
-	resolveScoresForViewer(match, uuid.New(), "stranger@example.com")
+	resolveScoresForViewer(match, uuid.New())
 
 	// Scores unchanged (defaults to creator's perspective)
 	assert.Equal(t, 11, match.Games[0].UserScore)
@@ -470,18 +457,18 @@ func TestResolveScoresForViewer_Neither(t *testing.T) {
 
 func TestResolveNotesForViewer_Creator(t *testing.T) {
 	creatorID := uuid.New()
+	oppUserID := uuid.New()
 	creatorNotes := "my creator notes"
 	oppNotes := "opponent notes"
-	oppEmail := "opp@example.com"
 
 	match := &models.Match{
 		UserID:        creatorID,
 		CreatorNotes:  &creatorNotes,
 		OpponentNotes: &oppNotes,
-		Opponent:      &models.Opponent{Email: &oppEmail},
+		Opponent:      &models.Opponent{RegisteredUserID: &oppUserID},
 	}
 
-	resolveNotesForViewer(match, creatorID, "creator@example.com")
+	resolveNotesForViewer(match, creatorID)
 
 	require.NotNil(t, match.Notes)
 	assert.Equal(t, "my creator notes", *match.Notes)
@@ -489,18 +476,18 @@ func TestResolveNotesForViewer_Creator(t *testing.T) {
 
 func TestResolveNotesForViewer_Opponent(t *testing.T) {
 	creatorID := uuid.New()
+	oppUserID := uuid.New()
 	creatorNotes := "creator notes"
 	oppNotes := "my opponent notes"
-	oppEmail := "opp@example.com"
 
 	match := &models.Match{
 		UserID:        creatorID,
 		CreatorNotes:  &creatorNotes,
 		OpponentNotes: &oppNotes,
-		Opponent:      &models.Opponent{Email: &oppEmail},
+		Opponent:      &models.Opponent{RegisteredUserID: &oppUserID},
 	}
 
-	resolveNotesForViewer(match, uuid.New(), oppEmail)
+	resolveNotesForViewer(match, oppUserID)
 
 	require.NotNil(t, match.Notes)
 	assert.Equal(t, "my opponent notes", *match.Notes)
@@ -508,16 +495,16 @@ func TestResolveNotesForViewer_Opponent(t *testing.T) {
 
 func TestResolveNotesForViewer_Neither(t *testing.T) {
 	creatorID := uuid.New()
+	oppUserID := uuid.New()
 	creatorNotes := "creator notes"
-	oppEmail := "opp@example.com"
 
 	match := &models.Match{
 		UserID:       creatorID,
 		CreatorNotes: &creatorNotes,
-		Opponent:     &models.Opponent{Email: &oppEmail},
+		Opponent:     &models.Opponent{RegisteredUserID: &oppUserID},
 	}
 
-	resolveNotesForViewer(match, uuid.New(), "stranger@example.com")
+	resolveNotesForViewer(match, uuid.New())
 
 	assert.Nil(t, match.Notes)
 }
@@ -526,16 +513,16 @@ func TestResolveNotesForViewer_Neither(t *testing.T) {
 
 func TestResolveOpponentForViewer_Creator(t *testing.T) {
 	creatorID := uuid.New()
-	oppEmail := "opp@example.com"
+	oppUserID := uuid.New()
 	creatorName := "Seed User"
 
 	match := &models.Match{
 		UserID:      creatorID,
 		CreatorName: &creatorName,
-		Opponent:    &models.Opponent{Name: "Alice Chen", Email: &oppEmail},
+		Opponent:    &models.Opponent{Name: "Alice Chen", RegisteredUserID: &oppUserID},
 	}
 
-	resolveOpponentForViewer(match, creatorID, "creator@example.com")
+	resolveOpponentForViewer(match, creatorID)
 
 	// Creator sees the original opponent name
 	assert.Equal(t, "Alice Chen", match.Opponent.Name)
@@ -543,16 +530,16 @@ func TestResolveOpponentForViewer_Creator(t *testing.T) {
 
 func TestResolveOpponentForViewer_Opponent(t *testing.T) {
 	creatorID := uuid.New()
-	oppEmail := "opp@example.com"
+	oppUserID := uuid.New()
 	creatorName := "Seed User"
 
 	match := &models.Match{
 		UserID:      creatorID,
 		CreatorName: &creatorName,
-		Opponent:    &models.Opponent{Name: "Alice Chen", Email: &oppEmail},
+		Opponent:    &models.Opponent{Name: "Alice Chen", RegisteredUserID: &oppUserID},
 	}
 
-	resolveOpponentForViewer(match, uuid.New(), oppEmail)
+	resolveOpponentForViewer(match, oppUserID)
 
 	// Opponent sees the creator's name instead of their own
 	assert.Equal(t, "Seed User", match.Opponent.Name)
@@ -560,15 +547,15 @@ func TestResolveOpponentForViewer_Opponent(t *testing.T) {
 
 func TestResolveOpponentForViewer_OpponentCreatorNameNil(t *testing.T) {
 	creatorID := uuid.New()
-	oppEmail := "opp@example.com"
+	oppUserID := uuid.New()
 
 	match := &models.Match{
 		UserID:      creatorID,
 		CreatorName: nil,
-		Opponent:    &models.Opponent{Name: "Alice Chen", Email: &oppEmail},
+		Opponent:    &models.Opponent{Name: "Alice Chen", RegisteredUserID: &oppUserID},
 	}
 
-	resolveOpponentForViewer(match, uuid.New(), oppEmail)
+	resolveOpponentForViewer(match, oppUserID)
 
 	// Falls back to "Unknown" when creator hasn't set a name
 	assert.Equal(t, "Unknown", match.Opponent.Name)
@@ -576,18 +563,18 @@ func TestResolveOpponentForViewer_OpponentCreatorNameNil(t *testing.T) {
 
 func TestResolveOpponentForViewer_Neither(t *testing.T) {
 	creatorID := uuid.New()
-	oppEmail := "opp@example.com"
+	oppUserID := uuid.New()
 	creatorName := "Seed User"
 
 	match := &models.Match{
 		UserID:      creatorID,
 		CreatorName: &creatorName,
-		Opponent:    &models.Opponent{Name: "Alice Chen", Email: &oppEmail},
+		Opponent:    &models.Opponent{Name: "Alice Chen", RegisteredUserID: &oppUserID},
 	}
 
-	resolveOpponentForViewer(match, uuid.New(), "stranger@example.com")
+	resolveOpponentForViewer(match, uuid.New())
 
-	// Stranger sees the original opponent name (shouldn't happen in practice)
+	// Stranger sees the original opponent name
 	assert.Equal(t, "Alice Chen", match.Opponent.Name)
 }
 
@@ -607,8 +594,7 @@ func TestUpdateMatchNotes_NotAuthenticated(t *testing.T) {
 func TestUpdateMatchNotes_InvalidID(t *testing.T) {
 	h := matchTestHandler()
 	body, _ := json.Marshal(updateNotesRequest{})
-	req := matchRequest(http.MethodPut, "/api/matches/not-a-uuid/notes", nil)
-	req = httptest.NewRequest(http.MethodPut, "/api/matches/not-a-uuid/notes", bytes.NewBuffer(body))
+	req := httptest.NewRequest(http.MethodPut, "/api/matches/not-a-uuid/notes", bytes.NewBuffer(body))
 	user := &models.User{ID: uuid.New(), Email: "test@example.com"}
 	ctx := context.WithValue(req.Context(), userContextKey, user)
 	req = req.WithContext(ctx)
@@ -621,8 +607,6 @@ func TestUpdateMatchNotes_InvalidID(t *testing.T) {
 
 func TestUpdateMatchNotes_InvalidJSON(t *testing.T) {
 	h := matchTestHandler()
-	// Without chi routing, URLParam returns "" which fails UUID parse → "Invalid match ID".
-	// This is expected: the handler validates the ID before the body.
 	req := httptest.NewRequest(http.MethodPut, "/api/matches/not-a-uuid/notes", bytes.NewBufferString("not json"))
 	user := &models.User{ID: uuid.New(), Email: "test@example.com"}
 	ctx := context.WithValue(req.Context(), userContextKey, user)

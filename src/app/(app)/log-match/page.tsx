@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Opponent, ListOpponentsResponse } from "@/types/match";
+import OpponentChip from "@/components/opponent-chip";
 
 type SelectedOpponent =
-  | { type: "existing"; id: string; name: string }
-  | { type: "new"; name: string }
+  | { type: "existing"; id: string; name: string; status?: string }
+  | { type: "new"; name: string; email?: string }
   | null;
 
 interface GameScore {
@@ -55,6 +56,7 @@ export default function LogMatch() {
   const [games, setGames] = useState<GameScore[]>([
     { userScore: "", opponentScore: "" },
   ]);
+  const [newOpponentEmail, setNewOpponentEmail] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -186,12 +188,16 @@ export default function LogMatch() {
       // If the opponent is new, create them first
       let opponentId: string;
       if (selectedOpponent.type === "new") {
+        const oppBody: Record<string, string> = { name: selectedOpponent.name };
+        if (newOpponentEmail.trim()) {
+          oppBody.email = newOpponentEmail.trim();
+        }
         const oppRes = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/api/opponents`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: selectedOpponent.name }),
+            body: JSON.stringify(oppBody),
             credentials: "include",
           }
         );
@@ -206,6 +212,7 @@ export default function LogMatch() {
           type: "existing",
           id: created.id,
           name: created.name,
+          status: created.status,
         });
         opponentId = created.id;
       } else {
@@ -289,145 +296,183 @@ export default function LogMatch() {
             >
               Opponent
             </label>
-            <input
-              role="combobox"
-              aria-expanded={comboboxOpen}
-              aria-controls="opponent-listbox"
-              aria-autocomplete="list"
-              aria-activedescendant={
-                comboboxOpen &&
-                (filteredOpponents.length > 0 || showAddOption)
-                  ? `opponent-option-${highlightedIndex}`
-                  : undefined
-              }
-              aria-labelledby="opponent-label"
-              value={opponentQuery}
-              onChange={(e) => {
-                setOpponentQuery(e.target.value);
-                setSelectedOpponent(null);
-                setComboboxOpen(true);
-                setHighlightedIndex(0);
-              }}
-              onFocus={() => setComboboxOpen(true)}
-              onBlur={(e) => {
-                if (
-                  !comboboxRef.current?.contains(e.relatedTarget as Node)
-                ) {
-                  setComboboxOpen(false);
-                }
-              }}
-              onKeyDown={(e) => {
-                if (!comboboxOpen) {
-                  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+            {/* Show chip when opponent is selected, input when not */}
+            {selectedOpponent?.type === "existing" ? (() => {
+              const opp = opponents.find((o) => o.id === selectedOpponent.id);
+              return opp ? (
+                <OpponentChip
+                  opponent={opp}
+                  size="lg"
+                  onRemove={() => {
+                    setSelectedOpponent(null);
+                    setOpponentQuery("");
+                  }}
+                />
+              ) : null;
+            })() : (
+              <>
+                <input
+                  role="combobox"
+                  aria-expanded={comboboxOpen}
+                  aria-controls="opponent-listbox"
+                  aria-autocomplete="list"
+                  aria-activedescendant={
+                    comboboxOpen &&
+                    (filteredOpponents.length > 0 || showAddOption)
+                      ? `opponent-option-${highlightedIndex}`
+                      : undefined
+                  }
+                  aria-labelledby="opponent-label"
+                  value={opponentQuery}
+                  onChange={(e) => {
+                    setOpponentQuery(e.target.value);
+                    setSelectedOpponent(null);
                     setComboboxOpen(true);
-                    e.preventDefault();
-                  }
-                  return;
-                }
-                const totalItems =
-                  filteredOpponents.length + (showAddOption ? 1 : 0);
-                if (e.key === "ArrowDown") {
-                  e.preventDefault();
-                  setHighlightedIndex((prev) =>
-                    prev < totalItems - 1 ? prev + 1 : 0
-                  );
-                } else if (e.key === "ArrowUp") {
-                  e.preventDefault();
-                  setHighlightedIndex((prev) =>
-                    prev > 0 ? prev - 1 : totalItems - 1
-                  );
-                } else if (e.key === "Enter") {
-                  e.preventDefault();
-                  if (totalItems === 0) return;
-                  const idx = Math.min(highlightedIndex, totalItems - 1);
-                  if (idx < filteredOpponents.length) {
-                    const opp = filteredOpponents[idx];
-                    setSelectedOpponent({
-                      type: "existing",
-                      id: opp.id,
-                      name: opp.name,
-                    });
-                    setOpponentQuery(opp.name);
-                  } else if (showAddOption) {
-                    setSelectedOpponent({
-                      type: "new",
-                      name: trimmedQuery,
-                    });
-                    setOpponentQuery(trimmedQuery);
-                  }
-                  setComboboxOpen(false);
-                } else if (e.key === "Escape") {
-                  setComboboxOpen(false);
-                }
-              }}
-              disabled={loading}
-              placeholder="Search or add opponent"
-              className="w-full rounded-lg border border-stone-300 bg-white px-4 py-3 text-base text-stone-900 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
-            />
-            {comboboxOpen &&
-              (filteredOpponents.length > 0 || showAddOption) && (
-                <ul
-                  id="opponent-listbox"
-                  role="listbox"
-                  className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-stone-200 bg-white shadow-lg dark:border-stone-700 dark:bg-stone-800"
-                >
-                  {filteredOpponents.map((opp, i) => (
-                    <li
-                      key={opp.id}
-                      id={`opponent-option-${i}`}
-                      role="option"
-                      aria-selected={highlightedIndex === i}
-                      onMouseDown={(e) => {
+                    setHighlightedIndex(0);
+                  }}
+                  onFocus={() => setComboboxOpen(true)}
+                  onBlur={(e) => {
+                    if (
+                      !comboboxRef.current?.contains(e.relatedTarget as Node)
+                    ) {
+                      setComboboxOpen(false);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (!comboboxOpen) {
+                      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                        setComboboxOpen(true);
                         e.preventDefault();
+                      }
+                      return;
+                    }
+                    const totalItems =
+                      filteredOpponents.length + (showAddOption ? 1 : 0);
+                    if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      setHighlightedIndex((prev) =>
+                        prev < totalItems - 1 ? prev + 1 : 0
+                      );
+                    } else if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      setHighlightedIndex((prev) =>
+                        prev > 0 ? prev - 1 : totalItems - 1
+                      );
+                    } else if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (totalItems === 0) return;
+                      const idx = Math.min(highlightedIndex, totalItems - 1);
+                      if (idx < filteredOpponents.length) {
+                        const opp = filteredOpponents[idx];
                         setSelectedOpponent({
                           type: "existing",
                           id: opp.id,
                           name: opp.name,
+                          status: opp.status,
                         });
                         setOpponentQuery(opp.name);
-                        setComboboxOpen(false);
-                      }}
-                      onMouseEnter={() => setHighlightedIndex(i)}
-                      className={`cursor-pointer px-4 py-2.5 text-base text-stone-900 dark:text-stone-50 ${
-                        highlightedIndex === i
-                          ? "bg-stone-100 dark:bg-stone-700"
-                          : ""
-                      }`}
-                    >
-                      {opp.name}
-                    </li>
-                  ))}
-                  {showAddOption && (
-                    <li
-                      id={`opponent-option-${filteredOpponents.length}`}
-                      role="option"
-                      aria-selected={
-                        highlightedIndex === filteredOpponents.length
-                      }
-                      onMouseDown={(e) => {
-                        e.preventDefault();
+                      } else if (showAddOption) {
                         setSelectedOpponent({
                           type: "new",
                           name: trimmedQuery,
                         });
                         setOpponentQuery(trimmedQuery);
-                        setComboboxOpen(false);
-                      }}
-                      onMouseEnter={() =>
-                        setHighlightedIndex(filteredOpponents.length)
+                        setNewOpponentEmail("");
                       }
-                      className={`cursor-pointer px-4 py-2.5 text-base text-stone-600 dark:text-stone-400 ${
-                        highlightedIndex === filteredOpponents.length
-                          ? "bg-stone-100 dark:bg-stone-700"
-                          : ""
-                      }`}
+                      setComboboxOpen(false);
+                    } else if (e.key === "Escape") {
+                      setComboboxOpen(false);
+                    }
+                  }}
+                  disabled={loading}
+                  placeholder="Search or add opponent"
+                  className="w-full rounded-lg border border-stone-300 bg-white px-4 py-3 text-base text-stone-900 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
+                />
+                {comboboxOpen &&
+                  (filteredOpponents.length > 0 || showAddOption) && (
+                    <ul
+                      id="opponent-listbox"
+                      role="listbox"
+                      className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-stone-200 bg-white shadow-lg dark:border-stone-700 dark:bg-stone-800"
                     >
-                      Add &ldquo;{trimmedQuery}&rdquo;
-                    </li>
+                      {filteredOpponents.map((opp, i) => (
+                        <li
+                          key={opp.id}
+                          id={`opponent-option-${i}`}
+                          role="option"
+                          aria-selected={highlightedIndex === i}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setSelectedOpponent({
+                              type: "existing",
+                              id: opp.id,
+                              name: opp.name,
+                              status: opp.status,
+                            });
+                            setOpponentQuery(opp.name);
+                            setComboboxOpen(false);
+                          }}
+                          onMouseEnter={() => setHighlightedIndex(i)}
+                          className={`cursor-pointer px-4 py-2.5 text-base text-stone-900 dark:text-stone-50 ${
+                            highlightedIndex === i
+                              ? "bg-stone-100 dark:bg-stone-700"
+                              : ""
+                          }`}
+                        >
+                          {opp.name}
+                        </li>
+                      ))}
+                      {showAddOption && (
+                        <li
+                          id={`opponent-option-${filteredOpponents.length}`}
+                          role="option"
+                          aria-selected={
+                            highlightedIndex === filteredOpponents.length
+                          }
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setSelectedOpponent({
+                              type: "new",
+                              name: trimmedQuery,
+                            });
+                            setOpponentQuery(trimmedQuery);
+                            setComboboxOpen(false);
+                          }}
+                          onMouseEnter={() =>
+                            setHighlightedIndex(filteredOpponents.length)
+                          }
+                          className={`cursor-pointer px-4 py-2.5 text-base text-stone-600 dark:text-stone-400 ${
+                            highlightedIndex === filteredOpponents.length
+                              ? "bg-stone-100 dark:bg-stone-700"
+                              : ""
+                          }`}
+                        >
+                          Add &ldquo;{trimmedQuery}&rdquo;
+                        </li>
+                      )}
+                    </ul>
                   )}
-                </ul>
-              )}
+              </>
+            )}
           </div>
+
+          {/* Email for new opponent */}
+          {selectedOpponent?.type === "new" && (
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-stone-700 dark:text-stone-300">
+                Opponent Email{" "}
+                <span className="font-normal text-stone-400">(optional)</span>
+              </label>
+              <input
+                type="email"
+                value={newOpponentEmail}
+                onChange={(e) => setNewOpponentEmail(e.target.value)}
+                disabled={loading}
+                placeholder="opponent@example.com"
+                className="w-full rounded-lg border border-stone-300 bg-white px-4 py-3 text-base text-stone-900 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
+              />
+            </div>
+          )}
 
           {/* Date played */}
           <div>
