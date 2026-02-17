@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type {
   OpponentWithStats,
   ListOpponentsWithStatsResponse,
@@ -38,11 +39,26 @@ function OpponentCard({
   onUpdated: (updated: Opponent) => void;
   onInvite: (opponent: OpponentWithStats) => void;
 }) {
+  const router = useRouter();
   const [editing, setEditing] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const [editName, setEditName] = useState(opponent.name);
   const [editEmail, setEditEmail] = useState(opponent.email ?? "");
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState("");
+
+  // Close menu on click outside
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [menuOpen]);
 
   const handleSave = async () => {
     setEditError("");
@@ -185,33 +201,65 @@ function OpponentCard({
           )}
         </div>
 
-        {/* Right side: status + actions */}
-        <div className="flex shrink-0 flex-col items-end gap-2">
+        {/* Right side: status badge + overflow menu */}
+        <div className="flex shrink-0 items-center gap-2">
           {opponent.status === "registered" && (
             <StatusBadge status={opponent.status} />
           )}
 
-          {opponent.status !== "registered" && (
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  setEditName(opponent.name);
-                  setEditEmail(opponent.email ?? "");
-                  setEditError("");
-                  setEditing(true);
-                }}
-                className="rounded-lg border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 transition-colors hover:bg-stone-100 dark:border-stone-600 dark:text-stone-400 dark:hover:bg-stone-800"
-              >
-                Edit
-              </button>
-              <button
-                onClick={() => onInvite(opponent)}
-                className="rounded-lg border border-purple-200 bg-purple-50 px-3 py-1.5 text-xs font-medium text-purple-700 transition-colors hover:bg-purple-100 dark:border-purple-800 dark:bg-purple-950/30 dark:text-purple-400 dark:hover:bg-purple-950/50"
-              >
-                {opponent.status === "invited" ? "Re-invite" : "Invite"}
-              </button>
-            </div>
-          )}
+          <div ref={menuRef} className="relative">
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-600 dark:text-stone-500 dark:hover:bg-stone-800 dark:hover:text-stone-300"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <circle cx="8" cy="3" r="1.5" />
+                <circle cx="8" cy="8" r="1.5" />
+                <circle cx="8" cy="13" r="1.5" />
+              </svg>
+            </button>
+
+            {menuOpen && (
+              <div className="absolute right-0 z-10 mt-1 w-40 overflow-hidden rounded-lg border border-stone-200 bg-white shadow-lg dark:border-stone-700 dark:bg-stone-800">
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    router.push(
+                      `/log-match?opponent=${opponent.id}&name=${encodeURIComponent(opponent.name)}`
+                    );
+                  }}
+                  className="w-full px-4 py-2.5 text-left text-sm text-stone-700 transition-colors hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-700"
+                >
+                  Log match
+                </button>
+                {opponent.status !== "registered" && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setEditName(opponent.name);
+                        setEditEmail(opponent.email ?? "");
+                        setEditError("");
+                        setEditing(true);
+                      }}
+                      className="w-full px-4 py-2.5 text-left text-sm text-stone-700 transition-colors hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-700"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false);
+                        onInvite(opponent);
+                      }}
+                      className="w-full px-4 py-2.5 text-left text-sm text-stone-700 transition-colors hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-700"
+                    >
+                      {opponent.status === "invited" ? "Re-invite" : "Invite"}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

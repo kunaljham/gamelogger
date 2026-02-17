@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { Opponent, ListOpponentsResponse } from "@/types/match";
 import OpponentChip from "@/components/opponent-chip";
 
@@ -37,14 +37,30 @@ function validateGameScore(
   return null;
 }
 
-export default function LogMatch() {
+export default function LogMatchPage() {
+  return (
+    <Suspense>
+      <LogMatch />
+    </Suspense>
+  );
+}
+
+function LogMatch() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [opponents, setOpponents] = useState<Opponent[]>([]);
   const [opponentsLoading, setOpponentsLoading] = useState(true);
   const [opponentQuery, setOpponentQuery] = useState("");
   const [selectedOpponent, setSelectedOpponent] =
-    useState<SelectedOpponent>(null);
+    useState<SelectedOpponent>(() => {
+      const opponentId = searchParams.get("opponent");
+      const opponentName = searchParams.get("name");
+      if (opponentId && opponentName) {
+        return { type: "existing", id: opponentId, name: opponentName };
+      }
+      return null;
+    });
   const [comboboxOpen, setComboboxOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const comboboxRef = useRef<HTMLDivElement>(null);
