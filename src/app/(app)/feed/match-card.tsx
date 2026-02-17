@@ -17,31 +17,31 @@ export default function MatchCard({ match }: { match: Match }) {
   return (
     <Link
       href={`/feed/${match.id}`}
-      className={`block rounded-xl border bg-white px-5 py-4 transition-colors hover:bg-zinc-50 dark:bg-zinc-900 dark:hover:bg-zinc-800/70 ${didWin ? "border-emerald-300 dark:border-emerald-700" : "border-red-300 dark:border-red-700"}`}
+      className={`block rounded-xl border bg-white px-5 py-4 transition-colors hover:bg-stone-50 dark:bg-stone-900 dark:hover:bg-stone-800/70 ${didWin ? "border-emerald-300 dark:border-emerald-700" : "border-red-300 dark:border-red-700"}`}
     >
       {/* Row 1: Opponent name + date */}
       <div className="flex items-center justify-between">
-        <span className="font-semibold text-zinc-900 dark:text-zinc-50">
+        <span className="font-semibold text-stone-900 dark:text-stone-50">
           {match.opponent?.name ?? "Unknown"}
         </span>
-        <span className="text-sm text-zinc-400 dark:text-zinc-500">
+        <span className="text-sm text-stone-400 dark:text-stone-500">
           {formatDate(match.played_at)}
         </span>
       </div>
 
       {/* Row 2: Win/loss result + match type */}
       <div className="mt-1 flex items-center gap-2 text-sm">
-        <span className="font-medium text-zinc-700 dark:text-zinc-300">
+        <span className="font-medium text-stone-700 dark:text-stone-300">
           {didWin ? "Won" : "Lost"} {userWins}-{opponentWins}
         </span>
-        <span className="text-zinc-300 dark:text-zinc-600">·</span>
-        <span className="text-zinc-500 dark:text-zinc-400">
+        <span className="text-stone-300 dark:text-stone-600">·</span>
+        <span className="text-stone-500 dark:text-stone-400">
           Best of {totalGames}
         </span>
       </div>
 
       {/* Row 3: Game scores */}
-      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm text-zinc-600 dark:text-zinc-400">
+      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm text-stone-600 dark:text-stone-400">
         {match.games.map((game) => (
           <span key={game.game_number}>
             {game.user_score}-{game.opponent_score}
@@ -51,7 +51,7 @@ export default function MatchCard({ match }: { match: Match }) {
 
       {/* Row 4: Notes (if present) */}
       {match.notes && (
-        <p className="mt-2 line-clamp-2 text-sm italic text-zinc-500 dark:text-zinc-400">
+        <p className="mt-2 line-clamp-2 text-sm italic text-stone-500 dark:text-stone-400">
           &ldquo;{match.notes}&rdquo;
         </p>
       )}

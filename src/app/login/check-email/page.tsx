@@ -21,18 +21,18 @@ export default function CheckEmail() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-zinc-50 to-zinc-100 px-4 py-12 dark:from-zinc-900 dark:to-zinc-950 sm:px-6 lg:px-8">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-stone-50 to-stone-100 px-4 py-12 dark:from-stone-900 dark:to-stone-950 sm:px-6 lg:px-8">
       <main className="w-full max-w-md text-center">
-        <h1 className="mb-6 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+        <h1 className="mb-6 text-2xl font-bold text-stone-900 dark:text-stone-50">
           Check your email
         </h1>
-        <p className="mb-8 text-zinc-600 dark:text-zinc-400">
-          We sent a sign-in link to <span className="text-zinc-900 dark:text-zinc-50">{email}</span>
+        <p className="mb-8 text-stone-600 dark:text-stone-400">
+          We sent a sign-in link to <span className="text-stone-900 dark:text-stone-50">{email}</span>
         </p>
 
         <a
           href="/login"
-          className="text-zinc-500 underline transition-colors hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+          className="text-stone-500 underline transition-colors hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200"
         >
           Use a different email
         </a>

@@ -269,15 +269,15 @@ export default function LogMatch() {
 
   return (
     <main className="mx-auto w-full max-w-md px-4 py-8">
-      <h1 className="mb-6 text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl">
+      <h1 className="mb-6 text-3xl font-bold tracking-tight text-stone-900 dark:text-stone-50 sm:text-4xl">
         Log a Match
       </h1>
 
       {opponentsLoading ? (
         <div className="animate-pulse space-y-4">
-          <div className="h-12 rounded-lg bg-zinc-200 dark:bg-zinc-700" />
-          <div className="h-12 rounded-lg bg-zinc-200 dark:bg-zinc-700" />
-          <div className="h-12 rounded-lg bg-zinc-200 dark:bg-zinc-700" />
+          <div className="h-12 rounded-lg bg-stone-200 dark:bg-stone-700" />
+          <div className="h-12 rounded-lg bg-stone-200 dark:bg-stone-700" />
+          <div className="h-12 rounded-lg bg-stone-200 dark:bg-stone-700" />
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -285,7 +285,7 @@ export default function LogMatch() {
           <div ref={comboboxRef} className="relative">
             <label
               id="opponent-label"
-              className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+              className="mb-1.5 block text-sm font-medium text-stone-700 dark:text-stone-300"
             >
               Opponent
             </label>
@@ -362,14 +362,14 @@ export default function LogMatch() {
               }}
               disabled={loading}
               placeholder="Search or add opponent"
-              className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-3 text-base text-zinc-900 transition-colors focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500/20 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400/20"
+              className="w-full rounded-lg border border-stone-300 bg-white px-4 py-3 text-base text-stone-900 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
             />
             {comboboxOpen &&
               (filteredOpponents.length > 0 || showAddOption) && (
                 <ul
                   id="opponent-listbox"
                   role="listbox"
-                  className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800"
+                  className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-stone-200 bg-white shadow-lg dark:border-stone-700 dark:bg-stone-800"
                 >
                   {filteredOpponents.map((opp, i) => (
                     <li
@@ -388,9 +388,9 @@ export default function LogMatch() {
                         setComboboxOpen(false);
                       }}
                       onMouseEnter={() => setHighlightedIndex(i)}
-                      className={`cursor-pointer px-4 py-2.5 text-base text-zinc-900 dark:text-zinc-50 ${
+                      className={`cursor-pointer px-4 py-2.5 text-base text-stone-900 dark:text-stone-50 ${
                         highlightedIndex === i
-                          ? "bg-zinc-100 dark:bg-zinc-700"
+                          ? "bg-stone-100 dark:bg-stone-700"
                           : ""
                       }`}
                     >
@@ -416,9 +416,9 @@ export default function LogMatch() {
                       onMouseEnter={() =>
                         setHighlightedIndex(filteredOpponents.length)
                       }
-                      className={`cursor-pointer px-4 py-2.5 text-base text-zinc-600 dark:text-zinc-400 ${
+                      className={`cursor-pointer px-4 py-2.5 text-base text-stone-600 dark:text-stone-400 ${
                         highlightedIndex === filteredOpponents.length
-                          ? "bg-zinc-100 dark:bg-zinc-700"
+                          ? "bg-stone-100 dark:bg-stone-700"
                           : ""
                       }`}
                     >
@@ -431,7 +431,7 @@ export default function LogMatch() {
 
           {/* Date played */}
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            <label className="mb-1.5 block text-sm font-medium text-stone-700 dark:text-stone-300">
               Date Played
             </label>
             <input
@@ -439,30 +439,30 @@ export default function LogMatch() {
               value={playedAt}
               onChange={(e) => setPlayedAt(e.target.value)}
               disabled={loading}
-              className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-3 text-base text-zinc-900 transition-colors focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500/20 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400/20"
+              className="w-full rounded-lg border border-stone-300 bg-white px-4 py-3 text-base text-stone-900 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
             />
           </div>
 
           {/* Game scores */}
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            <label className="mb-1.5 block text-sm font-medium text-stone-700 dark:text-stone-300">
               Game Scores
             </label>
             <div className="space-y-3">
               {/* Column headers */}
               <div className="flex items-center gap-3">
-                <span className="w-16 text-xs text-zinc-400" />
-                <span className="flex-1 text-center text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                <span className="w-16 text-xs text-stone-400" />
+                <span className="flex-1 text-center text-xs font-medium text-stone-500 dark:text-stone-400">
                   You
                 </span>
-                <span className="flex-1 text-center text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                <span className="flex-1 text-center text-xs font-medium text-stone-500 dark:text-stone-400">
                   Opp
                 </span>
               </div>
 
               {games.map((game, i) => (
                 <div key={i} className="flex items-center gap-3">
-                  <span className="w-16 text-sm text-zinc-500 dark:text-zinc-400">
+                  <span className="w-16 text-sm text-stone-500 dark:text-stone-400">
                     Game {i + 1}
                   </span>
                   <input
@@ -475,7 +475,7 @@ export default function LogMatch() {
                     }
                     disabled={loading}
                     placeholder="0"
-                    className="flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-center text-base text-zinc-900 transition-colors focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500/20 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400/20"
+                    className="flex-1 rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-center text-base text-stone-900 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
                   />
                   <input
                     type="number"
@@ -487,7 +487,7 @@ export default function LogMatch() {
                     }
                     disabled={loading}
                     placeholder="0"
-                    className="flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-center text-base text-zinc-900 transition-colors focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500/20 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400/20"
+                    className="flex-1 rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-center text-base text-stone-900 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
                   />
                 </div>
               ))}
@@ -499,7 +499,7 @@ export default function LogMatch() {
                 className={`mt-3 text-sm font-medium ${
                   matchComplete
                     ? "text-emerald-600 dark:text-emerald-400"
-                    : "text-zinc-500 dark:text-zinc-400"
+                    : "text-stone-500 dark:text-stone-400"
                 }`}
               >
                 {statusMessage}
@@ -509,9 +509,9 @@ export default function LogMatch() {
 
           {/* Notes */}
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            <label className="mb-1.5 block text-sm font-medium text-stone-700 dark:text-stone-300">
               Notes{" "}
-              <span className="font-normal text-zinc-400">(optional)</span>
+              <span className="font-normal text-stone-400">(optional)</span>
             </label>
             <textarea
               value={notes}
@@ -519,7 +519,7 @@ export default function LogMatch() {
               disabled={loading}
               placeholder="How did the match go?"
               rows={3}
-              className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-3 text-base text-zinc-900 placeholder-zinc-400 transition-colors focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500/20 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50 dark:placeholder-zinc-500 dark:focus:border-zinc-400 dark:focus:ring-zinc-400/20"
+              className="w-full rounded-lg border border-stone-300 bg-white px-4 py-3 text-base text-stone-900 placeholder-stone-400 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:placeholder-stone-500 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
             />
           </div>
 
@@ -534,14 +534,14 @@ export default function LogMatch() {
               type="button"
               onClick={() => router.push("/feed")}
               disabled={loading}
-              className="w-full rounded-lg border border-zinc-300 px-4 py-3 text-base font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              className="w-full rounded-lg border border-stone-300 px-4 py-3 text-base font-medium text-stone-700 transition-colors hover:bg-stone-100 disabled:opacity-50 dark:border-stone-600 dark:text-stone-300 dark:hover:bg-stone-800"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-lg bg-zinc-900 px-4 py-3 text-base font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+              className="w-full rounded-lg bg-purple-700 px-4 py-3 text-base font-medium text-white transition-colors hover:bg-purple-800 disabled:opacity-50 dark:bg-purple-600 dark:text-white dark:hover:bg-purple-500"
             >
               {loading ? "Logging..." : "Log Match"}
             </button>

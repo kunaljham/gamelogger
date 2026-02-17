@@ -11,11 +11,11 @@ export default function Nav() {
   const onProfile = pathname === "/profile";
 
   return (
-    <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/80 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-900/80">
+    <header className="sticky top-0 z-10 border-b border-stone-200 bg-[#F5F4F0]/80 backdrop-blur-sm dark:border-stone-800 dark:bg-stone-900/80">
       <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-4">
         <Link
           href="/feed"
-          className="text-xl font-bold text-zinc-900 dark:text-zinc-50"
+          className="text-xl font-bold text-stone-900 dark:text-stone-50"
         >
           GameLogger
         </Link>
@@ -25,8 +25,8 @@ export default function Nav() {
               href="/profile"
               className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
                 onProfile
-                  ? "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"
-                  : "bg-zinc-200 text-zinc-700 hover:bg-zinc-300 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600"
+                  ? "bg-purple-700 text-white dark:bg-purple-600 dark:text-white"
+                  : "bg-stone-200 text-stone-700 hover:bg-stone-300 dark:bg-stone-700 dark:text-stone-200 dark:hover:bg-stone-600"
               }`}
               aria-label="Profile"
             >

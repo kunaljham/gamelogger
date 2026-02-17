@@ -63,7 +63,7 @@ export default function Feed() {
       <div className="mb-6">
         <button
           onClick={() => router.push("/log-match")}
-          className="w-full rounded-lg bg-zinc-900 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          className="w-full rounded-lg bg-purple-700 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-purple-800 dark:bg-purple-600 dark:text-white dark:hover:bg-purple-500"
         >
           Log Match
         </button>
@@ -82,14 +82,14 @@ export default function Feed() {
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="animate-pulse rounded-xl border border-zinc-200 bg-white px-5 py-4 dark:border-zinc-800 dark:bg-zinc-900"
+              className="animate-pulse rounded-xl border border-stone-200 bg-white px-5 py-4 dark:border-stone-800 dark:bg-stone-900"
             >
               <div className="flex justify-between">
-                <div className="h-5 w-32 rounded bg-zinc-200 dark:bg-zinc-700" />
-                <div className="h-4 w-24 rounded bg-zinc-200 dark:bg-zinc-700" />
+                <div className="h-5 w-32 rounded bg-stone-200 dark:bg-stone-700" />
+                <div className="h-4 w-24 rounded bg-stone-200 dark:bg-stone-700" />
               </div>
-              <div className="mt-2 h-4 w-40 rounded bg-zinc-200 dark:bg-zinc-700" />
-              <div className="mt-2 h-4 w-48 rounded bg-zinc-200 dark:bg-zinc-700" />
+              <div className="mt-2 h-4 w-40 rounded bg-stone-200 dark:bg-stone-700" />
+              <div className="mt-2 h-4 w-48 rounded bg-stone-200 dark:bg-stone-700" />
             </div>
           ))}
         </div>
@@ -99,18 +99,18 @@ export default function Feed() {
       {!loading && !error && matches.length === 0 && (
         <div className="text-center">
           <div className="mb-6 flex justify-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-zinc-900 text-2xl text-white dark:bg-zinc-50 dark:text-zinc-900">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-purple-700 text-2xl text-white dark:bg-purple-600 dark:text-white">
               &#127992;
             </div>
           </div>
-          <h2 className="mb-3 text-2xl font-bold text-zinc-900 dark:text-zinc-50 sm:text-3xl">
+          <h2 className="mb-3 text-2xl font-bold text-stone-900 dark:text-stone-50 sm:text-3xl">
             No matches yet
           </h2>
-          <p className="mb-8 text-base text-zinc-600 dark:text-zinc-400">
+          <p className="mb-8 text-base text-stone-600 dark:text-stone-400">
             Log your first match to start tracking your squash games.
           </p>
-          <div className="rounded-xl border-2 border-dashed border-zinc-200 bg-zinc-50/50 px-6 py-12 dark:border-zinc-800 dark:bg-zinc-800/20">
-            <p className="text-sm text-zinc-400 dark:text-zinc-500">
+          <div className="rounded-xl border-2 border-dashed border-stone-200 bg-stone-50/50 px-6 py-12 dark:border-stone-800 dark:bg-stone-800/20">
+            <p className="text-sm text-stone-400 dark:text-stone-500">
               Your match history will appear here
             </p>
           </div>
@@ -130,7 +130,7 @@ export default function Feed() {
               <button
                 onClick={() => fetchMatches(nextCursor)}
                 disabled={loadingMore}
-                className="rounded-lg border border-zinc-200 bg-white px-5 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                className="rounded-lg border border-stone-200 bg-white px-5 py-2 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-50 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
               >
                 {loadingMore ? "Loading..." : "Load more"}
               </button>

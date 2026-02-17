@@ -111,12 +111,12 @@ export default function MatchDetail() {
     return (
       <main className="mx-auto max-w-md px-4 py-8">
         <div className="animate-pulse space-y-4">
-          <div className="h-5 w-24 rounded bg-zinc-200 dark:bg-zinc-700" />
-          <div className="h-8 w-48 rounded bg-zinc-200 dark:bg-zinc-700" />
-          <div className="h-5 w-40 rounded bg-zinc-200 dark:bg-zinc-700" />
+          <div className="h-5 w-24 rounded bg-stone-200 dark:bg-stone-700" />
+          <div className="h-8 w-48 rounded bg-stone-200 dark:bg-stone-700" />
+          <div className="h-5 w-40 rounded bg-stone-200 dark:bg-stone-700" />
           <div className="mt-6 space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-5 w-32 rounded bg-zinc-200 dark:bg-zinc-700" />
+              <div key={i} className="h-5 w-32 rounded bg-stone-200 dark:bg-stone-700" />
             ))}
           </div>
         </div>
@@ -130,7 +130,7 @@ export default function MatchDetail() {
       <main className="mx-auto max-w-md px-4 py-8">
         <Link
           href="/feed"
-          className="mb-6 inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+          className="mb-6 inline-flex items-center gap-1 text-sm text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200"
         >
           &larr; Back to Feed
         </Link>
@@ -164,25 +164,25 @@ export default function MatchDetail() {
       {/* Back link */}
       <Link
         href="/feed"
-        className="mb-6 inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+        className="mb-6 inline-flex items-center gap-1 text-sm text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200"
       >
         &larr; Back to Feed
       </Link>
 
       {/* Participants */}
-      <h1 className="mt-2 text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl">
+      <h1 className="mt-2 text-3xl font-bold tracking-tight text-stone-900 dark:text-stone-50 sm:text-4xl">
         {user?.name ?? "You"} vs. {match.opponent?.name ?? "Unknown"}
       </h1>
 
       {/* Result + format + date */}
-      <p className="mt-2 text-base text-zinc-600 dark:text-zinc-400">
+      <p className="mt-2 text-base text-stone-600 dark:text-stone-400">
         <span className={`font-medium ${didWin ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
           {didWin ? "Won" : "Lost"} {userWins}-{opponentWins}
         </span>
-        <span className="mx-2 text-zinc-300 dark:text-zinc-600">&middot;</span>
+        <span className="mx-2 text-stone-300 dark:text-stone-600">&middot;</span>
         Best of {totalGames}
       </p>
-      <p className="mt-1 text-sm text-zinc-400 dark:text-zinc-500">
+      <p className="mt-1 text-sm text-stone-400 dark:text-stone-500">
         {formatDate(match.played_at)}
       </p>
 
@@ -203,8 +203,8 @@ export default function MatchDetail() {
 
       {/* Notes */}
       {match.notes && (
-        <div className="mt-6 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800/50">
-          <p className="text-sm italic text-zinc-600 dark:text-zinc-400">
+        <div className="mt-6 rounded-lg border border-stone-200 bg-stone-50 px-4 py-3 dark:border-stone-700 dark:bg-stone-800/50">
+          <p className="text-sm italic text-stone-600 dark:text-stone-400">
             &ldquo;{match.notes}&rdquo;
           </p>
         </div>
@@ -214,7 +214,7 @@ export default function MatchDetail() {
       <div className="mt-8 space-y-3">
         <button
           onClick={() => setMode("edit")}
-          className="w-full cursor-pointer rounded-lg bg-zinc-900 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          className="w-full cursor-pointer rounded-lg bg-purple-700 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-purple-800 dark:bg-purple-600 dark:text-white dark:hover:bg-purple-500"
         >
           Edit Match
         </button>
@@ -233,18 +233,18 @@ export default function MatchDetail() {
             className="fixed inset-0 bg-black/50"
             onClick={() => !deleting && setShowDeleteModal(false)}
           />
-          <div className="relative w-full max-w-sm rounded-xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+          <div className="relative w-full max-w-sm rounded-xl border border-stone-200 bg-white p-6 shadow-xl dark:border-stone-700 dark:bg-stone-900">
+            <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-50">
               Delete match?
             </h2>
-            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+            <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">
               This will permanently delete this match. This action cannot be undone.
             </p>
             <div className="mt-6 flex gap-3">
               <button
                 onClick={() => setShowDeleteModal(false)}
                 disabled={deleting}
-                className="flex-1 rounded-lg border border-zinc-300 px-4 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                className="flex-1 rounded-lg border border-stone-300 px-4 py-2.5 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100 disabled:opacity-50 dark:border-stone-600 dark:text-stone-300 dark:hover:bg-stone-800"
               >
                 Cancel
               </button>
@@ -511,15 +511,15 @@ function EditMode({
 
   return (
     <main className="mx-auto w-full max-w-md px-4 py-8">
-      <h1 className="mb-6 text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl">
+      <h1 className="mb-6 text-3xl font-bold tracking-tight text-stone-900 dark:text-stone-50 sm:text-4xl">
         Edit Match
       </h1>
 
       {opponentsLoading ? (
         <div className="animate-pulse space-y-4">
-          <div className="h-12 rounded-lg bg-zinc-200 dark:bg-zinc-700" />
-          <div className="h-12 rounded-lg bg-zinc-200 dark:bg-zinc-700" />
-          <div className="h-12 rounded-lg bg-zinc-200 dark:bg-zinc-700" />
+          <div className="h-12 rounded-lg bg-stone-200 dark:bg-stone-700" />
+          <div className="h-12 rounded-lg bg-stone-200 dark:bg-stone-700" />
+          <div className="h-12 rounded-lg bg-stone-200 dark:bg-stone-700" />
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -527,7 +527,7 @@ function EditMode({
           <div ref={comboboxRef} className="relative">
             <label
               id="opponent-label"
-              className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+              className="mb-1.5 block text-sm font-medium text-stone-700 dark:text-stone-300"
             >
               Opponent
             </label>
@@ -604,14 +604,14 @@ function EditMode({
               }}
               disabled={saving}
               placeholder="Search or add opponent"
-              className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-3 text-base text-zinc-900 transition-colors focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500/20 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400/20"
+              className="w-full rounded-lg border border-stone-300 bg-white px-4 py-3 text-base text-stone-900 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
             />
             {comboboxOpen &&
               (filteredOpponents.length > 0 || showAddOption) && (
                 <ul
                   id="opponent-listbox"
                   role="listbox"
-                  className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800"
+                  className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-stone-200 bg-white shadow-lg dark:border-stone-700 dark:bg-stone-800"
                 >
                   {filteredOpponents.map((opp, i) => (
                     <li
@@ -630,9 +630,9 @@ function EditMode({
                         setComboboxOpen(false);
                       }}
                       onMouseEnter={() => setHighlightedIndex(i)}
-                      className={`cursor-pointer px-4 py-2.5 text-base text-zinc-900 dark:text-zinc-50 ${
+                      className={`cursor-pointer px-4 py-2.5 text-base text-stone-900 dark:text-stone-50 ${
                         highlightedIndex === i
-                          ? "bg-zinc-100 dark:bg-zinc-700"
+                          ? "bg-stone-100 dark:bg-stone-700"
                           : ""
                       }`}
                     >
@@ -658,9 +658,9 @@ function EditMode({
                       onMouseEnter={() =>
                         setHighlightedIndex(filteredOpponents.length)
                       }
-                      className={`cursor-pointer px-4 py-2.5 text-base text-zinc-600 dark:text-zinc-400 ${
+                      className={`cursor-pointer px-4 py-2.5 text-base text-stone-600 dark:text-stone-400 ${
                         highlightedIndex === filteredOpponents.length
-                          ? "bg-zinc-100 dark:bg-zinc-700"
+                          ? "bg-stone-100 dark:bg-stone-700"
                           : ""
                       }`}
                     >
@@ -673,7 +673,7 @@ function EditMode({
 
           {/* Date played */}
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            <label className="mb-1.5 block text-sm font-medium text-stone-700 dark:text-stone-300">
               Date Played
             </label>
             <input
@@ -681,29 +681,29 @@ function EditMode({
               value={playedAt}
               onChange={(e) => setPlayedAt(e.target.value)}
               disabled={saving}
-              className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-3 text-base text-zinc-900 transition-colors focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500/20 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400/20"
+              className="w-full rounded-lg border border-stone-300 bg-white px-4 py-3 text-base text-stone-900 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
             />
           </div>
 
           {/* Game scores */}
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            <label className="mb-1.5 block text-sm font-medium text-stone-700 dark:text-stone-300">
               Game Scores
             </label>
             <div className="space-y-3">
               <div className="flex items-center gap-3">
-                <span className="w-16 text-xs text-zinc-400" />
-                <span className="flex-1 text-center text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                <span className="w-16 text-xs text-stone-400" />
+                <span className="flex-1 text-center text-xs font-medium text-stone-500 dark:text-stone-400">
                   You
                 </span>
-                <span className="flex-1 text-center text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                <span className="flex-1 text-center text-xs font-medium text-stone-500 dark:text-stone-400">
                   Opp
                 </span>
               </div>
 
               {games.map((game, i) => (
                 <div key={i} className="flex items-center gap-3">
-                  <span className="w-16 text-sm text-zinc-500 dark:text-zinc-400">
+                  <span className="w-16 text-sm text-stone-500 dark:text-stone-400">
                     Game {i + 1}
                   </span>
                   <input
@@ -716,7 +716,7 @@ function EditMode({
                     }
                     disabled={saving}
                     placeholder="0"
-                    className="flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-center text-base text-zinc-900 transition-colors focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500/20 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400/20"
+                    className="flex-1 rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-center text-base text-stone-900 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
                   />
                   <input
                     type="number"
@@ -728,7 +728,7 @@ function EditMode({
                     }
                     disabled={saving}
                     placeholder="0"
-                    className="flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-center text-base text-zinc-900 transition-colors focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500/20 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400/20"
+                    className="flex-1 rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-center text-base text-stone-900 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
                   />
                 </div>
               ))}
@@ -739,7 +739,7 @@ function EditMode({
                 className={`mt-3 text-sm font-medium ${
                   matchComplete
                     ? "text-emerald-600 dark:text-emerald-400"
-                    : "text-zinc-500 dark:text-zinc-400"
+                    : "text-stone-500 dark:text-stone-400"
                 }`}
               >
                 {statusMessage}
@@ -749,9 +749,9 @@ function EditMode({
 
           {/* Notes */}
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            <label className="mb-1.5 block text-sm font-medium text-stone-700 dark:text-stone-300">
               Notes{" "}
-              <span className="font-normal text-zinc-400">(optional)</span>
+              <span className="font-normal text-stone-400">(optional)</span>
             </label>
             <textarea
               value={notes}
@@ -759,7 +759,7 @@ function EditMode({
               disabled={saving}
               placeholder="How did the match go?"
               rows={3}
-              className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-3 text-base text-zinc-900 placeholder-zinc-400 transition-colors focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500/20 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50 dark:placeholder-zinc-500 dark:focus:border-zinc-400 dark:focus:ring-zinc-400/20"
+              className="w-full rounded-lg border border-stone-300 bg-white px-4 py-3 text-base text-stone-900 placeholder-stone-400 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:placeholder-stone-500 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
             />
           </div>
 
@@ -774,14 +774,14 @@ function EditMode({
               type="button"
               onClick={onCancel}
               disabled={saving}
-              className="w-full rounded-lg border border-zinc-300 px-4 py-3 text-base font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              className="w-full rounded-lg border border-stone-300 px-4 py-3 text-base font-medium text-stone-700 transition-colors hover:bg-stone-100 disabled:opacity-50 dark:border-stone-600 dark:text-stone-300 dark:hover:bg-stone-800"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="w-full rounded-lg bg-zinc-900 px-4 py-3 text-base font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+              className="w-full rounded-lg bg-purple-700 px-4 py-3 text-base font-medium text-white transition-colors hover:bg-purple-800 disabled:opacity-50 dark:bg-purple-600 dark:text-white dark:hover:bg-purple-500"
             >
               {saving ? "Saving..." : "Save Changes"}
             </button>
