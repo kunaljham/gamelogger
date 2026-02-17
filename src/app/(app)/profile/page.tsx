@@ -51,7 +51,23 @@ export default function Profile() {
     );
   }
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <main className="mx-auto max-w-md px-4 py-16">
+        <div className="flex flex-col items-center">
+          <p className="text-sm text-stone-500 dark:text-stone-400">
+            Could not load profile.
+          </p>
+          <button
+            onClick={signOut}
+            className="mt-6 rounded-lg border border-stone-300 px-6 py-2 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100 dark:border-stone-600 dark:text-stone-300 dark:hover:bg-stone-800"
+          >
+            Sign out
+          </button>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="mx-auto max-w-md px-4 py-16">
