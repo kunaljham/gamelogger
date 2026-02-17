@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -29,6 +30,12 @@ type updateOpponentRequest struct {
 // listOpponentsResponse wraps the list for JSON output.
 type listOpponentsResponse struct {
 	Opponents []models.Opponent `json:"opponents"`
+}
+
+// listOpponentsWithStatsResponse wraps the list with stats for JSON output.
+type listOpponentsWithStatsResponse struct {
+	Opponents  []models.OpponentWithStats `json:"opponents"`
+	NextCursor *string                    `json:"next_cursor,omitempty"`
 }
 
 // CreateOpponent handles POST /api/opponents.
@@ -133,6 +140,53 @@ func (h *Handler) ListOpponents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, listOpponentsResponse{Opponents: opponents})
+}
+
+// ListOpponentsWithStats handles GET /api/opponents/with-stats.
+// Returns a paginated list of opponents with win/loss counts.
+// Supports ?cursor=<name>&limit=<int> for cursor-based pagination.
+func (h *Handler) ListOpponentsWithStats(w http.ResponseWriter, r *http.Request) {
+	user, ok := UserFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "Not authenticated"})
+		return
+	}
+
+	// Parse optional limit
+	limit := defaultPageSize
+	if l := r.URL.Query().Get("limit"); l != "" {
+		parsed, err := strconv.Atoi(l)
+		if err != nil || parsed < 1 || parsed > 100 {
+			writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid limit (must be 1-100)"})
+			return
+		}
+		limit = parsed
+	}
+
+	// Parse optional cursor (opponent name)
+	var cursor *string
+	if c := r.URL.Query().Get("cursor"); c != "" {
+		cursor = &c
+	}
+
+	opponents, err := h.opponentRepo.ListByUserWithStats(r.Context(), user.ID, limit, cursor)
+	if err != nil {
+		slog.Error("Failed to list opponents with stats", "error", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to list opponents"})
+		return
+	}
+
+	if opponents == nil {
+		opponents = []models.OpponentWithStats{}
+	}
+
+	resp := listOpponentsWithStatsResponse{Opponents: opponents}
+	if len(opponents) == limit {
+		last := opponents[len(opponents)-1].Name
+		resp.NextCursor = &last
+	}
+
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // UpdateOpponent handles PUT /api/opponents/{id}.

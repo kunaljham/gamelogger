@@ -118,6 +118,53 @@ func (r *OpponentRepository) ListByUser(ctx context.Context, userID uuid.UUID) (
 	return opponents, rows.Err()
 }
 
+// ListByUserWithStats returns a paginated list of opponents for a user with win/loss counts,
+// ordered by name. Uses cursor-based pagination where the cursor is the last opponent's name.
+func (r *OpponentRepository) ListByUserWithStats(ctx context.Context, userID uuid.UUID, limit int, cursor *string) ([]models.OpponentWithStats, error) {
+	var rows pgx.Rows
+	var err error
+
+	if cursor != nil {
+		rows, err = r.db.Query(ctx, `
+			SELECT o.id, o.user_id, o.email, o.name, o.status, o.invited_at, o.registered_user_id, o.created_at, o.updated_at,
+				COUNT(m.id) FILTER (WHERE m.user_won = TRUE) AS wins,
+				COUNT(m.id) FILTER (WHERE m.user_won = FALSE) AS losses
+			FROM opponents o
+			LEFT JOIN matches m ON m.opponent_id = o.id AND m.user_id = $1
+			WHERE o.user_id = $1 AND o.name > $2
+			GROUP BY o.id
+			ORDER BY o.name ASC
+			LIMIT $3
+		`, userID, *cursor, limit)
+	} else {
+		rows, err = r.db.Query(ctx, `
+			SELECT o.id, o.user_id, o.email, o.name, o.status, o.invited_at, o.registered_user_id, o.created_at, o.updated_at,
+				COUNT(m.id) FILTER (WHERE m.user_won = TRUE) AS wins,
+				COUNT(m.id) FILTER (WHERE m.user_won = FALSE) AS losses
+			FROM opponents o
+			LEFT JOIN matches m ON m.opponent_id = o.id AND m.user_id = $1
+			WHERE o.user_id = $1
+			GROUP BY o.id
+			ORDER BY o.name ASC
+			LIMIT $2
+		`, userID, limit)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var opponents []models.OpponentWithStats
+	for rows.Next() {
+		var o models.OpponentWithStats
+		if err := rows.Scan(&o.ID, &o.UserID, &o.Email, &o.Name, &o.Status, &o.InvitedAt, &o.RegisteredUserID, &o.CreatedAt, &o.UpdatedAt, &o.Wins, &o.Losses); err != nil {
+			return nil, err
+		}
+		opponents = append(opponents, o)
+	}
+	return opponents, rows.Err()
+}
+
 // Update updates an opponent's name, email, status, invited_at, and registered_user_id.
 func (r *OpponentRepository) Update(ctx context.Context, opponent *models.Opponent) (*models.Opponent, error) {
 	err := r.db.QueryRow(ctx, `

@@ -23,3 +23,10 @@ type Opponent struct {
 	CreatedAt        time.Time  `json:"created_at"`
 	UpdatedAt        time.Time  `json:"updated_at"`
 }
+
+// OpponentWithStats extends Opponent with win/loss record against the user.
+type OpponentWithStats struct {
+	Opponent
+	Wins   int `json:"wins"`
+	Losses int `json:"losses"`
+}

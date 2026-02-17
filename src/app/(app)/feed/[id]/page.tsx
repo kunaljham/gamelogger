@@ -38,6 +38,17 @@ function formatDate(iso: string): string {
   }).format(new Date(iso));
 }
 
+function formatDateTime(iso: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+  }).format(new Date(iso));
+}
+
 // =====================================================================
 // Main page component
 // =====================================================================
@@ -308,8 +319,16 @@ export default function MatchDetail() {
             <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">
               {match.opponent.status === "invited"
                 ? `This will send another invitation email to ${match.opponent.email}. They\u2019ll get a link to join GameLogger.`
-                : "This will send them an email inviting them to join GameLogger so they can track matches too."}
+                : match.opponent.email
+                  ? `This will send an email to ${match.opponent.email} inviting them to join GameLogger so they can track matches too.`
+                  : "This will send them an email inviting them to join GameLogger so they can track matches too."}
             </p>
+
+            {match.opponent.status === "invited" && match.opponent.invited_at && (
+              <p className="mt-2 text-xs text-stone-400 dark:text-stone-500">
+                Last invited {formatDateTime(match.opponent.invited_at)}
+              </p>
+            )}
 
             {/* Email input — only if opponent has no email */}
             {!match.opponent.email && (

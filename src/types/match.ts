@@ -45,3 +45,13 @@ export interface ListMatchesResponse {
 export interface ListOpponentsResponse {
   opponents: Opponent[];
 }
+
+export interface OpponentWithStats extends Opponent {
+  wins: number;
+  losses: number;
+}
+
+export interface ListOpponentsWithStatsResponse {
+  opponents: OpponentWithStats[];
+  next_cursor?: string;
+}

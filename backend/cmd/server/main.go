@@ -90,6 +90,7 @@ func main() {
 	r.Route("/api/opponents", func(r chi.Router) {
 		r.Use(h.AuthMiddleware)
 		r.Get("/", h.ListOpponents)
+		r.Get("/with-stats", h.ListOpponentsWithStats)
 		r.Post("/", h.CreateOpponent)
 		r.Put("/{id}", h.UpdateOpponent)
 		r.Post("/{id}/invite", h.InviteOpponent)
