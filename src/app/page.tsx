@@ -7,7 +7,7 @@ export default function Home() {
             GameLogger
           </h1>
           <p className="mx-auto max-w-xl text-lg leading-relaxed text-stone-600 dark:text-stone-400 sm:text-xl">
-            Track your friendly squash matches with ease. Log scores, add notes, and keep your match history organized—all in one simple place.
+            Track your friendly squash matches without affecting your USR. Log scores, track opponents, and keep your match history organized—no rating pressure.
           </p>
         </div>
 
@@ -16,32 +16,24 @@ export default function Home() {
             <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-purple-700 text-sm font-semibold text-white dark:bg-purple-600 dark:text-white">
               ✓
             </div>
-            <p className="text-base text-stone-700 dark:text-stone-300">
-              Record match scores for best of 3 or best of 5 games with detailed game-by-game tracking
+            <p className="text-lg text-stone-700 dark:text-stone-300">
+              Log scores game-by-game for best of 3 or best of 5, with notes on every match
             </p>
           </div>
           <div className="flex items-start gap-3 text-left">
             <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-purple-700 text-sm font-semibold text-white dark:bg-purple-600 dark:text-white">
               ✓
             </div>
-            <p className="text-base text-stone-700 dark:text-stone-300">
-              Add notes about each match to remember the highlights and improve your game
+            <p className="text-lg text-stone-700 dark:text-stone-300">
+              Track your win/loss record against each opponent over time
             </p>
           </div>
           <div className="flex items-start gap-3 text-left">
             <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-purple-700 text-sm font-semibold text-white dark:bg-purple-600 dark:text-white">
               ✓
             </div>
-            <p className="text-base text-stone-700 dark:text-stone-300">
-              Verify your email address to sign in—no password needed
-            </p>
-          </div>
-          <div className="flex items-start gap-3 text-left">
-            <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-purple-700 text-sm font-semibold text-white dark:bg-purple-600 dark:text-white">
-              ✓
-            </div>
-            <p className="text-base text-stone-700 dark:text-stone-300">
-              View your match history in a chronological feed and share matches with friends
+            <p className="text-lg text-stone-700 dark:text-stone-300">
+              Invite your opponents so they can track their side of the match too
             </p>
           </div>
         </div>

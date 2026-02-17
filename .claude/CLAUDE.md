@@ -64,7 +64,9 @@ src/
 │       │   └── [id]/
 │       │       └── page.tsx    # Match detail (view, edit, delete)
 │       ├── log-match/
-│       │   └── page.tsx        # Match logging form
+│       │   └── page.tsx        # Match logging form (supports ?opponent=&name= params)
+│       ├── opponents/
+│       │   └── page.tsx        # Opponents list with stats, edit, invite, overflow menu
 │       └── profile/
 │           └── page.tsx        # Profile page (name, email, sign out)
 ├── contexts/
@@ -125,9 +127,13 @@ backend/
 - Profile page (name, email, member since, sign out)
 - UserContext for centralized user state and sign-out logic
 - Match detail page with view, inline edit, and delete (confirmation modal)
+- Opponents page with per-opponent win/loss stats, inline edit, invite flow, overflow menu, and cursor-based pagination
+- Backend `GET /api/opponents/with-stats` endpoint with pagination
+- Composite index on `matches(user_id, opponent_id)` for query performance
+- Log-match form supports pre-populating opponent via URL search params
 
 ### Not Yet Implemented
-- Frontend opponent management UI
+- (nothing pending)
 
 ### Ideas to Explore
 - **Remotion demo video:** Use Remotion (React-based video framework) with Claude Code prompting to create a programmatic demo video of GameLogger

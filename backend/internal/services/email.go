@@ -105,7 +105,15 @@ func (s *ResendEmailService) SendInvitation(ctx context.Context, toEmail, fromUs
     <div style="max-width: 400px; margin: 0 auto; background: white; border-radius: 8px; padding: 40px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
         <h1 style="font-size: 24px; font-weight: 600; margin: 0 0 24px 0; color: #18181b;">You've been invited!</h1>
         <p style="font-size: 16px; color: #52525b; margin: 0 0 24px 0; line-height: 1.5;">
-            %s invited you to track squash matches on GameLogger. Sign up to see your match history and results.
+            %s invited you to join GameLogger — a simple way to track your friendly squash matches without affecting your USR.
+        </p>
+        <p style="font-size: 15px; color: #52525b; margin: 0 0 8px 0; line-height: 1.6;">
+            ✓ Log scores game-by-game with notes on every match<br>
+            ✓ Track your win/loss record against each opponent<br>
+            ✓ Keep your match history organized in one place
+        </p>
+        <p style="font-size: 16px; color: #52525b; margin: 16px 0 24px 0; line-height: 1.5;">
+            Sign up to see matches %s has already logged with you.
         </p>
         <a href="%s" style="display: inline-block; background-color: #18181b; color: white; text-decoration: none; padding: 12px 24px; border-radius: 9999px; font-size: 14px; font-weight: 500;">
             Get Started
@@ -116,16 +124,22 @@ func (s *ResendEmailService) SendInvitation(ctx context.Context, toEmail, fromUs
     </div>
 </body>
 </html>
-`, fromUserName, s.frontendURL)
+`, fromUserName, fromUserName, s.frontendURL)
 
 	textBody := fmt.Sprintf(`You've been invited!
 
-%s invited you to track squash matches on GameLogger. Sign up to see your match history and results.
+%s invited you to join GameLogger — a simple way to track your friendly squash matches without affecting your USR.
+
+- Log scores game-by-game with notes on every match
+- Track your win/loss record against each opponent
+- Keep your match history organized in one place
+
+Sign up to see matches %s has already logged with you.
 
 Get started: %s
 
 If you're not interested, you can safely ignore this email.
-`, fromUserName, s.frontendURL)
+`, fromUserName, fromUserName, s.frontendURL)
 
 	params := &resend.SendEmailRequest{
 		From:    s.fromEmail,
