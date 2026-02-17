@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
 import { useUser } from "@/contexts/user-context";
 import type { Match } from "@/types/match";
 
@@ -191,12 +190,6 @@ export default function MatchDetail() {
   if (error || !match) {
     return (
       <main className="mx-auto max-w-md px-4 py-8">
-        <Link
-          href="/feed"
-          className="mb-6 inline-flex items-center gap-1 text-sm text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200"
-        >
-          &larr; Back to Feed
-        </Link>
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/50 dark:text-red-400">
           {error ?? "Match not found"}
         </div>
@@ -224,16 +217,8 @@ export default function MatchDetail() {
 
   return (
     <main className="mx-auto max-w-md px-4 py-8">
-      {/* Back link */}
-      <Link
-        href="/feed"
-        className="mb-6 inline-flex items-center gap-1 text-sm text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200"
-      >
-        &larr; Back to Feed
-      </Link>
-
       {/* Header zone */}
-      <h1 className="mt-2 text-3xl font-bold tracking-tight text-stone-900 dark:text-stone-50 sm:text-4xl">
+      <h1 className="text-3xl font-bold tracking-tight text-stone-900 dark:text-stone-50 sm:text-4xl">
         {user?.name ?? "You"} vs. {match.opponent?.name ?? "Unknown"}
       </h1>
       <p className="mt-1 text-sm text-stone-400 dark:text-stone-500">

@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useUser } from "@/contexts/user-context";
-import { getInitials } from "@/lib/user";
+
+const navLinks = [
+  { href: "/feed", label: "Feed" },
+  { href: "/opponents", label: "Opponents" },
+  { href: "/profile", label: "Profile" },
+];
 
 export default function Nav() {
-  const { user } = useUser();
   const pathname = usePathname();
-  const onProfile = pathname === "/profile";
 
   return (
     <header className="sticky top-0 z-10 border-b border-stone-200 bg-[#F5F4F0]/80 backdrop-blur-sm dark:border-stone-800 dark:bg-stone-900/80">
@@ -19,21 +21,24 @@ export default function Nav() {
         >
           GameLogger
         </Link>
-        <div className="flex items-center gap-3">
-          {user && (
-            <Link
-              href="/profile"
-              className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
-                onProfile
-                  ? "bg-purple-700 text-white dark:bg-purple-600 dark:text-white"
-                  : "bg-stone-200 text-stone-700 hover:bg-stone-300 dark:bg-stone-700 dark:text-stone-200 dark:hover:bg-stone-600"
-              }`}
-              aria-label="Profile"
-            >
-              {getInitials(user.name)}
-            </Link>
-          )}
-        </div>
+        <nav className="flex items-center gap-5">
+          {navLinks.map(({ href, label }) => {
+            const isActive = pathname.startsWith(href);
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={`text-sm font-medium transition-colors ${
+                  isActive
+                    ? "text-purple-700 dark:text-purple-400"
+                    : "text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200"
+                }`}
+              >
+                {label}
+              </Link>
+            );
+          })}
+        </nav>
       </div>
     </header>
   );
