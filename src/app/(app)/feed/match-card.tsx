@@ -41,12 +41,18 @@ export default function MatchCard({ match }: { match: Match }) {
       </div>
 
       {/* Row 3: Game scores */}
-      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm text-stone-600 dark:text-stone-400">
-        {match.games.map((game) => (
-          <span key={game.game_number}>
-            {game.user_score}-{game.opponent_score}
-          </span>
-        ))}
+      <div className="mt-2 flex flex-wrap gap-2">
+        {match.games.map((game) => {
+          const userWon = game.user_score > game.opponent_score;
+          return (
+            <span
+              key={game.game_number}
+              className={`rounded-lg border px-2.5 py-1 text-xs font-medium ${userWon ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400" : "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-400"}`}
+            >
+              {game.user_score}-{game.opponent_score}
+            </span>
+          );
+        })}
       </div>
 
       {/* Row 4: Notes (if present) */}
