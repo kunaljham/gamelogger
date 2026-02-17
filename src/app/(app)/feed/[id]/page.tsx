@@ -691,20 +691,21 @@ function EditMode({
               Game Scores
             </label>
             <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <span className="w-16 text-xs text-stone-400" />
+              <div className="flex items-center gap-2">
+                <span className="w-6 text-xs text-stone-400" />
                 <span className="flex-1 text-center text-xs font-medium text-stone-500 dark:text-stone-400">
                   You
                 </span>
+                <span className="w-3" />
                 <span className="flex-1 text-center text-xs font-medium text-stone-500 dark:text-stone-400">
                   Opp
                 </span>
               </div>
 
               {games.map((game, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <span className="w-16 text-sm text-stone-500 dark:text-stone-400">
-                    Game {i + 1}
+                <div key={i} className="flex items-center gap-2">
+                  <span className="w-6 text-sm text-stone-500 dark:text-stone-400">
+                    {i + 1}
                   </span>
                   <input
                     type="number"
@@ -716,8 +717,9 @@ function EditMode({
                     }
                     disabled={saving}
                     placeholder="0"
-                    className="flex-1 rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-center text-base text-stone-900 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
+                    className="min-w-0 flex-1 rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-center text-base text-stone-900 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
                   />
+                  <span className="text-sm text-stone-400 dark:text-stone-500">–</span>
                   <input
                     type="number"
                     min="0"
@@ -728,7 +730,7 @@ function EditMode({
                     }
                     disabled={saving}
                     placeholder="0"
-                    className="flex-1 rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-center text-base text-stone-900 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
+                    className="min-w-0 flex-1 rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-center text-base text-stone-900 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
                   />
                 </div>
               ))}
