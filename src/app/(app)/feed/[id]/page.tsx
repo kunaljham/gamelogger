@@ -283,7 +283,7 @@ export default function MatchDetail() {
       {/* Notes */}
       {match.notes && (
         <div className="mt-4 rounded-lg border border-stone-200 bg-stone-50 px-4 py-3 dark:border-stone-700 dark:bg-stone-800/50">
-          <p className="text-sm italic text-stone-600 dark:text-stone-400">
+          <p className="text-sm text-stone-600 dark:text-stone-400">
             &ldquo;{match.notes}&rdquo;
           </p>
         </div>

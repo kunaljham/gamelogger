@@ -51,7 +51,7 @@ export default function MatchCard({ match }: { match: Match }) {
 
       {/* Row 4: Notes (if present) */}
       {match.notes && (
-        <p className="mt-2 line-clamp-2 text-sm italic text-stone-500 dark:text-stone-400">
+        <p className="mt-2 line-clamp-2 text-sm text-stone-500 dark:text-stone-400">
           &ldquo;{match.notes}&rdquo;
         </p>
       )}
