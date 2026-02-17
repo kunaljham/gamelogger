@@ -85,7 +85,7 @@ export default function Profile() {
             </>
           ) : (
             <>
-              <div className="flex flex-col items-center rounded-lg border border-emerald-200 bg-emerald-50 px-5 py-3 dark:border-emerald-800 dark:bg-emerald-950/40">
+              <div className="flex w-24 flex-col items-center rounded-lg border border-emerald-200 bg-emerald-50 py-3 dark:border-emerald-800 dark:bg-emerald-950/40">
                 <span className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">
                   {wins}
                 </span>
@@ -93,7 +93,7 @@ export default function Profile() {
                   {wins === 1 ? "Win" : "Wins"}
                 </span>
               </div>
-              <div className="flex flex-col items-center rounded-lg border border-red-200 bg-red-50 px-5 py-3 dark:border-red-800 dark:bg-red-950/40">
+              <div className="flex w-24 flex-col items-center rounded-lg border border-red-200 bg-red-50 py-3 dark:border-red-800 dark:bg-red-950/40">
                 <span className="text-2xl font-bold text-red-700 dark:text-red-400">
                   {losses}
                 </span>
