@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useUser } from "@/contexts/user-context";
-import type { Match, Opponent, ListOpponentsResponse } from "@/types/match";
-import OpponentChip from "@/components/opponent-chip";
+import type { Match } from "@/types/match";
 
 // ── Score validation (same logic as log-match) ──────────────────────
 interface GameScore {
@@ -39,12 +38,6 @@ function formatDate(iso: string): string {
     year: "numeric",
   }).format(new Date(iso));
 }
-
-// ── Opponent selector types ─────────────────────────────────────────
-type SelectedOpponent =
-  | { type: "existing"; id: string; name: string; status?: string }
-  | { type: "new"; name: string; email?: string }
-  | null;
 
 // =====================================================================
 // Main page component
@@ -429,21 +422,6 @@ function EditMode({
   onCancel: () => void;
   onSaved: (updated: Match) => void;
 }) {
-  // ── Opponent state ────────────────────────────────────────────────
-  const [opponents, setOpponents] = useState<Opponent[]>([]);
-  const [opponentsLoading, setOpponentsLoading] = useState(true);
-  const [opponentQuery, setOpponentQuery] = useState(
-    match.opponent?.name ?? ""
-  );
-  const [selectedOpponent, setSelectedOpponent] = useState<SelectedOpponent>(
-    match.opponent
-      ? { type: "existing", id: match.opponent_id, name: match.opponent.name, status: match.opponent.status }
-      : null
-  );
-  const [comboboxOpen, setComboboxOpen] = useState(false);
-  const [highlightedIndex, setHighlightedIndex] = useState(0);
-  const comboboxRef = useRef<HTMLDivElement>(null);
-
   // ── Form state ────────────────────────────────────────────────────
   const [playedAt, setPlayedAt] = useState(
     match.played_at.split("T")[0]
@@ -455,7 +433,6 @@ function EditMode({
       opponentScore: String(g.opponent_score),
     }))
   );
-  const [newOpponentEmail, setNewOpponentEmail] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -463,50 +440,7 @@ function EditMode({
   const requiredWins = matchType === "bo3" ? 2 : 3;
   const maxGames = matchType === "bo3" ? 3 : 5;
 
-  // ── Fetch opponents ───────────────────────────────────────────────
-  useEffect(() => {
-    const fetchOpponents = async () => {
-      try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/opponents`,
-          { credentials: "include" }
-        );
-        if (!res.ok) throw new Error("Failed to load opponents");
-        const data: ListOpponentsResponse = await res.json();
-        setOpponents(data.opponents);
-      } catch {
-        setError("Could not load opponents.");
-      } finally {
-        setOpponentsLoading(false);
-      }
-    };
-    fetchOpponents();
-  }, []);
-
-  // Close combobox on click outside
-  useEffect(() => {
-    const handleMouseDown = (e: MouseEvent) => {
-      if (
-        comboboxRef.current &&
-        !comboboxRef.current.contains(e.target as Node)
-      ) {
-        setComboboxOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleMouseDown);
-    return () => document.removeEventListener("mousedown", handleMouseDown);
-  }, []);
-
   // ── Derived values ────────────────────────────────────────────────
-  const trimmedQuery = opponentQuery.trim();
-  const filteredOpponents = opponents.filter((opp) =>
-    opp.name.toLowerCase().includes(trimmedQuery.toLowerCase())
-  );
-  const exactMatch = opponents.some(
-    (opp) => opp.name.toLowerCase() === trimmedQuery.toLowerCase()
-  );
-  const showAddOption = trimmedQuery.length > 0 && !exactMatch;
-
   const filledGames = games.filter(
     (g) => g.userScore !== "" && g.opponentScore !== ""
   );
@@ -555,11 +489,6 @@ function EditMode({
     e.preventDefault();
     setError("");
 
-    if (!selectedOpponent) {
-      setError("Please select or add an opponent.");
-      return;
-    }
-
     for (let i = 0; i < filledGames.length; i++) {
       const u = parseInt(filledGames[i].userScore, 10);
       const o = parseInt(filledGames[i].opponentScore, 10);
@@ -580,39 +509,6 @@ function EditMode({
     setSaving(true);
 
     try {
-      // Create new opponent if needed
-      let opponentId: string;
-      if (selectedOpponent.type === "new") {
-        const oppBody: Record<string, string> = { name: selectedOpponent.name };
-        if (newOpponentEmail.trim()) {
-          oppBody.email = newOpponentEmail.trim();
-        }
-        const oppRes = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/opponents`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(oppBody),
-            credentials: "include",
-          }
-        );
-        if (!oppRes.ok) {
-          const data = await oppRes.json();
-          throw new Error(data.error || "Failed to create opponent");
-        }
-        const created: Opponent = await oppRes.json();
-        setOpponents((prev) => [...prev, created]);
-        setSelectedOpponent({
-          type: "existing",
-          id: created.id,
-          name: created.name,
-          status: created.status,
-        });
-        opponentId = created.id;
-      } else {
-        opponentId = selectedOpponent.id;
-      }
-
       const gamePayload = filledGames.map((g, i) => ({
         game_number: i + 1,
         user_score: parseInt(g.userScore, 10),
@@ -620,7 +516,7 @@ function EditMode({
       }));
 
       const body: Record<string, unknown> = {
-        opponent_id: opponentId,
+        opponent_id: match.opponent_id,
         match_type: matchType,
         played_at: `${playedAt}T00:00:00Z`,
         games: gamePayload,
@@ -675,199 +571,16 @@ function EditMode({
         Edit Match
       </h1>
 
-      {opponentsLoading ? (
-        <div className="animate-pulse space-y-4">
-          <div className="h-12 rounded-lg bg-stone-200 dark:bg-stone-700" />
-          <div className="h-12 rounded-lg bg-stone-200 dark:bg-stone-700" />
-          <div className="h-12 rounded-lg bg-stone-200 dark:bg-stone-700" />
-        </div>
-      ) : (
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Opponent combobox */}
-          <div ref={comboboxRef} className="relative">
-            <label
-              id="opponent-label"
-              className="mb-1.5 block text-sm font-medium text-stone-700 dark:text-stone-300"
-            >
+      <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Opponent (read-only) */}
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-stone-700 dark:text-stone-300">
               Opponent
             </label>
-            {/* Show chip when opponent is selected, input when not */}
-            {selectedOpponent?.type === "existing" ? (() => {
-              const opp = opponents.find((o) => o.id === selectedOpponent.id);
-              return opp ? (
-                <OpponentChip
-                  opponent={opp}
-                  size="lg"
-                  onRemove={() => {
-                    setSelectedOpponent(null);
-                    setOpponentQuery("");
-                  }}
-                />
-              ) : null;
-            })() : (
-              <>
-                <input
-                  role="combobox"
-                  aria-expanded={comboboxOpen}
-                  aria-controls="opponent-listbox"
-                  aria-autocomplete="list"
-                  aria-activedescendant={
-                    comboboxOpen &&
-                    (filteredOpponents.length > 0 || showAddOption)
-                      ? `opponent-option-${highlightedIndex}`
-                      : undefined
-                  }
-                  aria-labelledby="opponent-label"
-                  value={opponentQuery}
-                  onChange={(e) => {
-                    setOpponentQuery(e.target.value);
-                    setSelectedOpponent(null);
-                    setComboboxOpen(true);
-                    setHighlightedIndex(0);
-                  }}
-                  onFocus={() => setComboboxOpen(true)}
-                  onBlur={(e) => {
-                    if (
-                      !comboboxRef.current?.contains(e.relatedTarget as Node)
-                    ) {
-                      setComboboxOpen(false);
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (!comboboxOpen) {
-                      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-                        setComboboxOpen(true);
-                        e.preventDefault();
-                      }
-                      return;
-                    }
-                    const totalItems =
-                      filteredOpponents.length + (showAddOption ? 1 : 0);
-                    if (e.key === "ArrowDown") {
-                      e.preventDefault();
-                      setHighlightedIndex((prev) =>
-                        prev < totalItems - 1 ? prev + 1 : 0
-                      );
-                    } else if (e.key === "ArrowUp") {
-                      e.preventDefault();
-                      setHighlightedIndex((prev) =>
-                        prev > 0 ? prev - 1 : totalItems - 1
-                      );
-                    } else if (e.key === "Enter") {
-                      e.preventDefault();
-                      if (totalItems === 0) return;
-                      const idx = Math.min(highlightedIndex, totalItems - 1);
-                      if (idx < filteredOpponents.length) {
-                        const opp = filteredOpponents[idx];
-                        setSelectedOpponent({
-                          type: "existing",
-                          id: opp.id,
-                          name: opp.name,
-                          status: opp.status,
-                        });
-                        setOpponentQuery(opp.name);
-                      } else if (showAddOption) {
-                        setSelectedOpponent({
-                          type: "new",
-                          name: trimmedQuery,
-                        });
-                        setOpponentQuery(trimmedQuery);
-                        setNewOpponentEmail("");
-                      }
-                      setComboboxOpen(false);
-                    } else if (e.key === "Escape") {
-                      setComboboxOpen(false);
-                    }
-                  }}
-                  disabled={saving}
-                  placeholder="Search or add opponent"
-                  className="w-full rounded-lg border border-stone-300 bg-white px-4 py-3 text-base text-stone-900 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
-                />
-                {comboboxOpen &&
-                  (filteredOpponents.length > 0 || showAddOption) && (
-                    <ul
-                      id="opponent-listbox"
-                      role="listbox"
-                      className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-stone-200 bg-white shadow-lg dark:border-stone-700 dark:bg-stone-800"
-                    >
-                      {filteredOpponents.map((opp, i) => (
-                        <li
-                          key={opp.id}
-                          id={`opponent-option-${i}`}
-                          role="option"
-                          aria-selected={highlightedIndex === i}
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            setSelectedOpponent({
-                              type: "existing",
-                              id: opp.id,
-                              name: opp.name,
-                              status: opp.status,
-                            });
-                            setOpponentQuery(opp.name);
-                            setComboboxOpen(false);
-                          }}
-                          onMouseEnter={() => setHighlightedIndex(i)}
-                          className={`cursor-pointer px-4 py-2.5 text-base text-stone-900 dark:text-stone-50 ${
-                            highlightedIndex === i
-                              ? "bg-stone-100 dark:bg-stone-700"
-                              : ""
-                          }`}
-                        >
-                          {opp.name}
-                        </li>
-                      ))}
-                      {showAddOption && (
-                        <li
-                          id={`opponent-option-${filteredOpponents.length}`}
-                          role="option"
-                          aria-selected={
-                            highlightedIndex === filteredOpponents.length
-                          }
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            setSelectedOpponent({
-                              type: "new",
-                              name: trimmedQuery,
-                            });
-                            setOpponentQuery(trimmedQuery);
-                            setComboboxOpen(false);
-                          }}
-                          onMouseEnter={() =>
-                            setHighlightedIndex(filteredOpponents.length)
-                          }
-                          className={`cursor-pointer px-4 py-2.5 text-base text-stone-600 dark:text-stone-400 ${
-                            highlightedIndex === filteredOpponents.length
-                              ? "bg-stone-100 dark:bg-stone-700"
-                              : ""
-                          }`}
-                        >
-                          Add &ldquo;{trimmedQuery}&rdquo;
-                        </li>
-                      )}
-                    </ul>
-                  )}
-              </>
-            )}
+            <p className="rounded-lg border border-stone-200 bg-stone-50 px-4 py-3 text-base text-stone-900 dark:border-stone-700 dark:bg-stone-800/50 dark:text-stone-50">
+              {match.opponent?.name ?? "Unknown"}
+            </p>
           </div>
-
-          {/* Email for new opponent */}
-          {selectedOpponent?.type === "new" && (
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-stone-700 dark:text-stone-300">
-                Opponent Email{" "}
-                <span className="font-normal text-stone-400">(optional)</span>
-              </label>
-              <input
-                type="email"
-                value={newOpponentEmail}
-                onChange={(e) => setNewOpponentEmail(e.target.value)}
-                disabled={saving}
-                placeholder="opponent@example.com"
-                className="w-full rounded-lg border border-stone-300 bg-white px-4 py-3 text-base text-stone-900 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
-              />
-            </div>
-          )}
 
           {/* Date played */}
           <div>
@@ -987,7 +700,6 @@ function EditMode({
             </button>
           </div>
         </form>
-      )}
     </main>
   );
 }

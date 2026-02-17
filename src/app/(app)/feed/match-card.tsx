@@ -34,7 +34,7 @@ export default function MatchCard({ match }: { match: Match }) {
         <span className="font-medium text-stone-700 dark:text-stone-300">
           {didWin ? "Won" : "Lost"} {userWins}-{opponentWins}
         </span>
-        <span className="text-stone-300 dark:text-stone-600">·</span>
+        <span className="text-stone-300 dark:text-stone-600">&middot;</span>
         <span className="text-stone-500 dark:text-stone-400">
           Best of {totalGames}
         </span>
