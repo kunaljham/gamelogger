@@ -3,7 +3,8 @@
 # Seed Data Script for GameLogger
 # ================================
 # Creates sample opponents and matches so you can see real data in the feed.
-# Creates 25 matches (more than the default page size of 20) to test pagination.
+# Creates 25 opponents (more than page size of 20) and 25 matches to test
+# pagination on both the feed and opponents pages.
 # Also creates a second user (the opponent) with notes on some matches.
 #
 # Prerequisites:
@@ -116,6 +117,38 @@ echo "   Charlie Park: $CHARLIE"
 api POST /api/opponents '{"name": "Diana Wright"}'
 DIANA=$(jq -r '.id' "$RESPONSE")
 echo "   Diana Wright: $DIANA"
+
+# Extra opponents to test pagination (21 more → 25 total, exceeding page size of 20)
+EXTRA_OPPONENTS=()
+EXTRA_NAMES=(
+  "Elena Rodriguez" "Frank Liu" "Grace Kim" "Hank O'Brien" "Iris Patel"
+  "Jake Thompson" "Karen Nakamura" "Leo Fernandez" "Mia Johnson" "Noah Williams"
+  "Olivia Brown" "Paul Davis" "Quinn Murphy" "Rachel Singh" "Sam Taylor"
+  "Tina Zhao" "Uma Krishnan" "Victor Osei" "Wendy Chang" "Xavier Dupont"
+  "Yuki Tanaka"
+)
+EXTRA_EMAILS=(
+  "elena.r@example.com" "" "grace.kim@example.com" "" "iris.p@example.com"
+  "" "karen.n@example.com" "" "" "noah.w@example.com"
+  "" "" "quinn.m@example.com" "" ""
+  "tina.z@example.com" "" "" "wendy.c@example.com" ""
+  "yuki.t@example.com"
+)
+
+for i in "${!EXTRA_NAMES[@]}"; do
+  name="${EXTRA_NAMES[$i]}"
+  email="${EXTRA_EMAILS[$i]}"
+  if [ -n "$email" ]; then
+    api POST /api/opponents "{\"name\": \"$name\", \"email\": \"$email\"}"
+  else
+    api POST /api/opponents "{\"name\": \"$name\"}"
+  fi
+  eid=$(jq -r '.id' "$RESPONSE")
+  EXTRA_OPPONENTS+=("$eid")
+  echo "   $name: $eid"
+done
+
+echo "   Created ${#EXTRA_OPPONENTS[@]} additional opponents (25 total)."
 
 # ---------------------------------------------------------------------------
 # Step 3: Create 25 matches with varied scenarios
@@ -243,7 +276,34 @@ create_match "$DIANA" bo3 "2025-07-17T10:00:00Z" "Getting more consistent agains
 ALICE_MATCH_IDS+=("$(create_match "$ALICE" bo5 "2025-07-19T16:00:00Z" "What a match! Down 1-2 and came back to win it. Best match of the summer." \
   '[{"game_number":1,"user_score":11,"opponent_score":9},{"game_number":2,"user_score":8,"opponent_score":11},{"game_number":3,"user_score":7,"opponent_score":11},{"game_number":4,"user_score":11,"opponent_score":6},{"game_number":5,"user_score":11,"opponent_score":8}]')")
 
-echo "   Done! Created 25 matches."
+# Matches against some extra opponents (gives variety in the opponents page stats)
+# Elena (index 0): 2 matches
+create_match "${EXTRA_OPPONENTS[0]}" bo3 "2025-07-21T10:00:00Z" null \
+  '[{"game_number":1,"user_score":11,"opponent_score":7},{"game_number":2,"user_score":11,"opponent_score":5}]' > /dev/null
+create_match "${EXTRA_OPPONENTS[0]}" bo3 "2025-07-28T10:00:00Z" null \
+  '[{"game_number":1,"user_score":8,"opponent_score":11},{"game_number":2,"user_score":11,"opponent_score":6},{"game_number":3,"user_score":11,"opponent_score":9}]' > /dev/null
+
+# Frank (index 1): 1 match
+create_match "${EXTRA_OPPONENTS[1]}" bo3 "2025-07-22T14:00:00Z" "Frank is tough on the backhand side." \
+  '[{"game_number":1,"user_score":9,"opponent_score":11},{"game_number":2,"user_score":7,"opponent_score":11}]' > /dev/null
+
+# Grace (index 2): 3 matches
+create_match "${EXTRA_OPPONENTS[2]}" bo3 "2025-07-23T16:00:00Z" null \
+  '[{"game_number":1,"user_score":11,"opponent_score":3},{"game_number":2,"user_score":11,"opponent_score":5}]' > /dev/null
+create_match "${EXTRA_OPPONENTS[2]}" bo3 "2025-07-30T16:00:00Z" null \
+  '[{"game_number":1,"user_score":11,"opponent_score":8},{"game_number":2,"user_score":11,"opponent_score":6}]' > /dev/null
+create_match "${EXTRA_OPPONENTS[2]}" bo5 "2025-08-06T16:00:00Z" null \
+  '[{"game_number":1,"user_score":6,"opponent_score":11},{"game_number":2,"user_score":11,"opponent_score":4},{"game_number":3,"user_score":11,"opponent_score":9},{"game_number":4,"user_score":11,"opponent_score":7}]' > /dev/null
+
+# Jake (index 5): 1 match
+create_match "${EXTRA_OPPONENTS[5]}" bo3 "2025-07-24T09:00:00Z" null \
+  '[{"game_number":1,"user_score":11,"opponent_score":9},{"game_number":2,"user_score":9,"opponent_score":11},{"game_number":3,"user_score":11,"opponent_score":8}]' > /dev/null
+
+# Noah (index 9): 1 match
+create_match "${EXTRA_OPPONENTS[9]}" bo3 "2025-07-25T11:00:00Z" null \
+  '[{"game_number":1,"user_score":5,"opponent_score":11},{"game_number":2,"user_score":7,"opponent_score":11}]' > /dev/null
+
+echo "   Done! Created 33 matches total (25 original + 8 with new opponents)."
 echo "   Captured ${#ALICE_MATCH_IDS[@]} Alice match IDs for opponent notes."
 
 # ---------------------------------------------------------------------------
@@ -287,7 +347,7 @@ echo ""
 echo "Seed data created successfully!"
 echo ""
 echo "Two accounts to try:"
-echo "  $SEED_EMAIL       -- 25 matches with creator notes"
+echo "  $SEED_EMAIL       -- 25 opponents, 33 matches with creator notes"
 echo "  $OPPONENT_EMAIL   -- sees Alice matches with opponent's private notes"
 echo ""
 echo "To clean up: ./seed-data.sh --cleanup"
