@@ -668,10 +668,22 @@ function EditMode({
 
           {/* Notes */}
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-stone-700 dark:text-stone-300">
+            <label className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
               Notes{" "}
               <span className="font-normal text-stone-400">(optional)</span>
             </label>
+            <p className="mb-1.5 text-xs text-stone-400 dark:text-stone-500">
+              Private to you.{" "}
+              <a
+                href="https://www.markdownguide.org/basic-syntax/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-stone-600 dark:hover:text-stone-300"
+              >
+                Markdown
+              </a>{" "}
+              supported.
+            </p>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
