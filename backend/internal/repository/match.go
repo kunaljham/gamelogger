@@ -115,16 +115,24 @@ func (r *MatchRepository) ListByUser(ctx context.Context, userID uuid.UUID, limi
 	var rows pgx.Rows
 	var err error
 
+	// Use UNION ALL so Postgres can use idx_matches_user_id and idx_opponents_registered_user_id
+	// independently instead of doing a sequential scan across the OR-joined condition.
 	if cursor != nil {
 		rows, err = r.db.Query(ctx, `
 			SELECT m.id, m.user_id, m.opponent_id, m.match_type, m.played_at, m.creator_notes, m.opponent_notes,
 			       m.user_won, m.created_at, m.updated_at,
 			       o.id, o.user_id, o.email, o.name, o.status, o.invited_at, o.registered_user_id, o.created_at, o.updated_at,
 			       u.name
-			FROM matches m
+			FROM (
+				SELECT id FROM matches WHERE user_id = $1 AND played_at < $2
+				UNION
+				SELECT m2.id FROM matches m2
+				JOIN opponents o2 ON o2.id = m2.opponent_id
+				WHERE o2.registered_user_id = $1 AND m2.user_id != $1 AND m2.played_at < $2
+			) AS ids
+			JOIN matches m ON m.id = ids.id
 			JOIN opponents o ON o.id = m.opponent_id
 			JOIN users u ON u.id = m.user_id
-			WHERE (m.user_id = $1 OR o.registered_user_id = $1) AND m.played_at < $2
 			ORDER BY m.played_at DESC
 			LIMIT $3
 		`, userID, *cursor, limit)
@@ -134,10 +142,16 @@ func (r *MatchRepository) ListByUser(ctx context.Context, userID uuid.UUID, limi
 			       m.user_won, m.created_at, m.updated_at,
 			       o.id, o.user_id, o.email, o.name, o.status, o.invited_at, o.registered_user_id, o.created_at, o.updated_at,
 			       u.name
-			FROM matches m
+			FROM (
+				SELECT id FROM matches WHERE user_id = $1
+				UNION
+				SELECT m2.id FROM matches m2
+				JOIN opponents o2 ON o2.id = m2.opponent_id
+				WHERE o2.registered_user_id = $1 AND m2.user_id != $1
+			) AS ids
+			JOIN matches m ON m.id = ids.id
 			JOIN opponents o ON o.id = m.opponent_id
 			JOIN users u ON u.id = m.user_id
-			WHERE m.user_id = $1 OR o.registered_user_id = $1
 			ORDER BY m.played_at DESC
 			LIMIT $2
 		`, userID, limit)
@@ -331,20 +345,23 @@ func (r *MatchRepository) fetchMatchDetails(ctx context.Context, m *models.Match
 
 // GetUserStats returns the win and loss counts for a user across all matches
 // they participated in — both as creator and as opponent (via registered_user_id).
+// Uses UNION ALL so Postgres can use idx_matches_user_id and idx_opponents_registered_user_id
+// independently instead of doing a sequential scan across the OR-joined condition.
 func (r *MatchRepository) GetUserStats(ctx context.Context, userID uuid.UUID) (wins int, losses int, err error) {
 	err = r.db.QueryRow(ctx, `
 		SELECT
-			COUNT(*) FILTER (WHERE
-				(m.user_id = $1 AND m.user_won = TRUE) OR
-				(o.registered_user_id = $1 AND m.user_id != $1 AND m.user_won = FALSE)
-			) AS wins,
-			COUNT(*) FILTER (WHERE
-				(m.user_id = $1 AND m.user_won = FALSE) OR
-				(o.registered_user_id = $1 AND m.user_id != $1 AND m.user_won = TRUE)
-			) AS losses
-		FROM matches m
-		JOIN opponents o ON o.id = m.opponent_id
-		WHERE m.user_id = $1 OR o.registered_user_id = $1
+			COUNT(*) FILTER (WHERE user_won = TRUE) AS wins,
+			COUNT(*) FILTER (WHERE user_won = FALSE) AS losses
+		FROM (
+			SELECT m.user_won
+			FROM matches m
+			WHERE m.user_id = $1
+			UNION ALL
+			SELECT NOT m.user_won AS user_won
+			FROM matches m
+			JOIN opponents o ON o.id = m.opponent_id
+			WHERE o.registered_user_id = $1 AND m.user_id != $1
+		) AS all_matches
 	`, userID).Scan(&wins, &losses)
 	return
 }
