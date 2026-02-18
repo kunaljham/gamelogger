@@ -2,6 +2,7 @@ import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import type { Match } from "@/types/match";
+import { preserveNewlines } from "@/lib/markdown";
 
 // Format a date string like "Jun 15, 2025"
 function formatDate(iso: string): string {
@@ -61,7 +62,7 @@ export default function MatchCard({ match }: { match: Match }) {
       {match.notes && (
         <div className="mt-2 border-l-2 border-purple-400 pl-3 dark:border-purple-600">
           <div className="line-clamp-2 prose prose-sm prose-stone dark:prose-invert max-w-none text-stone-500 dark:text-stone-400">
-            <ReactMarkdown remarkPlugins={[remarkBreaks]}>{match.notes}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkBreaks]}>{preserveNewlines(match.notes)}</ReactMarkdown>
           </div>
         </div>
       )}

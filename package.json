@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "test": "vitest run",
     "lint": "eslint",
     "remotion:studio": "npx remotion studio remotion/index.ts",
     "remotion:render": "npx remotion render remotion/index.ts GameLoggerDemo out/demo.mp4 --codec=h264 --crf=18"
@@ -31,6 +32,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.4"
   }
 }

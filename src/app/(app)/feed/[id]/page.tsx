@@ -6,6 +6,7 @@ import { useUser } from "@/contexts/user-context";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import type { Match } from "@/types/match";
+import { preserveNewlines } from "@/lib/markdown";
 
 // ── Score validation (same logic as log-match) ──────────────────────
 interface GameScore {
@@ -282,19 +283,19 @@ export default function MatchDetail() {
       {match.notes && (
         <div className="mt-4 border-l-2 border-purple-400 pl-4 dark:border-purple-600">
           <div className="prose prose-sm prose-stone dark:prose-invert max-w-none text-stone-600 dark:text-stone-400">
-            <ReactMarkdown remarkPlugins={[remarkBreaks]}>{match.notes}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkBreaks]}>{preserveNewlines(match.notes)}</ReactMarkdown>
           </div>
         </div>
       )}
 
-      {/* Action buttons */}
-      <div className="mt-8">
-        <div className="flex gap-3">
+      {/* Action buttons (anchored to bottom) */}
+      <div className="fixed inset-x-0 bottom-0 border-t border-stone-200 bg-stone-50/90 p-4 backdrop-blur-sm dark:border-stone-800 dark:bg-stone-950/90">
+        <div className="mx-auto flex max-w-md gap-3">
           <button
             onClick={() => setMode("edit")}
             className="flex-1 cursor-pointer rounded-lg border border-stone-300 px-4 py-3 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100 dark:border-stone-600 dark:text-stone-300 dark:hover:bg-stone-800"
           >
-            Edit Match
+            Edit
           </button>
           <button
             onClick={() => setShowDeleteModal(true)}
@@ -574,7 +575,7 @@ function EditMode({
   return (
     <main className="mx-auto w-full max-w-md px-4 py-8">
       <h1 className="mb-6 text-3xl font-bold tracking-tight text-stone-900 dark:text-stone-50 sm:text-4xl">
-        Edit Match
+        Edit
       </h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">

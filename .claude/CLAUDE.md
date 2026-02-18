@@ -15,7 +15,7 @@ The developer is new to web development and is using this project to learn. When
 - **Framework:** Next.js 16 (App Router)
 - **Styling:** Tailwind CSS v4
 - **Deployment:** Vercel at https://gamelogger.app
-- **Testing:** Playwright (E2E tests)
+- **Testing:** Vitest (unit tests), Playwright (E2E tests)
 
 **Backend:**
 - **Language:** Go 1.22
@@ -30,6 +30,7 @@ The developer is new to web development and is using this project to learn. When
 **Frontend:**
 - `npm run dev` - Start frontend at localhost:3000
 - `npm run build` - Production build
+- `npm test` - Run unit tests (Vitest)
 - `npm run lint` - Run ESLint
 - `npx playwright test` - Run E2E tests
 
