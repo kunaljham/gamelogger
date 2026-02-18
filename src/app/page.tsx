@@ -9,7 +9,16 @@ export default function Home() {
               GameLogger
             </h1>
             <p className="mx-auto max-w-xl text-lg leading-relaxed text-stone-600 dark:text-stone-400 sm:text-xl lg:mx-0">
-              Track your friendly squash matches without affecting your USR. Log
+              Track your friendly squash matches without affecting your{" "}
+              <a
+                href="https://ussquash.org/ratings/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-stone-900 dark:hover:text-stone-200"
+              >
+                USR
+              </a>
+              . Log
               scores, track opponents, and keep your match history
               organized—no rating pressure.
             </p>
