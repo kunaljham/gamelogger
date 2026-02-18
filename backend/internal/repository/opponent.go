@@ -94,14 +94,46 @@ func (r *OpponentRepository) FindByName(ctx context.Context, userID uuid.UUID, n
 	return &o, nil
 }
 
-// ListByUser returns all opponents for a user, ordered by name.
-func (r *OpponentRepository) ListByUser(ctx context.Context, userID uuid.UUID) ([]models.Opponent, error) {
-	rows, err := r.db.Query(ctx, `
-		SELECT id, user_id, email, name, status, invited_at, registered_user_id, created_at, updated_at
-		FROM opponents
-		WHERE user_id = $1
-		ORDER BY name ASC
-	`, userID)
+// ListByUser returns a paginated list of opponents for a user, ordered by name.
+// Uses cursor-based pagination where the cursor is the last opponent's name.
+// If search is non-nil, filters by name using case-insensitive prefix matching.
+func (r *OpponentRepository) ListByUser(ctx context.Context, userID uuid.UUID, limit int, cursor *string, search *string) ([]models.Opponent, error) {
+	var rows pgx.Rows
+	var err error
+
+	if search != nil && cursor != nil {
+		rows, err = r.db.Query(ctx, `
+			SELECT id, user_id, email, name, status, invited_at, registered_user_id, created_at, updated_at
+			FROM opponents
+			WHERE user_id = $1 AND LOWER(name) > LOWER($2) AND LOWER(name) LIKE LOWER($4) || '%'
+			ORDER BY name ASC
+			LIMIT $3
+		`, userID, *cursor, limit, *search)
+	} else if search != nil {
+		rows, err = r.db.Query(ctx, `
+			SELECT id, user_id, email, name, status, invited_at, registered_user_id, created_at, updated_at
+			FROM opponents
+			WHERE user_id = $1 AND LOWER(name) LIKE LOWER($3) || '%'
+			ORDER BY name ASC
+			LIMIT $2
+		`, userID, limit, *search)
+	} else if cursor != nil {
+		rows, err = r.db.Query(ctx, `
+			SELECT id, user_id, email, name, status, invited_at, registered_user_id, created_at, updated_at
+			FROM opponents
+			WHERE user_id = $1 AND name > $2
+			ORDER BY name ASC
+			LIMIT $3
+		`, userID, *cursor, limit)
+	} else {
+		rows, err = r.db.Query(ctx, `
+			SELECT id, user_id, email, name, status, invited_at, registered_user_id, created_at, updated_at
+			FROM opponents
+			WHERE user_id = $1
+			ORDER BY name ASC
+			LIMIT $2
+		`, userID, limit)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -120,11 +152,36 @@ func (r *OpponentRepository) ListByUser(ctx context.Context, userID uuid.UUID) (
 
 // ListByUserWithStats returns a paginated list of opponents for a user with win/loss counts,
 // ordered by name. Uses cursor-based pagination where the cursor is the last opponent's name.
-func (r *OpponentRepository) ListByUserWithStats(ctx context.Context, userID uuid.UUID, limit int, cursor *string) ([]models.OpponentWithStats, error) {
+// If search is non-nil, filters by name using case-insensitive prefix matching.
+func (r *OpponentRepository) ListByUserWithStats(ctx context.Context, userID uuid.UUID, limit int, cursor *string, search *string) ([]models.OpponentWithStats, error) {
 	var rows pgx.Rows
 	var err error
 
-	if cursor != nil {
+	if search != nil && cursor != nil {
+		rows, err = r.db.Query(ctx, `
+			SELECT o.id, o.user_id, o.email, o.name, o.status, o.invited_at, o.registered_user_id, o.created_at, o.updated_at,
+				COUNT(m.id) FILTER (WHERE m.user_won = TRUE) AS wins,
+				COUNT(m.id) FILTER (WHERE m.user_won = FALSE) AS losses
+			FROM opponents o
+			LEFT JOIN matches m ON m.opponent_id = o.id AND m.user_id = $1
+			WHERE o.user_id = $1 AND LOWER(o.name) > LOWER($2) AND LOWER(o.name) LIKE LOWER($4) || '%'
+			GROUP BY o.id
+			ORDER BY o.name ASC
+			LIMIT $3
+		`, userID, *cursor, limit, *search)
+	} else if search != nil {
+		rows, err = r.db.Query(ctx, `
+			SELECT o.id, o.user_id, o.email, o.name, o.status, o.invited_at, o.registered_user_id, o.created_at, o.updated_at,
+				COUNT(m.id) FILTER (WHERE m.user_won = TRUE) AS wins,
+				COUNT(m.id) FILTER (WHERE m.user_won = FALSE) AS losses
+			FROM opponents o
+			LEFT JOIN matches m ON m.opponent_id = o.id AND m.user_id = $1
+			WHERE o.user_id = $1 AND LOWER(o.name) LIKE LOWER($3) || '%'
+			GROUP BY o.id
+			ORDER BY o.name ASC
+			LIMIT $2
+		`, userID, limit, *search)
+	} else if cursor != nil {
 		rows, err = r.db.Query(ctx, `
 			SELECT o.id, o.user_id, o.email, o.name, o.status, o.invited_at, o.registered_user_id, o.created_at, o.updated_at,
 				COUNT(m.id) FILTER (WHERE m.user_won = TRUE) AS wins,

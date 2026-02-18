@@ -51,6 +51,9 @@ function LogMatch() {
 
   const [opponents, setOpponents] = useState<Opponent[]>([]);
   const [opponentsLoading, setOpponentsLoading] = useState(true);
+  const [useServerSearch, setUseServerSearch] = useState(false);
+  const initialOpponentsRef = useRef<Opponent[]>([]);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [opponentQuery, setOpponentQuery] = useState("");
   const [selectedOpponent, setSelectedOpponent] =
     useState<SelectedOpponent>(() => {
@@ -76,25 +79,54 @@ function LogMatch() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Fetch opponents on mount
+  // Fetch first 25 opponents on mount. If there are more (next_cursor exists),
+  // switch to server-side search mode for the combobox.
   useEffect(() => {
-    const fetchOpponents = async () => {
+    const fetchInitialOpponents = async () => {
       try {
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/opponents`,
+          `${process.env.NEXT_PUBLIC_API_URL}/api/opponents?limit=25`,
           { credentials: "include" }
         );
         if (!res.ok) throw new Error("Failed to load opponents");
         const data: ListOpponentsResponse = await res.json();
         setOpponents(data.opponents);
+        initialOpponentsRef.current = data.opponents;
+        if (data.next_cursor) {
+          setUseServerSearch(true);
+        }
       } catch {
         setError("Could not load opponents. Please try again.");
       } finally {
         setOpponentsLoading(false);
       }
     };
-    fetchOpponents();
+    fetchInitialOpponents();
   }, []);
+
+  // Server-side search for combobox (only used when >25 opponents)
+  const searchOpponents = (query: string) => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    if (!query.trim()) {
+      // Reset to initial list from memory (no network request)
+      setOpponents(initialOpponentsRef.current);
+      return;
+    }
+    searchDebounceRef.current = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({ limit: "25", q: query.trim() });
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/opponents?${params}`,
+          { credentials: "include" }
+        );
+        if (!res.ok) return;
+        const data: ListOpponentsResponse = await res.json();
+        setOpponents(data.opponents);
+      } catch {
+        // Silently ignore search errors
+      }
+    }, 300);
+  };
 
   // Close combobox on click outside
   useEffect(() => {
@@ -110,12 +142,16 @@ function LogMatch() {
     return () => document.removeEventListener("mousedown", handleMouseDown);
   }, []);
 
-  // Filtered opponents for the combobox dropdown
+  // Filtered opponents for the combobox dropdown.
+  // In server-search mode, the API already filters, so show all results.
+  // In client-filter mode (<= 25 opponents), filter locally.
   const trimmedQuery = opponentQuery.trim();
-  const filteredOpponents = opponents.filter((opp) =>
-    opp.name.toLowerCase().includes(trimmedQuery.toLowerCase())
-  );
-  const exactMatch = opponents.some(
+  const filteredOpponents = useServerSearch
+    ? opponents
+    : opponents.filter((opp) =>
+        opp.name.toLowerCase().includes(trimmedQuery.toLowerCase())
+      );
+  const exactMatch = filteredOpponents.some(
     (opp) => opp.name.toLowerCase() === trimmedQuery.toLowerCase()
   );
   const showAddOption = trimmedQuery.length > 0 && !exactMatch;
@@ -345,6 +381,7 @@ function LogMatch() {
                     setSelectedOpponent(null);
                     setComboboxOpen(true);
                     setHighlightedIndex(0);
+                    if (useServerSearch) searchOpponents(e.target.value);
                   }}
                   onFocus={() => setComboboxOpen(true)}
                   onBlur={(e) => {

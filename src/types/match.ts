@@ -44,6 +44,7 @@ export interface ListMatchesResponse {
 
 export interface ListOpponentsResponse {
   opponents: Opponent[];
+  next_cursor?: string;
 }
 
 export interface OpponentWithStats extends Opponent {

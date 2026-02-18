@@ -29,7 +29,8 @@ type updateOpponentRequest struct {
 
 // listOpponentsResponse wraps the list for JSON output.
 type listOpponentsResponse struct {
-	Opponents []models.Opponent `json:"opponents"`
+	Opponents  []models.Opponent `json:"opponents"`
+	NextCursor *string           `json:"next_cursor,omitempty"`
 }
 
 // listOpponentsWithStatsResponse wraps the list with stats for JSON output.
@@ -119,7 +120,8 @@ func (h *Handler) CreateOpponent(w http.ResponseWriter, r *http.Request) {
 }
 
 // ListOpponents handles GET /api/opponents.
-// Returns all opponents for the authenticated user.
+// Returns a paginated list of opponents for the authenticated user.
+// Supports ?cursor=<name>&limit=<int> for cursor-based pagination.
 func (h *Handler) ListOpponents(w http.ResponseWriter, r *http.Request) {
 	user, ok := UserFromContext(r.Context())
 	if !ok {
@@ -127,7 +129,24 @@ func (h *Handler) ListOpponents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	opponents, err := h.opponentRepo.ListByUser(r.Context(), user.ID)
+	limit := 50
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 && parsed <= 200 {
+			limit = parsed
+		}
+	}
+
+	var cursor *string
+	if c := r.URL.Query().Get("cursor"); c != "" {
+		cursor = &c
+	}
+
+	var search *string
+	if q := r.URL.Query().Get("q"); q != "" {
+		search = &q
+	}
+
+	opponents, err := h.opponentRepo.ListByUser(r.Context(), user.ID, limit, cursor, search)
 	if err != nil {
 		slog.Error("Failed to list opponents", "error", err)
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to list opponents"})
@@ -139,7 +158,13 @@ func (h *Handler) ListOpponents(w http.ResponseWriter, r *http.Request) {
 		opponents = []models.Opponent{}
 	}
 
-	writeJSON(w, http.StatusOK, listOpponentsResponse{Opponents: opponents})
+	resp := listOpponentsResponse{Opponents: opponents}
+	if len(opponents) == limit {
+		name := opponents[len(opponents)-1].Name
+		resp.NextCursor = &name
+	}
+
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // ListOpponentsWithStats handles GET /api/opponents/with-stats.
@@ -169,7 +194,13 @@ func (h *Handler) ListOpponentsWithStats(w http.ResponseWriter, r *http.Request)
 		cursor = &c
 	}
 
-	opponents, err := h.opponentRepo.ListByUserWithStats(r.Context(), user.ID, limit, cursor)
+	// Parse optional search query (prefix match on name)
+	var search *string
+	if q := r.URL.Query().Get("q"); q != "" {
+		search = &q
+	}
+
+	opponents, err := h.opponentRepo.ListByUserWithStats(r.Context(), user.ID, limit, cursor, search)
 	if err != nil {
 		slog.Error("Failed to list opponents with stats", "error", err)
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to list opponents"})

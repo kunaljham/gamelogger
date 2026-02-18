@@ -275,6 +275,8 @@ export default function OpponentsPage() {
   const [error, setError] = useState<string | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Invite modal state
   const [inviteTarget, setInviteTarget] = useState<OpponentWithStats | null>(
@@ -284,13 +286,14 @@ export default function OpponentsPage() {
   const [inviteError, setInviteError] = useState("");
   const [inviting, setInviting] = useState(false);
 
-  const fetchOpponents = async (cursor?: string) => {
+  const fetchOpponents = async (cursor?: string, search?: string) => {
     const isLoadMore = !!cursor;
     if (isLoadMore) setLoadingMore(true);
 
     try {
       const params = new URLSearchParams();
       if (cursor) params.set("cursor", cursor);
+      if (search) params.set("q", search);
 
       const [res] = await Promise.all([
         fetch(
@@ -323,6 +326,17 @@ export default function OpponentsPage() {
   useEffect(() => {
     fetchOpponents();
   }, []);
+
+  // Debounced search: refetch when search query changes
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setLoading(true);
+      setNextCursor(null);
+      fetchOpponents(undefined, value.trim() || undefined);
+    }, 300);
+  };
 
   // Merge an updated opponent (from PUT, which doesn't return stats) back into state
   const handleOpponentUpdated = (updated: Opponent) => {
@@ -387,7 +401,7 @@ export default function OpponentsPage() {
       setInviteTarget(null);
       setNextCursor(null);
       setLoading(true);
-      fetchOpponents();
+      fetchOpponents(undefined, searchQuery.trim() || undefined);
     } catch {
       setInviteError("Something went wrong.");
     } finally {
@@ -400,6 +414,17 @@ export default function OpponentsPage() {
       <h1 className="mb-6 text-3xl font-bold tracking-tight text-stone-900 dark:text-stone-50">
         Opponents
       </h1>
+
+      {/* Search input */}
+      <div className="mb-4">
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => handleSearchChange(e.target.value)}
+          placeholder="Search opponents..."
+          className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-900 transition-colors placeholder:text-stone-400 focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:placeholder:text-stone-500 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
+        />
+      </div>
 
       {/* Error banner */}
       {error && (
@@ -428,24 +453,32 @@ export default function OpponentsPage() {
 
       {/* Empty state */}
       {!loading && !error && opponents.length === 0 && (
-        <div className="text-center">
-          <div className="mb-6 flex justify-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-purple-700 text-2xl text-white dark:bg-purple-600 dark:text-white">
-              &#127998;
-            </div>
-          </div>
-          <h2 className="mb-3 text-2xl font-bold text-stone-900 dark:text-stone-50 sm:text-3xl">
-            No opponents yet
-          </h2>
-          <p className="mb-8 text-base text-stone-600 dark:text-stone-400">
-            Opponents are added automatically when you log a match.
-          </p>
-          <div className="rounded-xl border-2 border-dashed border-stone-200 bg-stone-50/50 px-6 py-12 dark:border-stone-800 dark:bg-stone-800/20">
+        searchQuery.trim() ? (
+          <div className="py-12 text-center">
             <p className="text-sm text-stone-400 dark:text-stone-500">
-              Your opponents will appear here
+              No opponents matching &ldquo;{searchQuery.trim()}&rdquo;
             </p>
           </div>
-        </div>
+        ) : (
+          <div className="text-center">
+            <div className="mb-6 flex justify-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-purple-700 text-2xl text-white dark:bg-purple-600 dark:text-white">
+                &#127998;
+              </div>
+            </div>
+            <h2 className="mb-3 text-2xl font-bold text-stone-900 dark:text-stone-50 sm:text-3xl">
+              No opponents yet
+            </h2>
+            <p className="mb-8 text-base text-stone-600 dark:text-stone-400">
+              Opponents are added automatically when you log a match.
+            </p>
+            <div className="rounded-xl border-2 border-dashed border-stone-200 bg-stone-50/50 px-6 py-12 dark:border-stone-800 dark:bg-stone-800/20">
+              <p className="text-sm text-stone-400 dark:text-stone-500">
+                Your opponents will appear here
+              </p>
+            </div>
+          </div>
+        )
       )}
 
       {/* Opponent list */}
@@ -464,7 +497,7 @@ export default function OpponentsPage() {
           {nextCursor && (
             <div className="pt-2 text-center">
               <button
-                onClick={() => fetchOpponents(nextCursor)}
+                onClick={() => fetchOpponents(nextCursor, searchQuery.trim() || undefined)}
                 disabled={loadingMore}
                 className="rounded-lg border border-stone-200 bg-white px-5 py-2 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-50 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
               >
