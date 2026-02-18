@@ -35,8 +35,8 @@ func (h *Handler) AuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// Look up the session in the database
-		session, err := h.sessionRepo.FindByToken(r.Context(), cookie.Value)
+		// Look up the session and user in a single query (JOIN)
+		session, user, err := h.sessionRepo.FindByTokenWithUser(r.Context(), cookie.Value)
 		if err != nil {
 			if err == repository.ErrSessionNotFound {
 				writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "Not authenticated"})
@@ -50,14 +50,6 @@ func (h *Handler) AuthMiddleware(next http.Handler) http.Handler {
 		// Check if session has expired
 		if session.IsExpired() {
 			writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "Session expired"})
-			return
-		}
-
-		// Look up the user
-		user, err := h.userRepo.FindByID(r.Context(), session.UserID)
-		if err != nil {
-			slog.Error("Failed to look up user for session", "error", err, "user_id", session.UserID)
-			writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "Not authenticated"})
 			return
 		}
 
