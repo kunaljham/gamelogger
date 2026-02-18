@@ -301,25 +301,25 @@ func (r *MatchRepository) UpdateNotes(ctx context.Context, matchID uuid.UUID, us
 }
 
 // fetchMatchDetails loads the opponent, creator name, and games for a match.
+// Uses a single JOIN query for opponent + creator name (like FindByID), plus
+// one fetchGames call. 2 queries total instead of 3.
 func (r *MatchRepository) fetchMatchDetails(ctx context.Context, m *models.Match, opp *models.Opponent) error {
 	err := r.db.QueryRow(ctx, `
-		SELECT id, user_id, email, name, status, invited_at, registered_user_id, created_at, updated_at
-		FROM opponents WHERE id = $1
+		SELECT o.id, o.user_id, o.email, o.name, o.status, o.invited_at, o.registered_user_id, o.created_at, o.updated_at,
+		       u.name
+		FROM opponents o
+		JOIN users u ON u.id = o.user_id
+		WHERE o.id = $1
 	`, m.OpponentID).Scan(
 		&opp.ID, &opp.UserID, &opp.Email, &opp.Name, &opp.Status,
 		&opp.InvitedAt, &opp.RegisteredUserID,
 		&opp.CreatedAt, &opp.UpdatedAt,
+		&m.CreatorName,
 	)
 	if err != nil {
 		return err
 	}
 	m.Opponent = opp
-
-	// Fetch creator name for opponent viewer resolution
-	err = r.db.QueryRow(ctx, `SELECT name FROM users WHERE id = $1`, m.UserID).Scan(&m.CreatorName)
-	if err != nil {
-		return err
-	}
 
 	games, err := r.fetchGames(ctx, m.ID)
 	if err != nil {
