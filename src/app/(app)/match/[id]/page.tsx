@@ -289,11 +289,11 @@ export default function MatchDetail() {
       )}
 
       {/* Last modified */}
-      {match.updated_at !== match.created_at && (
-        <p className="mt-6 text-xs text-stone-400 dark:text-stone-500">
-          Last edited {formatDateTime(match.updated_at)}
-        </p>
-      )}
+      <p className="mt-6 text-xs text-stone-400 dark:text-stone-500">
+        {match.updated_at !== match.created_at
+          ? `Last edited ${formatDateTime(match.updated_at)}`
+          : `Logged ${formatDateTime(match.created_at)}`}
+      </p>
 
       {/* Action buttons (anchored to bottom) */}
       <div className="fixed inset-x-0 bottom-0 border-t border-stone-200 bg-stone-50/90 p-4 backdrop-blur-sm dark:border-stone-800 dark:bg-stone-950/90">
