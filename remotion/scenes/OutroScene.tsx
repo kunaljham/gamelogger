@@ -14,7 +14,8 @@ export const OutroScene: React.FC<{ type: "invite" | "cta" }> = ({ type }) => {
     return (
       <div
         style={{
-          flex: 1,
+          width: 1920,
+          height: 1080,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -49,7 +50,8 @@ export const OutroScene: React.FC<{ type: "invite" | "cta" }> = ({ type }) => {
   return (
     <div
       style={{
-        flex: 1,
+        width: 1920,
+        height: 1080,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",

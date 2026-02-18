@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
 import { staticFile } from "remotion";
 
-export const Screenshot: React.FC<{ filename: string }> = ({ filename }) => {
+export const Screenshot: React.FC<{
+  filename: string;
+  height?: number | string;
+}> = ({ filename, height = "100%" }) => {
   const [errored, setErrored] = useState(false);
   const src = staticFile(filename);
 
@@ -13,8 +16,9 @@ export const Screenshot: React.FC<{ filename: string }> = ({ filename }) => {
     return (
       <div
         style={{
-          width: "100%",
-          height: "100%",
+          width: typeof height === "number" ? height * 0.5 : 200,
+          height,
+          borderRadius: 16,
           backgroundColor: "#27272a",
           display: "flex",
           alignItems: "center",
@@ -39,8 +43,8 @@ export const Screenshot: React.FC<{ filename: string }> = ({ filename }) => {
       src={src}
       onError={() => setErrored(true)}
       style={{
-        width: "100%",
-        height: "100%",
+        height,
+        borderRadius: 16,
         objectFit: "contain",
       }}
     />

@@ -1,9 +1,6 @@
 import { Series } from "remotion";
 import { TitleScene } from "../scenes/TitleScene";
-import { FeedScene } from "../scenes/FeedScene";
-import { LogMatchScene } from "../scenes/LogMatchScene";
-import { OpponentsScene } from "../scenes/OpponentsScene";
-import { InviteScene } from "../scenes/InviteScene";
+import { ScreenshotSceneLandscape } from "../scenes/ScreenshotSceneLandscape";
 import { OutroScene } from "../scenes/OutroScene";
 
 export const Demo: React.FC = () => {
@@ -13,16 +10,28 @@ export const Demo: React.FC = () => {
         <TitleScene />
       </Series.Sequence>
       <Series.Sequence durationInFrames={150}>
-        <FeedScene />
+        <ScreenshotSceneLandscape
+          filename="feed.png"
+          label="Browse your match history"
+        />
       </Series.Sequence>
       <Series.Sequence durationInFrames={150}>
-        <LogMatchScene />
+        <ScreenshotSceneLandscape
+          filename="log-match.png"
+          label="Log scores game-by-game"
+        />
       </Series.Sequence>
       <Series.Sequence durationInFrames={120}>
-        <OpponentsScene />
+        <ScreenshotSceneLandscape
+          filename="opponents.png"
+          label="Track your record against every opponent"
+        />
       </Series.Sequence>
       <Series.Sequence durationInFrames={120}>
-        <InviteScene />
+        <ScreenshotSceneLandscape
+          filename="invite.png"
+          label="Invite opponents to track their side too"
+        />
       </Series.Sequence>
       <Series.Sequence durationInFrames={105}>
         <OutroScene type="cta" />

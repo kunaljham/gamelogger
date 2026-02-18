@@ -14,6 +14,8 @@ const geistMono = Geist_Mono({
 
 const VIDEO_URL =
   "https://f666cezksly1onuo.public.blob.vercel-storage.com/demo.mp4";
+const OG_IMAGE_URL =
+  "https://f666cezksly1onuo.public.blob.vercel-storage.com/og-image.png";
 
 export const metadata: Metadata = {
   title: "GameLogger - Track Your Squash Matches",
@@ -25,28 +27,29 @@ export const metadata: Metadata = {
       "Track your friendly squash matches without affecting your USR.",
     type: "website",
     url: "https://gamelogger.app",
+    images: [
+      {
+        url: OG_IMAGE_URL,
+        width: 1920,
+        height: 1080,
+        type: "image/png",
+      },
+    ],
     videos: [
       {
         url: VIDEO_URL,
-        width: 1080,
-        height: 1920,
+        width: 1920,
+        height: 1080,
         type: "video/mp4",
       },
     ],
   },
   twitter: {
-    card: "player",
+    card: "summary_large_image",
     title: "GameLogger - Track Your Squash Matches",
     description:
       "Track your friendly squash matches without affecting your USR.",
-    players: [
-      {
-        playerUrl: VIDEO_URL,
-        streamUrl: VIDEO_URL,
-        width: 1080,
-        height: 1920,
-      },
-    ],
+    images: [OG_IMAGE_URL],
   },
 };
 

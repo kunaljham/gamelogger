@@ -20,8 +20,7 @@ export default function Home() {
                   ✓
                 </div>
                 <p className="text-lg text-stone-700 dark:text-stone-300">
-                  Log scores game-by-game for best of 3 or best of 5, with
-                  notes on every match
+                  Log scores game-by-game, with private notes on every match
                 </p>
               </div>
               <div className="flex items-start gap-3 text-left">

@@ -17,15 +17,15 @@ export const TitleScene: React.FC = () => {
   return (
     <div
       style={{
-        width: 1080,
-        height: 1920,
+        width: 1920,
+        height: 1080,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: "#09090b",
         gap: 32,
-        padding: "0 60px",
+        padding: "0 400px",
       }}
     >
       <div
@@ -41,7 +41,7 @@ export const TitleScene: React.FC = () => {
       </div>
       <div
         style={{
-          fontSize: 62,
+          fontSize: 48,
           color: "#a1a1aa",
           fontFamily: "Inter, sans-serif",
           textAlign: "center",
