@@ -1,4 +1,6 @@
 import Link from "next/link";
+import ReactMarkdown from "react-markdown";
+import remarkBreaks from "remark-breaks";
 import type { Match } from "@/types/match";
 
 // Format a date string like "Jun 15, 2025"
@@ -57,9 +59,9 @@ export default function MatchCard({ match }: { match: Match }) {
 
       {/* Row 4: Notes (if present) */}
       {match.notes && (
-        <p className="mt-2 line-clamp-2 whitespace-pre-wrap text-sm text-stone-500 dark:text-stone-400">
-          &ldquo;{match.notes}&rdquo;
-        </p>
+        <div className="mt-2 line-clamp-2 prose prose-sm prose-stone dark:prose-invert max-w-none text-stone-500 dark:text-stone-400">
+          <ReactMarkdown remarkPlugins={[remarkBreaks]}>{match.notes}</ReactMarkdown>
+        </div>
       )}
     </Link>
   );

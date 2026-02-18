@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useUser } from "@/contexts/user-context";
+import ReactMarkdown from "react-markdown";
+import remarkBreaks from "remark-breaks";
 import type { Match } from "@/types/match";
 
 // ── Score validation (same logic as log-match) ──────────────────────
@@ -279,9 +281,9 @@ export default function MatchDetail() {
       {/* Notes */}
       {match.notes && (
         <div className="mt-4 rounded-lg border border-stone-200 bg-stone-50 px-4 py-3 dark:border-stone-700 dark:bg-stone-800/50">
-          <p className="whitespace-pre-wrap text-sm text-stone-600 dark:text-stone-400">
-            &ldquo;{match.notes}&rdquo;
-          </p>
+          <div className="prose prose-sm prose-stone dark:prose-invert max-w-none text-stone-600 dark:text-stone-400">
+            <ReactMarkdown remarkPlugins={[remarkBreaks]}>{match.notes}</ReactMarkdown>
+          </div>
         </div>
       )}
 

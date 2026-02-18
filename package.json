@@ -12,10 +12,13 @@
   },
   "dependencies": {
     "@remotion/cli": "^4.0.424",
+    "@tailwindcss/typography": "^0.5.19",
     "@vercel/blob": "^2.2.0",
     "next": "16.1.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "react-markdown": "^10.1.0",
+    "remark-breaks": "^4.0.0",
     "remotion": "^4.0.424"
   },
   "devDependencies": {
