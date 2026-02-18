@@ -168,13 +168,19 @@ func (r *MatchRepository) ListByUser(ctx context.Context, userID uuid.UUID, limi
 		return nil, err
 	}
 
-	// Fetch games for each match
-	for i := range matches {
-		games, err := r.fetchGames(ctx, matches[i].ID)
+	// Batch-fetch all games for the page in a single query (avoids N+1)
+	if len(matches) > 0 {
+		matchIDs := make([]uuid.UUID, len(matches))
+		for i := range matches {
+			matchIDs[i] = matches[i].ID
+		}
+		gamesByMatch, err := r.fetchGamesBatch(ctx, matchIDs)
 		if err != nil {
 			return nil, err
 		}
-		matches[i].Games = games
+		for i := range matches {
+			matches[i].Games = gamesByMatch[matches[i].ID]
+		}
 	}
 
 	return matches, nil
@@ -341,6 +347,31 @@ func (r *MatchRepository) GetUserStats(ctx context.Context, userID uuid.UUID) (w
 		WHERE m.user_id = $1 OR o.registered_user_id = $1
 	`, userID).Scan(&wins, &losses)
 	return
+}
+
+// fetchGamesBatch returns all games for a set of match IDs in a single query,
+// grouped by match ID. This avoids the N+1 problem when loading a page of matches.
+func (r *MatchRepository) fetchGamesBatch(ctx context.Context, matchIDs []uuid.UUID) (map[uuid.UUID][]models.Game, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT id, match_id, game_number, user_score, opponent_score
+		FROM games
+		WHERE match_id = ANY($1)
+		ORDER BY match_id, game_number ASC
+	`, matchIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[uuid.UUID][]models.Game, len(matchIDs))
+	for rows.Next() {
+		var g models.Game
+		if err := rows.Scan(&g.ID, &g.MatchID, &g.GameNumber, &g.UserScore, &g.OpponentScore); err != nil {
+			return nil, err
+		}
+		result[g.MatchID] = append(result[g.MatchID], g)
+	}
+	return result, rows.Err()
 }
 
 // fetchGames returns all games for a match, ordered by game number.
