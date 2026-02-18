@@ -30,10 +30,13 @@ export const ScreenshotScene: React.FC<{
         backgroundColor: "#09090b",
       }}
     >
+      {/* Top padding to match bottom bar */}
+      <div style={{ height: BAR_HEIGHT, backgroundColor: "#09090b" }} />
+
       {/* Screenshot area */}
       <div
         style={{
-          height: 1920 - BAR_HEIGHT,
+          height: 1920 - BAR_HEIGHT * 2,
           opacity: imgOpacity,
           display: "flex",
           alignItems: "center",
