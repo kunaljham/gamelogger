@@ -115,7 +115,7 @@ func (r *MatchRepository) ListByUser(ctx context.Context, userID uuid.UUID, limi
 	var rows pgx.Rows
 	var err error
 
-	// Use UNION ALL so Postgres can use idx_matches_user_id and idx_opponents_registered_user_id
+	// Use UNION so Postgres can use idx_matches_user_id and idx_opponents_registered_user_id
 	// independently instead of doing a sequential scan across the OR-joined condition.
 	if cursor != nil {
 		rows, err = r.db.Query(ctx, `
@@ -269,37 +269,37 @@ func (r *MatchRepository) Delete(ctx context.Context, id uuid.UUID, userID uuid.
 // UpdateNotes sets the viewer's notes on a match. If the user is the creator,
 // it updates creator_notes. If the user is the opponent (by registered_user_id),
 // it updates opponent_notes. Returns the full match or ErrMatchNotFound if neither.
+//
+// Uses a single CTE query that handles both roles with a CASE expression,
+// then JOINs opponent and creator data in the same round-trip (1 query instead of 3).
+// Only fetchGames remains as a second query (2 total).
 func (r *MatchRepository) UpdateNotes(ctx context.Context, matchID uuid.UUID, userID uuid.UUID, notes *string) (*models.Match, error) {
 	var m models.Match
 	var opp models.Opponent
 
-	// Try updating as creator first
 	err := r.db.QueryRow(ctx, `
-		UPDATE matches SET creator_notes = $1
-		WHERE id = $2 AND user_id = $3
-		RETURNING id, user_id, opponent_id, match_type, played_at, creator_notes, opponent_notes, user_won, created_at, updated_at
+		WITH updated AS (
+			UPDATE matches SET
+				creator_notes = CASE WHEN user_id = $3 THEN $1 ELSE creator_notes END,
+				opponent_notes = CASE WHEN user_id != $3 THEN $1 ELSE opponent_notes END
+			WHERE id = $2
+				AND (user_id = $3 OR opponent_id IN (SELECT id FROM opponents WHERE registered_user_id = $3))
+			RETURNING id, user_id, opponent_id, match_type, played_at, creator_notes, opponent_notes, user_won, created_at, updated_at
+		)
+		SELECT m.id, m.user_id, m.opponent_id, m.match_type, m.played_at, m.creator_notes, m.opponent_notes,
+		       m.user_won, m.created_at, m.updated_at,
+		       o.id, o.user_id, o.email, o.name, o.status, o.invited_at, o.registered_user_id, o.created_at, o.updated_at,
+		       u.name
+		FROM updated m
+		JOIN opponents o ON o.id = m.opponent_id
+		JOIN users u ON u.id = m.user_id
 	`, notes, matchID, userID).Scan(
 		&m.ID, &m.UserID, &m.OpponentID, &m.MatchType, &m.PlayedAt, &m.CreatorNotes, &m.OpponentNotes,
 		&m.UserWon, &m.CreatedAt, &m.UpdatedAt,
-	)
-	if err == nil {
-		if err := r.fetchMatchDetails(ctx, &m, &opp); err != nil {
-			return nil, err
-		}
-		return &m, nil
-	}
-	if !errors.Is(err, pgx.ErrNoRows) {
-		return nil, err // real DB error, don't fall through
-	}
-
-	// Not the creator — try updating as opponent (by registered_user_id match)
-	err = r.db.QueryRow(ctx, `
-		UPDATE matches SET opponent_notes = $1
-		WHERE id = $2 AND opponent_id IN (SELECT id FROM opponents WHERE registered_user_id = $3)
-		RETURNING id, user_id, opponent_id, match_type, played_at, creator_notes, opponent_notes, user_won, created_at, updated_at
-	`, notes, matchID, userID).Scan(
-		&m.ID, &m.UserID, &m.OpponentID, &m.MatchType, &m.PlayedAt, &m.CreatorNotes, &m.OpponentNotes,
-		&m.UserWon, &m.CreatedAt, &m.UpdatedAt,
+		&opp.ID, &opp.UserID, &opp.Email, &opp.Name, &opp.Status,
+		&opp.InvitedAt, &opp.RegisteredUserID,
+		&opp.CreatedAt, &opp.UpdatedAt,
+		&m.CreatorName,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrMatchNotFound
@@ -307,40 +307,15 @@ func (r *MatchRepository) UpdateNotes(ctx context.Context, matchID uuid.UUID, us
 	if err != nil {
 		return nil, err
 	}
-
-	if err := r.fetchMatchDetails(ctx, &m, &opp); err != nil {
-		return nil, err
-	}
-	return &m, nil
-}
-
-// fetchMatchDetails loads the opponent, creator name, and games for a match.
-// Uses a single JOIN query for opponent + creator name (like FindByID), plus
-// one fetchGames call. 2 queries total instead of 3.
-func (r *MatchRepository) fetchMatchDetails(ctx context.Context, m *models.Match, opp *models.Opponent) error {
-	err := r.db.QueryRow(ctx, `
-		SELECT o.id, o.user_id, o.email, o.name, o.status, o.invited_at, o.registered_user_id, o.created_at, o.updated_at,
-		       u.name
-		FROM opponents o
-		JOIN users u ON u.id = o.user_id
-		WHERE o.id = $1
-	`, m.OpponentID).Scan(
-		&opp.ID, &opp.UserID, &opp.Email, &opp.Name, &opp.Status,
-		&opp.InvitedAt, &opp.RegisteredUserID,
-		&opp.CreatedAt, &opp.UpdatedAt,
-		&m.CreatorName,
-	)
-	if err != nil {
-		return err
-	}
-	m.Opponent = opp
+	m.Opponent = &opp
 
 	games, err := r.fetchGames(ctx, m.ID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	m.Games = games
-	return nil
+
+	return &m, nil
 }
 
 // GetUserStats returns the win and loss counts for a user across all matches

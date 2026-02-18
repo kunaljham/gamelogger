@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored assets from test tools:
+    "playwright-report/**",
+    // Separate Remotion project (not part of the Next.js app):
+    "remotion/**",
   ]),
 ]);
 

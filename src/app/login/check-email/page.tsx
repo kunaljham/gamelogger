@@ -1,20 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 export default function CheckEmail() {
-  const [email, setEmail] = useState<string | null>(null);
+  // Read email from sessionStorage during initial render (avoids setState in useEffect).
+  // sessionStorage is only available in the browser, so we guard with typeof window.
+  const email =
+    typeof window !== "undefined"
+      ? sessionStorage.getItem("loginEmail")
+      : null;
   const router = useRouter();
 
   useEffect(() => {
-    const storedEmail = sessionStorage.getItem("loginEmail");
-    if (!storedEmail) {
+    if (!email) {
       router.push("/login");
-      return;
     }
-    setEmail(storedEmail);
-  }, [router]);
+  }, [email, router]);
 
   if (!email) {
     return null;

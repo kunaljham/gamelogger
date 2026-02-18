@@ -154,3 +154,29 @@ func TestListOpponents_NotAuthenticated(t *testing.T) {
 
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
+
+func TestListOpponents_InvalidCursor(t *testing.T) {
+	h := opponentTestHandler()
+	req := opponentRequest(http.MethodGet, "/api/opponents?cursor=not-a-date", nil)
+	w := httptest.NewRecorder()
+
+	h.ListOpponents(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	var resp errorResponse
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&resp))
+	assert.Contains(t, resp.Error, "cursor")
+}
+
+func TestListOpponentsWithStats_InvalidCursor(t *testing.T) {
+	h := opponentTestHandler()
+	req := opponentRequest(http.MethodGet, "/api/opponents/with-stats?cursor=not-a-date", nil)
+	w := httptest.NewRecorder()
+
+	h.ListOpponentsWithStats(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	var resp errorResponse
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&resp))
+	assert.Contains(t, resp.Error, "cursor")
+}

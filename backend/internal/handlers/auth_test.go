@@ -322,6 +322,18 @@ func TestAuthMiddleware_NoCookie(t *testing.T) {
 	assert.Equal(t, "Not authenticated", resp.Error)
 }
 
+func TestAuthMiddleware_ValidSession(t *testing.T) {
+	// Requires database — FindByTokenWithUser needs a real session + user in Postgres.
+	// Covered by integration tests (test-api.sh: every authenticated endpoint exercises this path).
+	t.Skip("Requires database — will be covered by integration tests")
+}
+
+func TestAuthMiddleware_ExpiredSession(t *testing.T) {
+	// Requires database — needs a real expired session row to verify 401 "Session expired".
+	// Covered by integration tests.
+	t.Skip("Requires database — will be covered by integration tests")
+}
+
 func TestGenerateSecureToken(t *testing.T) {
 	token1, err := generateSecureToken(32)
 	require.NoError(t, err)

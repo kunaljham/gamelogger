@@ -138,6 +138,10 @@ func (h *Handler) ListOpponents(w http.ResponseWriter, r *http.Request) {
 
 	var cursor *string
 	if c := r.URL.Query().Get("cursor"); c != "" {
+		if _, err := time.Parse(time.RFC3339Nano, c); err != nil {
+			writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid cursor format"})
+			return
+		}
 		cursor = &c
 	}
 
@@ -191,6 +195,10 @@ func (h *Handler) ListOpponentsWithStats(w http.ResponseWriter, r *http.Request)
 	// Parse optional cursor (created_at timestamp)
 	var cursor *string
 	if c := r.URL.Query().Get("cursor"); c != "" {
+		if _, err := time.Parse(time.RFC3339Nano, c); err != nil {
+			writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid cursor format"})
+			return
+		}
 		cursor = &c
 	}
 

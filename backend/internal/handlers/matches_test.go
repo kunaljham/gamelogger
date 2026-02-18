@@ -617,3 +617,11 @@ func TestUpdateMatchNotes_InvalidJSON(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
+
+func TestUpdateMatchNotes_OpponentDoesNotOverwriteCreatorNotes(t *testing.T) {
+	// Requires database — the CTE in UpdateNotes needs a real match with creator + opponent.
+	// Verifies that when a registered opponent updates their notes via PUT /matches/{id}/notes,
+	// only opponent_notes is set and creator_notes remains untouched.
+	// Covered by integration tests (test-api.sh step 25: Notes edge cases).
+	t.Skip("Requires database — will be covered by integration tests")
+}
