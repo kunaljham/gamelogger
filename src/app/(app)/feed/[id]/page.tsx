@@ -280,7 +280,7 @@ export default function MatchDetail() {
 
       {/* Notes */}
       {match.notes && (
-        <div className="mt-4 rounded-lg border border-stone-200 bg-stone-50 px-4 py-3 dark:border-stone-700 dark:bg-stone-800/50">
+        <div className="mt-4 border-l-2 border-purple-400 pl-4 dark:border-purple-600">
           <div className="prose prose-sm prose-stone dark:prose-invert max-w-none text-stone-600 dark:text-stone-400">
             <ReactMarkdown remarkPlugins={[remarkBreaks]}>{match.notes}</ReactMarkdown>
           </div>

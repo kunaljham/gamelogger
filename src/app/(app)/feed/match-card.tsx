@@ -59,8 +59,10 @@ export default function MatchCard({ match }: { match: Match }) {
 
       {/* Row 4: Notes (if present) */}
       {match.notes && (
-        <div className="mt-2 line-clamp-2 prose prose-sm prose-stone dark:prose-invert max-w-none text-stone-500 dark:text-stone-400">
-          <ReactMarkdown remarkPlugins={[remarkBreaks]}>{match.notes}</ReactMarkdown>
+        <div className="mt-2 border-l-2 border-purple-400 pl-3 dark:border-purple-600">
+          <div className="line-clamp-2 prose prose-sm prose-stone dark:prose-invert max-w-none text-stone-500 dark:text-stone-400">
+            <ReactMarkdown remarkPlugins={[remarkBreaks]}>{match.notes}</ReactMarkdown>
+          </div>
         </div>
       )}
     </Link>
