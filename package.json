@@ -6,12 +6,16 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "remotion:studio": "npx remotion studio remotion/index.ts",
+    "remotion:render": "npx remotion render remotion/index.ts GameLoggerDemo out/demo.mp4 --codec=h264 --crf=18"
   },
   "dependencies": {
+    "@remotion/cli": "^4.0.424",
     "next": "16.1.1",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "remotion": "^4.0.424"
   },
   "devDependencies": {
     "@playwright/test": "^1.57.0",
