@@ -121,7 +121,7 @@ func (h *Handler) CreateOpponent(w http.ResponseWriter, r *http.Request) {
 
 // ListOpponents handles GET /api/opponents.
 // Returns a paginated list of opponents for the authenticated user.
-// Supports ?cursor=<name>&limit=<int> for cursor-based pagination.
+// Supports ?cursor=<created_at>&limit=<int> for cursor-based pagination.
 func (h *Handler) ListOpponents(w http.ResponseWriter, r *http.Request) {
 	user, ok := UserFromContext(r.Context())
 	if !ok {
@@ -160,8 +160,8 @@ func (h *Handler) ListOpponents(w http.ResponseWriter, r *http.Request) {
 
 	resp := listOpponentsResponse{Opponents: opponents}
 	if len(opponents) == limit {
-		name := opponents[len(opponents)-1].Name
-		resp.NextCursor = &name
+		cursor := opponents[len(opponents)-1].CreatedAt.Format(time.RFC3339Nano)
+		resp.NextCursor = &cursor
 	}
 
 	writeJSON(w, http.StatusOK, resp)
@@ -169,7 +169,7 @@ func (h *Handler) ListOpponents(w http.ResponseWriter, r *http.Request) {
 
 // ListOpponentsWithStats handles GET /api/opponents/with-stats.
 // Returns a paginated list of opponents with win/loss counts.
-// Supports ?cursor=<name>&limit=<int> for cursor-based pagination.
+// Supports ?cursor=<created_at>&limit=<int> for cursor-based pagination.
 func (h *Handler) ListOpponentsWithStats(w http.ResponseWriter, r *http.Request) {
 	user, ok := UserFromContext(r.Context())
 	if !ok {
@@ -188,7 +188,7 @@ func (h *Handler) ListOpponentsWithStats(w http.ResponseWriter, r *http.Request)
 		limit = parsed
 	}
 
-	// Parse optional cursor (opponent name)
+	// Parse optional cursor (created_at timestamp)
 	var cursor *string
 	if c := r.URL.Query().Get("cursor"); c != "" {
 		cursor = &c
@@ -213,8 +213,8 @@ func (h *Handler) ListOpponentsWithStats(w http.ResponseWriter, r *http.Request)
 
 	resp := listOpponentsWithStatsResponse{Opponents: opponents}
 	if len(opponents) == limit {
-		last := opponents[len(opponents)-1].Name
-		resp.NextCursor = &last
+		cursor := opponents[len(opponents)-1].CreatedAt.Format(time.RFC3339Nano)
+		resp.NextCursor = &cursor
 	}
 
 	writeJSON(w, http.StatusOK, resp)
