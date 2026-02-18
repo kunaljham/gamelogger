@@ -19,7 +19,7 @@ export default function MatchCard({ match }: { match: Match }) {
 
   return (
     <Link
-      href={`/feed/${match.id}`}
+      href={`/match/${match.id}`}
       className={`block rounded-xl border bg-white px-5 py-4 transition-colors hover:bg-stone-50 dark:bg-stone-900 dark:hover:bg-stone-800/70 ${didWin ? "border-emerald-300 dark:border-emerald-700" : "border-red-300 dark:border-red-700"}`}
     >
       {/* Row 1: Opponent name + date */}
