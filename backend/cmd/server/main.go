@@ -69,6 +69,7 @@ func main() {
 		r.Post("/logout", h.Logout)
 		r.With(h.AuthMiddleware).Get("/me", h.GetCurrentUser)
 		r.With(h.AuthMiddleware).Put("/me", h.UpdateCurrentUser)
+		r.Post("/demo-login", h.DemoLogin)
 		if cfg.IsDevelopment() {
 			r.Post("/dev-login", h.DevLogin)
 		}
@@ -84,6 +85,11 @@ func main() {
 		r.Put("/{id}", h.UpdateMatch)
 		r.Put("/{id}/notes", h.UpdateMatchNotes)
 		r.Delete("/{id}", h.DeleteMatch)
+	})
+
+	// Admin routes — no AuthMiddleware, protected by ADMIN_SECRET header
+	r.Route("/api/admin", func(r chi.Router) {
+		r.Post("/seed", h.SeedData)
 	})
 
 	// Opponent routes — all require authentication

@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useUser } from "@/contexts/user-context";
 import type { Match, ListMatchesResponse } from "@/types/match";
 import MatchCard from "./match-card";
 
 export default function Feed() {
   const router = useRouter();
+  const { isDemoUser } = useUser();
 
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,14 +62,16 @@ export default function Feed() {
   return (
     <main className="mx-auto max-w-2xl px-4 py-8">
       {/* Log match button */}
-      <div className="mb-6">
-        <button
-          onClick={() => router.push("/log-match")}
-          className="w-full rounded-lg bg-purple-700 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-purple-800 dark:bg-purple-600 dark:text-white dark:hover:bg-purple-500"
-        >
-          Log Match
-        </button>
-      </div>
+      {!isDemoUser && (
+        <div className="mb-6">
+          <button
+            onClick={() => router.push("/log-match")}
+            className="w-full rounded-lg bg-purple-700 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-purple-800 dark:bg-purple-600 dark:text-white dark:hover:bg-purple-500"
+          >
+            Log Match
+          </button>
+        </div>
+      )}
 
       {/* Error banner */}
       {error && (

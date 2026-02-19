@@ -1,4 +1,26 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+
 export default function Home() {
+  const router = useRouter();
+  const [demoLoading, setDemoLoading] = useState(false);
+
+  const handleTryDemo = async () => {
+    setDemoLoading(true);
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/demo-login`,
+        { method: "POST", credentials: "include" }
+      );
+      if (!res.ok) throw new Error("Demo login failed");
+      router.push("/feed");
+    } catch {
+      setDemoLoading(false);
+    }
+  };
+
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-br from-stone-50 to-stone-100 dark:from-stone-900 dark:to-stone-950">
       <div className="flex flex-1 items-center justify-center px-4 pb-24 pt-12 sm:px-6 lg:px-8 lg:pb-12">
@@ -51,13 +73,22 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Desktop Get Started button */}
-            <a
-              href="/login"
-              className="mt-10 hidden rounded-full bg-purple-700 px-8 py-3 text-base font-medium text-white transition-colors hover:bg-purple-800 dark:bg-purple-600 dark:text-white dark:hover:bg-purple-500 lg:inline-block"
-            >
-              Get Started
-            </a>
+            {/* Desktop buttons */}
+            <div className="mt-10 hidden items-center gap-3 lg:inline-flex">
+              <a
+                href="/login"
+                className="rounded-full bg-purple-700 px-8 py-3 text-base font-medium text-white transition-colors hover:bg-purple-800 dark:bg-purple-600 dark:text-white dark:hover:bg-purple-500"
+              >
+                Get Started
+              </a>
+              <button
+                onClick={handleTryDemo}
+                disabled={demoLoading}
+                className="rounded-full border border-purple-300 px-8 py-3 text-base font-medium text-purple-700 transition-colors hover:bg-purple-50 disabled:opacity-50 dark:border-purple-700 dark:text-purple-400 dark:hover:bg-purple-950/30"
+              >
+                {demoLoading ? "Loading..." : "Try Demo"}
+              </button>
+            </div>
           </div>
 
           {/* Video */}
@@ -74,14 +105,23 @@ export default function Home() {
         </main>
       </div>
 
-      {/* Mobile sticky Get Started button */}
+      {/* Mobile sticky buttons */}
       <div className="fixed inset-x-0 bottom-0 border-t border-stone-200 bg-stone-50/90 p-4 backdrop-blur-sm dark:border-stone-800 dark:bg-stone-950/90 lg:hidden">
-        <a
-          href="/login"
-          className="block rounded-full bg-purple-700 px-8 py-3 text-center text-base font-medium text-white transition-colors hover:bg-purple-800 dark:bg-purple-600 dark:text-white dark:hover:bg-purple-500"
-        >
-          Get Started
-        </a>
+        <div className="flex gap-3">
+          <a
+            href="/login"
+            className="flex-1 rounded-full bg-purple-700 px-8 py-3 text-center text-base font-medium text-white transition-colors hover:bg-purple-800 dark:bg-purple-600 dark:text-white dark:hover:bg-purple-500"
+          >
+            Get Started
+          </a>
+          <button
+            onClick={handleTryDemo}
+            disabled={demoLoading}
+            className="flex-1 rounded-full border border-purple-300 px-8 py-3 text-base font-medium text-purple-700 transition-colors hover:bg-purple-50 disabled:opacity-50 dark:border-purple-700 dark:text-purple-400 dark:hover:bg-purple-950/30"
+          >
+            {demoLoading ? "Loading..." : "Try Demo"}
+          </button>
+        </div>
       </div>
     </div>
   );

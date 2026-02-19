@@ -344,6 +344,60 @@ func (h *Handler) DevLogin(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, user)
 }
 
+// DemoLogin handles POST /api/auth/demo-login.
+// It creates a session for the pre-seeded demo user without any credentials.
+// Returns 404 if demo mode is disabled or the demo user doesn't exist.
+func (h *Handler) DemoLogin(w http.ResponseWriter, r *http.Request) {
+	// If no demo email is configured, demo mode is disabled
+	if h.cfg.DemoUserEmail == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Look up the demo user — must already exist (seeded)
+	user, err := h.userRepo.FindByEmail(r.Context(), h.cfg.DemoUserEmail)
+	if err != nil {
+		slog.Warn("Demo user not found", "email", h.cfg.DemoUserEmail, "error", err)
+		http.NotFound(w, r)
+		return
+	}
+
+	// Generate a session token
+	sessionToken, err := generateSecureToken(32)
+	if err != nil {
+		slog.Error("Failed to generate session token", "error", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to process request"})
+		return
+	}
+
+	// Demo sessions expire after 15 minutes (not the default 30 days).
+	// Short expiry keeps the session table from growing unbounded since
+	// demo login requires no credentials.
+	expiresAt := time.Now().Add(15 * time.Minute)
+	_, err = h.sessionRepo.Create(r.Context(), user.ID, sessionToken, expiresAt)
+	if err != nil {
+		slog.Error("Failed to create session", "error", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to process request"})
+		return
+	}
+
+	// Set the session cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session",
+		Value:    sessionToken,
+		Path:     "/",
+		Domain:   h.cfg.CookieDomain,
+		Expires:  expiresAt,
+		HttpOnly: true,
+		Secure:   h.cfg.IsProduction(),
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	slog.Info("Demo login", "email", h.cfg.DemoUserEmail, "user_id", user.ID)
+
+	writeJSON(w, http.StatusOK, user)
+}
+
 // writeJSON writes a JSON response with the given status code.
 func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")

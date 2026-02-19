@@ -58,7 +58,7 @@ function formatDateTime(iso: string): string {
 export default function MatchDetail() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { user } = useUser();
+  const { user, isDemoUser } = useUser();
 
   // Data loading
   const [match, setMatch] = useState<Match | null>(null);
@@ -241,8 +241,8 @@ export default function MatchDetail() {
         Best of {totalGames}
       </p>
 
-      {/* Invite button — shown for non-registered opponents */}
-      {match.opponent && match.opponent.status !== "registered" && (
+      {/* Invite button — shown for non-registered opponents (hidden for demo) */}
+      {!isDemoUser && match.opponent && match.opponent.status !== "registered" && (
         <button
           onClick={() => {
             setInviteEmail("");
@@ -295,23 +295,25 @@ export default function MatchDetail() {
           : `Logged ${formatDateTime(match.created_at)}`}
       </p>
 
-      {/* Action buttons (anchored to bottom) */}
-      <div className="fixed inset-x-0 bottom-0 border-t border-stone-200 bg-stone-50/90 p-4 backdrop-blur-sm dark:border-stone-800 dark:bg-stone-950/90">
-        <div className="mx-auto flex max-w-md gap-3">
-          <button
-            onClick={() => setMode("edit")}
-            className="flex-1 cursor-pointer rounded-lg border border-stone-300 px-4 py-3 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100 dark:border-stone-600 dark:text-stone-300 dark:hover:bg-stone-800"
-          >
-            Edit
-          </button>
-          <button
-            onClick={() => setShowDeleteModal(true)}
-            className="flex-1 cursor-pointer rounded-lg border border-red-200 px-4 py-3 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30"
-          >
-            Delete
-          </button>
+      {/* Action buttons (anchored to bottom) — hidden for demo user */}
+      {!isDemoUser && (
+        <div className="fixed inset-x-0 bottom-0 border-t border-stone-200 bg-stone-50/90 p-4 backdrop-blur-sm dark:border-stone-800 dark:bg-stone-950/90">
+          <div className="mx-auto flex max-w-md gap-3">
+            <button
+              onClick={() => setMode("edit")}
+              className="flex-1 cursor-pointer rounded-lg border border-stone-300 px-4 py-3 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100 dark:border-stone-600 dark:text-stone-300 dark:hover:bg-stone-800"
+            >
+              Edit
+            </button>
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="flex-1 cursor-pointer rounded-lg border border-red-200 px-4 py-3 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30"
+            >
+              Delete
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Invite confirmation modal */}
       {showInviteModal && match.opponent && (

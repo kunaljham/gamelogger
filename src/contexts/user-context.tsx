@@ -13,6 +13,7 @@ import type { User } from "@/types/user";
 interface UserContextValue {
   user: User | null;
   loading: boolean;
+  isDemoUser: boolean;
   signOut: () => Promise<void>;
 }
 
@@ -66,7 +67,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <UserContext.Provider value={{ user, loading, signOut }}>
+    <UserContext.Provider value={{ user, loading, isDemoUser: user?.email === "demo@gamelogger.app", signOut }}>
       {children}
     </UserContext.Provider>
   );

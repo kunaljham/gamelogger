@@ -26,6 +26,12 @@ type Config struct {
 	ResendAPIKey string `env:"RESEND_API_KEY,required"`
 	EmailFrom    string `env:"EMAIL_FROM,required"`
 
+	// Demo
+	DemoUserEmail string `env:"DEMO_USER_EMAIL" envDefault:""`
+
+	// Admin
+	AdminSecret string `env:"ADMIN_SECRET" envDefault:""`
+
 	// URLs
 	FrontendURL  string   `env:"FRONTEND_URL,required"`
 	BackendURL   string   `env:"BACKEND_URL" envDefault:"http://localhost:8080"`
@@ -50,4 +56,9 @@ func (c *Config) IsDevelopment() bool {
 // IsProduction returns true if running in production mode.
 func (c *Config) IsProduction() bool {
 	return c.Environment == "production"
+}
+
+// IsDemoUser returns true if the given email matches the configured demo user.
+func (c *Config) IsDemoUser(email string) bool {
+	return c.DemoUserEmail != "" && email == c.DemoUserEmail
 }

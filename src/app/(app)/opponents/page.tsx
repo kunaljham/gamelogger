@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useUser } from "@/contexts/user-context";
 import type {
   OpponentWithStats,
   ListOpponentsWithStatsResponse,
@@ -34,10 +35,12 @@ function OpponentCard({
   opponent,
   onUpdated,
   onInvite,
+  isDemoUser,
 }: {
   opponent: OpponentWithStats;
   onUpdated: (updated: Opponent) => void;
   onInvite: (opponent: OpponentWithStats) => void;
+  isDemoUser: boolean;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -207,59 +210,61 @@ function OpponentCard({
             <StatusBadge status={opponent.status} />
           )}
 
-          <div ref={menuRef} className="relative">
-            <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-600 dark:text-stone-500 dark:hover:bg-stone-800 dark:hover:text-stone-300"
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                <circle cx="8" cy="3" r="1.5" />
-                <circle cx="8" cy="8" r="1.5" />
-                <circle cx="8" cy="13" r="1.5" />
-              </svg>
-            </button>
+          {!isDemoUser && (
+            <div ref={menuRef} className="relative">
+              <button
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-600 dark:text-stone-500 dark:hover:bg-stone-800 dark:hover:text-stone-300"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                  <circle cx="8" cy="3" r="1.5" />
+                  <circle cx="8" cy="8" r="1.5" />
+                  <circle cx="8" cy="13" r="1.5" />
+                </svg>
+              </button>
 
-            {menuOpen && (
-              <div className="absolute right-0 z-10 mt-1 w-40 overflow-hidden rounded-lg border border-stone-200 bg-white shadow-lg dark:border-stone-700 dark:bg-stone-800">
-                <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    router.push(
-                      `/log-match?opponent=${opponent.id}&name=${encodeURIComponent(opponent.name)}`
-                    );
-                  }}
-                  className="w-full px-4 py-2.5 text-left text-sm text-stone-700 transition-colors hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-700"
-                >
-                  Log match
-                </button>
-                {opponent.status !== "registered" && (
-                  <>
-                    <button
-                      onClick={() => {
-                        setMenuOpen(false);
-                        setEditName(opponent.name);
-                        setEditEmail(opponent.email ?? "");
-                        setEditError("");
-                        setEditing(true);
-                      }}
-                      className="w-full px-4 py-2.5 text-left text-sm text-stone-700 transition-colors hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-700"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => {
-                        setMenuOpen(false);
-                        onInvite(opponent);
-                      }}
-                      className="w-full px-4 py-2.5 text-left text-sm text-stone-700 transition-colors hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-700"
-                    >
-                      {opponent.status === "invited" ? "Re-invite" : "Invite"}
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
+              {menuOpen && (
+                <div className="absolute right-0 z-10 mt-1 w-40 overflow-hidden rounded-lg border border-stone-200 bg-white shadow-lg dark:border-stone-700 dark:bg-stone-800">
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      router.push(
+                        `/log-match?opponent=${opponent.id}&name=${encodeURIComponent(opponent.name)}`
+                      );
+                    }}
+                    className="w-full px-4 py-2.5 text-left text-sm text-stone-700 transition-colors hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-700"
+                  >
+                    Log match
+                  </button>
+                  {opponent.status !== "registered" && (
+                    <>
+                      <button
+                        onClick={() => {
+                          setMenuOpen(false);
+                          setEditName(opponent.name);
+                          setEditEmail(opponent.email ?? "");
+                          setEditError("");
+                          setEditing(true);
+                        }}
+                        className="w-full px-4 py-2.5 text-left text-sm text-stone-700 transition-colors hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-700"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => {
+                          setMenuOpen(false);
+                          onInvite(opponent);
+                        }}
+                        className="w-full px-4 py-2.5 text-left text-sm text-stone-700 transition-colors hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-700"
+                      >
+                        {opponent.status === "invited" ? "Re-invite" : "Invite"}
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -270,6 +275,7 @@ function OpponentCard({
 // Main page component
 // =====================================================================
 export default function OpponentsPage() {
+  const { isDemoUser } = useUser();
   const [opponents, setOpponents] = useState<OpponentWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -490,6 +496,7 @@ export default function OpponentsPage() {
               opponent={opponent}
               onUpdated={handleOpponentUpdated}
               onInvite={handleInviteClick}
+              isDemoUser={isDemoUser}
             />
           ))}
 

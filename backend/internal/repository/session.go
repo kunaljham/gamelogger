@@ -84,6 +84,12 @@ func (r *SessionRepository) FindByTokenWithUser(ctx context.Context, token strin
 	return &s, &u, nil
 }
 
+// DeleteByUserID deletes all sessions for a given user.
+func (r *SessionRepository) DeleteByUserID(ctx context.Context, userID uuid.UUID) error {
+	_, err := r.db.Exec(ctx, `DELETE FROM sessions WHERE user_id = $1`, userID)
+	return err
+}
+
 // DeleteByToken deletes a session (for logout).
 func (r *SessionRepository) DeleteByToken(ctx context.Context, token string) error {
 	result, err := r.db.Exec(ctx, `

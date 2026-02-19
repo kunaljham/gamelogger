@@ -1,0 +1,377 @@
+{
+  "user_name": "Demo User",
+  "opponents": [
+    { "key": "alice", "name": "Alice Chen", "email": "demo-opponent@gamelogger.app" },
+    { "key": "bob", "name": "Bob Martinez" },
+    { "key": "charlie", "name": "Charlie Park", "email": "charlie.park@example.com" },
+    { "key": "diana", "name": "Diana Wright" },
+    { "key": "elena", "name": "Elena Rodriguez", "email": "elena.r@example.com" },
+    { "key": "frank", "name": "Frank Liu" },
+    { "key": "grace", "name": "Grace Kim", "email": "grace.kim@example.com" },
+    { "key": "hank", "name": "Hank O'Brien" },
+    { "key": "iris", "name": "Iris Patel", "email": "iris.p@example.com" },
+    { "key": "jake", "name": "Jake Thompson" },
+    { "key": "karen", "name": "Karen Nakamura", "email": "karen.n@example.com" },
+    { "key": "leo", "name": "Leo Fernandez" },
+    { "key": "mia", "name": "Mia Johnson" },
+    { "key": "noah", "name": "Noah Williams", "email": "noah.w@example.com" },
+    { "key": "olivia", "name": "Olivia Brown" },
+    { "key": "paul", "name": "Paul Davis" },
+    { "key": "quinn", "name": "Quinn Murphy", "email": "quinn.m@example.com" },
+    { "key": "rachel", "name": "Rachel Singh" },
+    { "key": "sam", "name": "Sam Taylor" },
+    { "key": "tina", "name": "Tina Zhao", "email": "tina.z@example.com" },
+    { "key": "uma", "name": "Uma Krishnan" },
+    { "key": "victor", "name": "Victor Osei" },
+    { "key": "wendy", "name": "Wendy Chang", "email": "wendy.c@example.com" },
+    { "key": "xavier", "name": "Xavier Dupont" },
+    { "key": "yuki", "name": "Yuki Tanaka", "email": "yuki.t@example.com" }
+  ],
+  "matches": [
+    {
+      "opponent_key": "alice",
+      "match_type": "bo3",
+      "played_at": "2025-06-01T10:00:00Z",
+      "notes": "First match of the season. Felt really sharp today.\n\nKey takeaways:\n- Serve was **on point** — won 80% of serve rallies\n- Need to keep this energy going into next week",
+      "games": [
+        { "game_number": 1, "user_score": 11, "opponent_score": 5 },
+        { "game_number": 2, "user_score": 11, "opponent_score": 7 }
+      ]
+    },
+    {
+      "opponent_key": "bob",
+      "match_type": "bo3",
+      "played_at": "2025-06-03T14:00:00Z",
+      "notes": "Need to work on my backhand drops.",
+      "games": [
+        { "game_number": 1, "user_score": 7, "opponent_score": 11 },
+        { "game_number": 2, "user_score": 9, "opponent_score": 11 }
+      ]
+    },
+    {
+      "opponent_key": "charlie",
+      "match_type": "bo3",
+      "played_at": "2025-06-05T18:00:00Z",
+      "notes": "Great comeback after losing the first game. Mental toughness paid off.\n\nGame 1 was rough — Charlie dominated the T and I couldn't find my length. Between games I told myself to **slow down** and focus on width.\n\nGame 2 I changed tactics completely: high lobs to the back corners, lots of crosscourt drives. Charlie started making errors and I found my rhythm.\n\nGame 3 was tight but I never let the momentum shift. Really proud of this one.",
+      "games": [
+        { "game_number": 1, "user_score": 8, "opponent_score": 11 },
+        { "game_number": 2, "user_score": 11, "opponent_score": 6 },
+        { "game_number": 3, "user_score": 11, "opponent_score": 9 }
+      ]
+    },
+    {
+      "opponent_key": "diana",
+      "match_type": "bo3",
+      "played_at": "2025-06-07T09:00:00Z",
+      "games": [
+        { "game_number": 1, "user_score": 11, "opponent_score": 9 },
+        { "game_number": 2, "user_score": 9, "opponent_score": 11 },
+        { "game_number": 3, "user_score": 8, "opponent_score": 11 }
+      ]
+    },
+    {
+      "opponent_key": "alice",
+      "match_type": "bo5",
+      "played_at": "2025-06-09T11:00:00Z",
+      "notes": "Epic deuce in game 3.",
+      "games": [
+        { "game_number": 1, "user_score": 11, "opponent_score": 4 },
+        { "game_number": 2, "user_score": 11, "opponent_score": 8 },
+        { "game_number": 3, "user_score": 12, "opponent_score": 10 }
+      ]
+    },
+    {
+      "opponent_key": "bob",
+      "match_type": "bo3",
+      "played_at": "2025-06-11T16:00:00Z",
+      "games": [
+        { "game_number": 1, "user_score": 11, "opponent_score": 3 },
+        { "game_number": 2, "user_score": 11, "opponent_score": 6 }
+      ]
+    },
+    {
+      "opponent_key": "charlie",
+      "match_type": "bo3",
+      "played_at": "2025-06-13T14:30:00Z",
+      "notes": "Charlie was on fire today. Barely got a look in.",
+      "games": [
+        { "game_number": 1, "user_score": 4, "opponent_score": 11 },
+        { "game_number": 2, "user_score": 6, "opponent_score": 11 }
+      ]
+    },
+    {
+      "opponent_key": "diana",
+      "match_type": "bo5",
+      "played_at": "2025-06-15T10:00:00Z",
+      "notes": "So close to winning the fifth. Need to close out matches better when I have the lead.\n\n## What went wrong\n\n1. Lost focus at 9-7 in the fifth — started going for winners too early\n2. Diana read my crosscourt drop every time in games 4 and 5\n3. Fitness was an issue — legs were gone by the end\n\n## What to work on\n\n- **Endurance**: need longer practice sessions\n- **Shot selection** under pressure: stick to the basics when tired\n- Vary the pace more — I was hitting everything at the same speed",
+      "games": [
+        { "game_number": 1, "user_score": 11, "opponent_score": 7 },
+        { "game_number": 2, "user_score": 5, "opponent_score": 11 },
+        { "game_number": 3, "user_score": 11, "opponent_score": 9 },
+        { "game_number": 4, "user_score": 7, "opponent_score": 11 },
+        { "game_number": 5, "user_score": 9, "opponent_score": 11 }
+      ]
+    },
+    {
+      "opponent_key": "alice",
+      "match_type": "bo3",
+      "played_at": "2025-06-17T08:00:00Z",
+      "games": [
+        { "game_number": 1, "user_score": 11, "opponent_score": 8 },
+        { "game_number": 2, "user_score": 11, "opponent_score": 5 }
+      ]
+    },
+    {
+      "opponent_key": "bob",
+      "match_type": "bo3",
+      "played_at": "2025-06-19T13:00:00Z",
+      "notes": "Bob pushed me hard in game 2.",
+      "games": [
+        { "game_number": 1, "user_score": 11, "opponent_score": 9 },
+        { "game_number": 2, "user_score": 12, "opponent_score": 10 }
+      ]
+    },
+    {
+      "opponent_key": "charlie",
+      "match_type": "bo3",
+      "played_at": "2025-06-21T17:00:00Z",
+      "games": [
+        { "game_number": 1, "user_score": 11, "opponent_score": 7 },
+        { "game_number": 2, "user_score": 6, "opponent_score": 11 },
+        { "game_number": 3, "user_score": 8, "opponent_score": 11 }
+      ]
+    },
+    {
+      "opponent_key": "diana",
+      "match_type": "bo3",
+      "played_at": "2025-06-23T10:00:00Z",
+      "notes": "Finally beat Diana! Focused on keeping rallies short.",
+      "games": [
+        { "game_number": 1, "user_score": 11, "opponent_score": 4 },
+        { "game_number": 2, "user_score": 11, "opponent_score": 7 }
+      ]
+    },
+    {
+      "opponent_key": "alice",
+      "match_type": "bo5",
+      "played_at": "2025-06-25T15:00:00Z",
+      "games": [
+        { "game_number": 1, "user_score": 11, "opponent_score": 6 },
+        { "game_number": 2, "user_score": 7, "opponent_score": 11 },
+        { "game_number": 3, "user_score": 11, "opponent_score": 3 },
+        { "game_number": 4, "user_score": 11, "opponent_score": 8 }
+      ]
+    },
+    {
+      "opponent_key": "bob",
+      "match_type": "bo3",
+      "played_at": "2025-06-27T11:00:00Z",
+      "notes": "Off day. Legs felt heavy from yesterday.",
+      "games": [
+        { "game_number": 1, "user_score": 5, "opponent_score": 11 },
+        { "game_number": 2, "user_score": 7, "opponent_score": 11 }
+      ]
+    },
+    {
+      "opponent_key": "charlie",
+      "match_type": "bo3",
+      "played_at": "2025-06-29T09:00:00Z",
+      "games": [
+        { "game_number": 1, "user_score": 11, "opponent_score": 9 },
+        { "game_number": 2, "user_score": 11, "opponent_score": 8 }
+      ]
+    },
+    {
+      "opponent_key": "diana",
+      "match_type": "bo3",
+      "played_at": "2025-07-01T14:00:00Z",
+      "notes": "Another close one with Diana.",
+      "games": [
+        { "game_number": 1, "user_score": 9, "opponent_score": 11 },
+        { "game_number": 2, "user_score": 11, "opponent_score": 5 },
+        { "game_number": 3, "user_score": 11, "opponent_score": 7 }
+      ]
+    },
+    {
+      "opponent_key": "alice",
+      "match_type": "bo3",
+      "played_at": "2025-07-03T16:00:00Z",
+      "notes": "Two deuces and lost both. Heartbreaker.",
+      "games": [
+        { "game_number": 1, "user_score": 10, "opponent_score": 12 },
+        { "game_number": 2, "user_score": 11, "opponent_score": 13 }
+      ]
+    },
+    {
+      "opponent_key": "bob",
+      "match_type": "bo5",
+      "played_at": "2025-07-05T10:00:00Z",
+      "notes": "Best performance of the season. Everything clicked.\n\nThings that worked today:\n- **Volley nicks** from mid-court were landing perfectly\n- Kept the ball *tight* on the wall — Bob couldn't get his racquet through\n- Moved to the ball early, took it on the rise\n\nBob said after the match he felt like he couldn't get into any rallies. Exactly how I wanted to play — dictate the pace from the first shot.",
+      "games": [
+        { "game_number": 1, "user_score": 11, "opponent_score": 3 },
+        { "game_number": 2, "user_score": 11, "opponent_score": 5 },
+        { "game_number": 3, "user_score": 11, "opponent_score": 2 }
+      ]
+    },
+    {
+      "opponent_key": "charlie",
+      "match_type": "bo3",
+      "played_at": "2025-07-07T18:00:00Z",
+      "games": [
+        { "game_number": 1, "user_score": 11, "opponent_score": 6 },
+        { "game_number": 2, "user_score": 11, "opponent_score": 4 }
+      ]
+    },
+    {
+      "opponent_key": "diana",
+      "match_type": "bo3",
+      "played_at": "2025-07-09T08:30:00Z",
+      "notes": "Early morning match. Should have warmed up more.",
+      "games": [
+        { "game_number": 1, "user_score": 6, "opponent_score": 11 },
+        { "game_number": 2, "user_score": 8, "opponent_score": 11 }
+      ]
+    },
+    {
+      "opponent_key": "alice",
+      "match_type": "bo3",
+      "played_at": "2025-07-11T14:00:00Z",
+      "games": [
+        { "game_number": 1, "user_score": 11, "opponent_score": 7 },
+        { "game_number": 2, "user_score": 11, "opponent_score": 9 }
+      ]
+    },
+    {
+      "opponent_key": "bob",
+      "match_type": "bo5",
+      "played_at": "2025-07-13T11:00:00Z",
+      "notes": "Had match point in the 4th game but let it slip. So frustrating.\n\nI was **two games to love up** and completely fell apart. The third game I got tight and started playing not to lose instead of playing to win.\n\nBy the fifth game my confidence was shot. Bob smelled blood and started attacking everything short.\n\n> Lesson: a 2-0 lead means nothing in a best of 5. Stay aggressive.",
+      "games": [
+        { "game_number": 1, "user_score": 11, "opponent_score": 8 },
+        { "game_number": 2, "user_score": 11, "opponent_score": 6 },
+        { "game_number": 3, "user_score": 7, "opponent_score": 11 },
+        { "game_number": 4, "user_score": 9, "opponent_score": 11 },
+        { "game_number": 5, "user_score": 8, "opponent_score": 11 }
+      ]
+    },
+    {
+      "opponent_key": "charlie",
+      "match_type": "bo3",
+      "played_at": "2025-07-15T15:00:00Z",
+      "games": [
+        { "game_number": 1, "user_score": 8, "opponent_score": 11 },
+        { "game_number": 2, "user_score": 11, "opponent_score": 7 },
+        { "game_number": 3, "user_score": 11, "opponent_score": 5 }
+      ]
+    },
+    {
+      "opponent_key": "diana",
+      "match_type": "bo3",
+      "played_at": "2025-07-17T10:00:00Z",
+      "notes": "Getting more consistent against Diana now.",
+      "games": [
+        { "game_number": 1, "user_score": 11, "opponent_score": 6 },
+        { "game_number": 2, "user_score": 11, "opponent_score": 8 }
+      ]
+    },
+    {
+      "opponent_key": "alice",
+      "match_type": "bo5",
+      "played_at": "2025-07-19T16:00:00Z",
+      "notes": "What a match! Down 1-2 and came back to win it. Best match of the summer.\n\nThis was the kind of match that makes you love squash. Alice was playing incredible in games 2 and 3 — her drops were **unreadable** and she was covering the front like a wall.\n\nI told myself at 1-2 down: *just focus on length and width, make her play one more shot every rally*.\n\nGame 4 I played the most disciplined squash of my life. Every ball deep, every serve tight. Alice started to tire and I could see her shots getting looser.\n\nGame 5 was pure adrenaline. At 8-8 I hit a backhand nick that I'll remember forever. Closed it out 11-8.\n\n## Stats\n- Total rallies: ~180\n- Longest rally: 42 shots (game 3)\n- Unforced errors: way too many in games 2-3, almost none in 4-5",
+      "games": [
+        { "game_number": 1, "user_score": 11, "opponent_score": 9 },
+        { "game_number": 2, "user_score": 8, "opponent_score": 11 },
+        { "game_number": 3, "user_score": 7, "opponent_score": 11 },
+        { "game_number": 4, "user_score": 11, "opponent_score": 6 },
+        { "game_number": 5, "user_score": 11, "opponent_score": 8 }
+      ]
+    },
+    {
+      "opponent_key": "elena",
+      "match_type": "bo3",
+      "played_at": "2025-07-21T10:00:00Z",
+      "notes": "First time playing Elena. She has a really deceptive serve.",
+      "games": [
+        { "game_number": 1, "user_score": 11, "opponent_score": 7 },
+        { "game_number": 2, "user_score": 11, "opponent_score": 5 }
+      ]
+    },
+    {
+      "opponent_key": "frank",
+      "match_type": "bo3",
+      "played_at": "2025-07-22T14:00:00Z",
+      "notes": "Frank is tough on the backhand side.",
+      "games": [
+        { "game_number": 1, "user_score": 9, "opponent_score": 11 },
+        { "game_number": 2, "user_score": 7, "opponent_score": 11 }
+      ]
+    },
+    {
+      "opponent_key": "grace",
+      "match_type": "bo3",
+      "played_at": "2025-07-23T16:00:00Z",
+      "notes": "Grace is new to the club but she's already solid. Quick feet, good court coverage.",
+      "games": [
+        { "game_number": 1, "user_score": 11, "opponent_score": 3 },
+        { "game_number": 2, "user_score": 11, "opponent_score": 5 }
+      ]
+    },
+    {
+      "opponent_key": "yuki",
+      "match_type": "bo3",
+      "played_at": "2025-07-25T11:00:00Z",
+      "notes": "First match with Yuki. She plays a very patient game — long rallies, few errors. I had to be the one to take risks and it paid off in game 2.",
+      "games": [
+        { "game_number": 1, "user_score": 5, "opponent_score": 11 },
+        { "game_number": 2, "user_score": 11, "opponent_score": 9 },
+        { "game_number": 3, "user_score": 11, "opponent_score": 7 }
+      ]
+    },
+    {
+      "opponent_key": "xavier",
+      "match_type": "bo3",
+      "played_at": "2025-07-28T10:00:00Z",
+      "notes": "Xavier hits the ball **hard** — fastest pace I've faced all summer. Had to stand further back on the receive.\n\nHis power is impressive but he makes errors when you slow the pace down with lobs. Need to remember that for next time.",
+      "games": [
+        { "game_number": 1, "user_score": 8, "opponent_score": 11 },
+        { "game_number": 2, "user_score": 11, "opponent_score": 6 },
+        { "game_number": 3, "user_score": 11, "opponent_score": 9 }
+      ]
+    },
+    {
+      "opponent_key": "wendy",
+      "match_type": "bo3",
+      "played_at": "2025-07-30T16:00:00Z",
+      "notes": "Wendy's movement is incredible — she gets to everything. I had to play more aggressively than usual to win points.\n\nHer weakness is the volley. When I took the ball early she couldn't react in time.",
+      "games": [
+        { "game_number": 1, "user_score": 11, "opponent_score": 8 },
+        { "game_number": 2, "user_score": 11, "opponent_score": 6 }
+      ]
+    },
+    {
+      "opponent_key": "victor",
+      "match_type": "bo5",
+      "played_at": "2025-08-03T14:00:00Z",
+      "notes": "First bo5 with Victor. He's a grinder — every point is a battle.\n\nI went up 2-0 but he clawed it back to 2-2. In the fifth I told myself: *just keep the ball deep and wait for the opening*.\n\nGame 5 was the most physical game I've played all year. Legs were burning by the end but I held on.\n\n## Key moments\n- Saved 3 game balls in game 4 before losing it\n- Hit a perfect backhand nick at 9-9 in the fifth\n- Victor cramped at 10-8 — respect to him for finishing the match",
+      "games": [
+        { "game_number": 1, "user_score": 11, "opponent_score": 7 },
+        { "game_number": 2, "user_score": 11, "opponent_score": 9 },
+        { "game_number": 3, "user_score": 8, "opponent_score": 11 },
+        { "game_number": 4, "user_score": 9, "opponent_score": 11 },
+        { "game_number": 5, "user_score": 11, "opponent_score": 8 }
+      ]
+    },
+    {
+      "opponent_key": "uma",
+      "match_type": "bo3",
+      "played_at": "2025-08-06T16:00:00Z",
+      "notes": "Uma is left-handed which threw me off completely in the first game. Everything felt reversed — my usual crosscourt was going straight to her forehand.\n\nAdjusted in game 2: targeted her backhand (my forehand side) and it made a huge difference. Need to remember this pattern against lefties.",
+      "games": [
+        { "game_number": 1, "user_score": 6, "opponent_score": 11 },
+        { "game_number": 2, "user_score": 11, "opponent_score": 4 },
+        { "game_number": 3, "user_score": 11, "opponent_score": 7 }
+      ]
+    }
+  ]
+}

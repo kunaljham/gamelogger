@@ -53,6 +53,17 @@ func (h *Handler) AuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
+		// Block write requests for the demo user (read-only mode)
+		if h.cfg.IsDemoUser(user.Email) {
+			switch r.Method {
+			case http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:
+				writeJSON(w, http.StatusForbidden, errorResponse{
+					Error: "Demo mode is read-only. Sign up to log your own matches!",
+				})
+				return
+			}
+		}
+
 		// Add the user to the request context so handlers can access it
 		ctx := context.WithValue(r.Context(), userContextKey, user)
 		next.ServeHTTP(w, r.WithContext(ctx))
