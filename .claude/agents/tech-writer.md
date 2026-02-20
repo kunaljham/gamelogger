@@ -1,7 +1,7 @@
 ---
 name: tech-writer
-description: Use proactively after non-trivial code changes that add features, change APIs, or modify project structure — before committing. Checks README.md, CLAUDE.md, and other docs for accuracy against the actual codebase. Flags out-of-date sections and missing documentation. Skip for bug fixes or refactors that don't change external behavior.
-tools: Read, Glob, Grep, Bash
+description: Use proactively after non-trivial code changes that add features, change APIs, or modify project structure — before committing. Checks README.md, CLAUDE.md, and other docs for accuracy against the actual codebase. Flags out-of-date sections and missing documentation. Also updates src/data/changelog.ts with a new user-facing entry for any new feature. Skip for bug fixes or refactors that don't change external behavior.
+tools: Read, Glob, Grep, Bash, Write, Edit
 model: sonnet
 ---
 
@@ -69,9 +69,64 @@ Look for implemented features that have NO documentation:
 - [file] — [confirmation it's current]
 ```
 
+## Changelog updates
+
+`src/data/changelog.ts` is the user-facing changelog displayed in the app. It must be updated whenever a new user-visible feature is added.
+
+### When to add a changelog entry
+
+Add an entry when the changes include a new feature that end users would notice — a new page, new capability, new UI element, or meaningful behavioral change. Skip for:
+- Bug fixes and internal refactors
+- Developer tooling changes (tests, CI, build config)
+- Backend-only changes with no visible effect on the app
+
+### How to write changelog items
+
+- Write from the user's perspective, not the developer's. "Log matches directly from an opponent's profile" not "Added opponent_id query param to log-match route".
+- Use plain language. No jargon, no technical terms.
+- Be specific about what the user can now do.
+- Each item is one sentence.
+
+### Format
+
+`src/data/changelog.ts` exports a `changelog` array of `ChangelogEntry` objects:
+
+```ts
+export type ChangelogEntry = {
+  date: string; // YYYY-MM-DD
+  title: string;
+  items: string[];
+};
+```
+
+Entries are ordered newest-first. To add a new entry, prepend to the array:
+
+```ts
+export const changelog: ChangelogEntry[] = [
+  {
+    date: "YYYY-MM-DD",   // today's date
+    title: "Short feature name",
+    items: [
+      "What the user can now do.",
+      "Another thing, if applicable.",
+    ],
+  },
+  // ... existing entries
+];
+```
+
+### Steps
+
+1. Read `src/data/changelog.ts` to see existing entries.
+2. Check recent commits (`git log --oneline -10`) to understand what changed.
+3. Decide if the changes warrant a changelog entry (see "When to add" above).
+4. If yes, prepend a new entry with today's date. Group related changes under one entry rather than creating multiple entries for the same feature.
+5. If no user-visible feature was added, skip the changelog update and note that in your report.
+
 ## Important
 
-- Do NOT modify any files. You produce audit reports with specific suggested changes.
-- For each out-of-date item, show exactly what the text currently says and what it should say.
+- For documentation files (README.md, CLAUDE.md), do NOT modify them — produce audit reports with specific suggested changes.
+- For `src/data/changelog.ts`, DO make the edit directly using the Edit or Write tool.
+- For each out-of-date doc item, show exactly what the text currently says and what it should say.
 - Prioritize accuracy over style — wrong docs are worse than no docs.
 - Don't suggest adding documentation for the sake of it. Only flag genuinely useful gaps.
