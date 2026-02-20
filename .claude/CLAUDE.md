@@ -47,9 +47,11 @@ The developer is new to web development and is using this project to learn. When
 ```
 src/
 ├── app/
-│   ├── page.tsx                # Landing page with "Get Started" CTA
+│   ├── page.tsx                # Landing page (uses SiteHeader + SiteFooter)
 │   ├── layout.tsx              # Root layout with Geist fonts
 │   ├── globals.css             # Theme variables (zinc palette, dark mode)
+│   ├── changelog/
+│   │   └── page.tsx            # Public changelog page (uses SiteHeader + SiteFooter)
 │   ├── login/
 │   │   ├── page.tsx            # Email input for sign-in
 │   │   └── check-email/
@@ -58,7 +60,7 @@ src/
 │   │   └── page.tsx            # Post-signup name entry (outside route group)
 │   └── (app)/                  # Route group — shared layout for authenticated pages
 │       ├── layout.tsx          # Wraps children with UserProvider + Nav + gradient
-│       ├── nav.tsx             # Shared nav bar (logo + user avatar)
+│       ├── nav.tsx             # Shared nav bar (logo + nav links + changelog/feedback)
 │       ├── feed/
 │       │   ├── page.tsx        # Match feed with "Log Match" CTA
 │       │   ├── match-card.tsx  # Clickable match card (links to detail)
@@ -70,8 +72,13 @@ src/
 │       │   └── page.tsx        # Opponents list with stats, edit, invite, overflow menu
 │       └── profile/
 │           └── page.tsx        # Profile page (name, email, sign out)
+├── components/
+│   ├── site-header.tsx         # Shared header for public pages (logo, Try Demo, Sign In)
+│   └── site-footer.tsx         # Shared footer for public pages (Changelog, Feedback modal)
 ├── contexts/
 │   └── user-context.tsx        # UserProvider + useUser hook (fetches user, sign-out)
+├── data/
+│   └── changelog.ts            # Changelog entries array (add new entries to top)
 ├── lib/
 │   └── user.ts                 # Shared helpers (getInitials)
 ├── types/
@@ -132,6 +139,10 @@ backend/
 - Backend `GET /api/opponents/with-stats` endpoint with pagination
 - Composite index on `matches(user_id, opponent_id)` for query performance
 - Log-match form supports pre-populating opponent via URL search params
+- Public changelog page (`/changelog`) with timeline layout, driven by `src/data/changelog.ts`
+- Shared SiteHeader and SiteFooter components for public pages (landing, changelog)
+- Feedback modal with email link (accessible from nav and site footer)
+- Authenticated nav includes Changelog and Feedback links (hidden on mobile)
 
 ### Not Yet Implemented
 - (nothing pending)
