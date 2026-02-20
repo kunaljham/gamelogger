@@ -25,6 +25,12 @@ export default function SiteFooter() {
             >
               Feedback
             </button>
+            <a
+              href="/terms"
+              className="text-sm text-stone-400 transition-colors hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300"
+            >
+              Terms
+            </a>
           </div>
         </div>
       </footer>

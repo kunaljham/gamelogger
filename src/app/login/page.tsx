@@ -107,6 +107,16 @@ export default function Login() {
           </button>
         </form>
 
+        <p className="mt-4 text-xs text-stone-400 dark:text-stone-500">
+          By signing in, you agree to our{" "}
+          <a
+            href="/terms"
+            className="underline hover:text-stone-600 dark:hover:text-stone-300"
+          >
+            Terms of Service
+          </a>
+        </p>
+
         {isDevMode && (
           <div className="mt-6 border-t border-stone-200 pt-6 dark:border-stone-700">
             <p className="mb-3 text-xs text-stone-500 dark:text-stone-400">
