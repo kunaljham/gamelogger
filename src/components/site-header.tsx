@@ -22,7 +22,7 @@ export default function SiteHeader() {
   };
 
   return (
-    <header className="border-b border-stone-200/60 dark:border-stone-800/60">
+    <header className="sticky top-0 z-10 border-b border-stone-200/60 bg-stone-50/80 backdrop-blur-sm dark:border-stone-800/60 dark:bg-stone-900/80">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
         <a
           href="/"
