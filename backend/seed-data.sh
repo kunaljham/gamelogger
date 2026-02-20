@@ -16,7 +16,7 @@
 #
 # Environments:
 #   local (default)  → http://localhost:8080
-#   staging          → https://staging-api.gamelogger.app
+#   staging          → https://api-staging.gamelogger.app
 #   prod             → https://api.gamelogger.app
 #
 # The ADMIN_SECRET for staging/prod must be set as an env var.
@@ -58,7 +58,7 @@ case "$ENV" in
     ADMIN_SECRET="${ADMIN_SECRET:-local-dev-secret}"
     ;;
   staging)
-    BASE_URL="https://staging-api.gamelogger.app"
+    BASE_URL="https://api-staging.gamelogger.app"
     if [ -z "${ADMIN_SECRET:-}" ]; then
       echo "ERROR: ADMIN_SECRET env var is required for staging"
       echo "  export ADMIN_SECRET=<your-staging-secret>"
