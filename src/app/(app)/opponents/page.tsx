@@ -467,22 +467,12 @@ export default function OpponentsPage() {
           </div>
         ) : (
           <div className="text-center">
-            <div className="mb-6 flex justify-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-purple-700 text-2xl text-white dark:bg-purple-600 dark:text-white">
-                &#127998;
-              </div>
-            </div>
             <h2 className="mb-3 text-2xl font-bold text-stone-900 dark:text-stone-50 sm:text-3xl">
               No opponents yet
             </h2>
-            <p className="mb-8 text-base text-stone-600 dark:text-stone-400">
+            <p className="text-base text-stone-600 dark:text-stone-400">
               Opponents are added automatically when you log a match.
             </p>
-            <div className="rounded-xl border-2 border-dashed border-stone-200 bg-stone-50/50 px-6 py-12 dark:border-stone-800 dark:bg-stone-800/20">
-              <p className="text-sm text-stone-400 dark:text-stone-500">
-                Your opponents will appear here
-              </p>
-            </div>
           </div>
         )
       )}
