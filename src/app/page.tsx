@@ -79,7 +79,7 @@ export default function Home() {
                 href="/login"
                 className="rounded-full bg-purple-700 px-8 py-3 text-base font-medium text-white transition-colors hover:bg-purple-800 dark:bg-purple-600 dark:text-white dark:hover:bg-purple-500"
               >
-                Get Started
+                Sign In
               </a>
               <button
                 onClick={handleTryDemo}
@@ -112,7 +112,7 @@ export default function Home() {
             href="/login"
             className="flex-1 rounded-full bg-purple-700 px-8 py-3 text-center text-base font-medium text-white transition-colors hover:bg-purple-800 dark:bg-purple-600 dark:text-white dark:hover:bg-purple-500"
           >
-            Get Started
+            Sign In
           </a>
           <button
             onClick={handleTryDemo}
