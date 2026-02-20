@@ -1,5 +1,6 @@
 import SiteHeader from "@/components/site-header";
 import SiteFooter from "@/components/site-footer";
+import HeroCta from "@/components/hero-cta";
 
 export default function Home() {
   return (
@@ -57,6 +58,8 @@ export default function Home() {
                 </p>
               </div>
             </div>
+
+            <HeroCta />
           </div>
 
           {/* Video */}

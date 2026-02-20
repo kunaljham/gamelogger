@@ -9,19 +9,19 @@ export default function SiteFooter() {
     <>
       <footer className="border-t border-stone-200/60 dark:border-stone-800/60">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-          <p className="text-xs text-stone-400 dark:text-stone-500">
+          <p className="text-sm text-stone-400 dark:text-stone-500">
             GameLogger
           </p>
           <div className="flex items-center gap-4">
             <a
               href="/changelog"
-              className="text-xs text-stone-400 transition-colors hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300"
+              className="text-sm text-stone-400 transition-colors hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300"
             >
               Changelog
             </a>
             <button
               onClick={() => setShowFeedback(true)}
-              className="cursor-pointer text-xs text-stone-400 transition-colors hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300"
+              className="cursor-pointer text-sm text-stone-400 transition-colors hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300"
             >
               Feedback
             </button>
