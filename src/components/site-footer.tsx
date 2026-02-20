@@ -1,62 +1,33 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 
-const navLinks = [
-  { href: "/feed", label: "Feed" },
-  { href: "/opponents", label: "Opponents" },
-  { href: "/profile", label: "Profile" },
-];
-
-export default function Nav() {
-  const pathname = usePathname();
+export default function SiteFooter() {
   const [showFeedback, setShowFeedback] = useState(false);
 
   return (
     <>
-      <header className="sticky top-0 z-10 border-b border-stone-200 bg-[#F5F4F0]/80 backdrop-blur-sm dark:border-stone-800 dark:bg-stone-900/80">
-        <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-4">
-          <Link
-            href="/feed"
-            className="text-xl font-bold text-stone-900 dark:text-stone-50"
-          >
+      <footer className="border-t border-stone-200/60 dark:border-stone-800/60">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+          <p className="text-xs text-stone-400 dark:text-stone-500">
             GameLogger
-          </Link>
-          <nav className="flex items-center gap-5">
-            {navLinks.map(({ href, label }) => {
-              const isActive = pathname.startsWith(href);
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  className={`text-sm font-medium transition-colors ${
-                    isActive
-                      ? "text-purple-700 dark:text-purple-400"
-                      : "text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200"
-                  }`}
-                >
-                  {label}
-                </Link>
-              );
-            })}
-            <span className="hidden text-stone-300 dark:text-stone-700 sm:inline">|</span>
-            <Link
+          </p>
+          <div className="flex items-center gap-4">
+            <a
               href="/changelog"
-              className="hidden text-xs text-stone-400 transition-colors hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300 sm:inline"
+              className="text-xs text-stone-400 transition-colors hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300"
             >
               Changelog
-            </Link>
+            </a>
             <button
               onClick={() => setShowFeedback(true)}
-              className="hidden cursor-pointer text-xs text-stone-400 transition-colors hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300 sm:inline"
+              className="cursor-pointer text-xs text-stone-400 transition-colors hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300"
             >
               Feedback
             </button>
-          </nav>
+          </div>
         </div>
-      </header>
+      </footer>
 
       {showFeedback && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
