@@ -75,10 +75,10 @@ export default function TermsPage() {
                 You can request deletion of your account and all associated data
                 at any time by emailing{" "}
                 <a
-                  href="mailto:kunal.jham@gmail.com?subject=GameLogger Account Deletion"
+                  href="mailto:kunal@gamelogger.app?subject=GameLogger Account Deletion"
                   className="font-medium text-purple-700 underline hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300"
                 >
-                  kunal.jham@gmail.com
+                  kunal@gamelogger.app
                 </a>
                 . We will process your request promptly.
               </p>
@@ -124,10 +124,10 @@ export default function TermsPage() {
               <p>
                 Questions about these terms? Reach out at{" "}
                 <a
-                  href="mailto:kunal.jham@gmail.com?subject=GameLogger Terms Question"
+                  href="mailto:kunal@gamelogger.app?subject=GameLogger Terms Question"
                   className="font-medium text-purple-700 underline hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300"
                 >
-                  kunal.jham@gmail.com
+                  kunal@gamelogger.app
                 </a>
               </p>
             </section>

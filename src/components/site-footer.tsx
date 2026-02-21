@@ -49,10 +49,10 @@ export default function SiteFooter() {
               Your feedback is encouraged and greatly appreciated! Reach out
               anytime at{" "}
               <a
-                href="mailto:kunal.jham@gmail.com?subject=GameLogger Feedback"
+                href="mailto:kunal@gamelogger.app?subject=GameLogger Feedback"
                 className="font-medium text-purple-700 underline hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300"
               >
-                kunal.jham@gmail.com
+                kunal@gamelogger.app
               </a>
             </p>
             <button
