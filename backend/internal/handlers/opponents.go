@@ -192,14 +192,26 @@ func (h *Handler) ListOpponentsWithStats(w http.ResponseWriter, r *http.Request)
 		limit = parsed
 	}
 
-	// Parse optional cursor (created_at timestamp)
-	var cursor *string
+	// Parse optional cursor (created_at_id composite)
+	var cursorTime *string
+	var cursorID *uuid.UUID
 	if c := r.URL.Query().Get("cursor"); c != "" {
-		if _, err := time.Parse(time.RFC3339Nano, c); err != nil {
+		parts := strings.SplitN(c, "_", 2)
+		if len(parts) != 2 {
 			writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid cursor format"})
 			return
 		}
-		cursor = &c
+		if _, err := time.Parse(time.RFC3339Nano, parts[0]); err != nil {
+			writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid cursor format"})
+			return
+		}
+		id, err := uuid.Parse(parts[1])
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid cursor format"})
+			return
+		}
+		cursorTime = &parts[0]
+		cursorID = &id
 	}
 
 	// Parse optional search query (prefix match on name)
@@ -208,7 +220,7 @@ func (h *Handler) ListOpponentsWithStats(w http.ResponseWriter, r *http.Request)
 		search = &q
 	}
 
-	opponents, err := h.opponentRepo.ListByUserWithStats(r.Context(), user.ID, limit, cursor, search)
+	opponents, err := h.opponentRepo.ListByUserWithStats(r.Context(), user.ID, limit, cursorTime, cursorID, search)
 	if err != nil {
 		slog.Error("Failed to list opponents with stats", "error", err)
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to list opponents"})
@@ -221,7 +233,8 @@ func (h *Handler) ListOpponentsWithStats(w http.ResponseWriter, r *http.Request)
 
 	resp := listOpponentsWithStatsResponse{Opponents: opponents}
 	if len(opponents) == limit {
-		cursor := opponents[len(opponents)-1].CreatedAt.Format(time.RFC3339Nano)
+		last := opponents[len(opponents)-1]
+		cursor := last.CreatedAt.Format(time.RFC3339Nano) + "_" + last.ID.String()
 		resp.NextCursor = &cursor
 	}
 

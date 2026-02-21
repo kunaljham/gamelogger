@@ -151,24 +151,25 @@ func (r *OpponentRepository) ListByUser(ctx context.Context, userID uuid.UUID, l
 }
 
 // ListByUserWithStats returns a paginated list of opponents for a user with win/loss counts,
-// ordered by created_at DESC. Uses cursor-based pagination where the cursor is the last opponent's created_at timestamp.
+// ordered by created_at DESC, id DESC. Uses cursor-based pagination with a composite cursor
+// (created_at + id) to handle ties in created_at timestamps.
 // If search is non-nil, filters by name using case-insensitive prefix matching.
-func (r *OpponentRepository) ListByUserWithStats(ctx context.Context, userID uuid.UUID, limit int, cursor *string, search *string) ([]models.OpponentWithStats, error) {
+func (r *OpponentRepository) ListByUserWithStats(ctx context.Context, userID uuid.UUID, limit int, cursorTime *string, cursorID *uuid.UUID, search *string) ([]models.OpponentWithStats, error) {
 	var rows pgx.Rows
 	var err error
 
-	if search != nil && cursor != nil {
+	if search != nil && cursorTime != nil {
 		rows, err = r.db.Query(ctx, `
 			SELECT o.id, o.user_id, o.email, o.name, o.status, o.invited_at, o.registered_user_id, o.created_at, o.updated_at,
 				COUNT(m.id) FILTER (WHERE m.user_won = TRUE) AS wins,
 				COUNT(m.id) FILTER (WHERE m.user_won = FALSE) AS losses
 			FROM opponents o
 			LEFT JOIN matches m ON m.opponent_id = o.id AND m.user_id = $1
-			WHERE o.user_id = $1 AND o.created_at < $2 AND LOWER(o.name) LIKE LOWER($4) || '%'
+			WHERE o.user_id = $1 AND (o.created_at, o.id) < ($2, $5) AND LOWER(o.name) LIKE LOWER($4) || '%'
 			GROUP BY o.id
-			ORDER BY o.created_at DESC
+			ORDER BY o.created_at DESC, o.id DESC
 			LIMIT $3
-		`, userID, *cursor, limit, *search)
+		`, userID, *cursorTime, limit, *search, *cursorID)
 	} else if search != nil {
 		rows, err = r.db.Query(ctx, `
 			SELECT o.id, o.user_id, o.email, o.name, o.status, o.invited_at, o.registered_user_id, o.created_at, o.updated_at,
@@ -178,21 +179,21 @@ func (r *OpponentRepository) ListByUserWithStats(ctx context.Context, userID uui
 			LEFT JOIN matches m ON m.opponent_id = o.id AND m.user_id = $1
 			WHERE o.user_id = $1 AND LOWER(o.name) LIKE LOWER($3) || '%'
 			GROUP BY o.id
-			ORDER BY o.created_at DESC
+			ORDER BY o.created_at DESC, o.id DESC
 			LIMIT $2
 		`, userID, limit, *search)
-	} else if cursor != nil {
+	} else if cursorTime != nil {
 		rows, err = r.db.Query(ctx, `
 			SELECT o.id, o.user_id, o.email, o.name, o.status, o.invited_at, o.registered_user_id, o.created_at, o.updated_at,
 				COUNT(m.id) FILTER (WHERE m.user_won = TRUE) AS wins,
 				COUNT(m.id) FILTER (WHERE m.user_won = FALSE) AS losses
 			FROM opponents o
 			LEFT JOIN matches m ON m.opponent_id = o.id AND m.user_id = $1
-			WHERE o.user_id = $1 AND o.created_at < $2
+			WHERE o.user_id = $1 AND (o.created_at, o.id) < ($2, $3)
 			GROUP BY o.id
-			ORDER BY o.created_at DESC
-			LIMIT $3
-		`, userID, *cursor, limit)
+			ORDER BY o.created_at DESC, o.id DESC
+			LIMIT $4
+		`, userID, *cursorTime, *cursorID, limit)
 	} else {
 		rows, err = r.db.Query(ctx, `
 			SELECT o.id, o.user_id, o.email, o.name, o.status, o.invited_at, o.registered_user_id, o.created_at, o.updated_at,
@@ -202,7 +203,7 @@ func (r *OpponentRepository) ListByUserWithStats(ctx context.Context, userID uui
 			LEFT JOIN matches m ON m.opponent_id = o.id AND m.user_id = $1
 			WHERE o.user_id = $1
 			GROUP BY o.id
-			ORDER BY o.created_at DESC
+			ORDER BY o.created_at DESC, o.id DESC
 			LIMIT $2
 		`, userID, limit)
 	}
