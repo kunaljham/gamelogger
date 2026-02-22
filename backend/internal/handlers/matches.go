@@ -17,6 +17,7 @@ import (
 
 // --- Request/Response types ---
 
+// createMatchRequest is the JSON body for POST /api/matches and PUT /api/matches/{id}.
 type createMatchRequest struct {
 	OpponentID string        `json:"opponent_id"`
 	MatchType  string        `json:"match_type"`

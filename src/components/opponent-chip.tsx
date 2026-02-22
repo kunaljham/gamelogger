@@ -3,7 +3,7 @@
 import type { Opponent } from "@/types/match";
 
 interface OpponentChipProps {
-  opponent: Opponent;
+  opponent: Pick<Opponent, "name" | "status">;
   onRemove?: () => void;
   size?: "sm" | "md" | "lg";
 }

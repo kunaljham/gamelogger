@@ -310,10 +310,9 @@ function LogMatch() {
             {selectedOpponent?.type === "existing" ? (
               <OpponentChip
                 opponent={{
-                  id: selectedOpponent.id,
                   name: selectedOpponent.name,
                   status: (selectedOpponent.status ?? "unregistered") as Opponent["status"],
-                } as Opponent}
+                }}
                 size="lg"
                 onRemove={() => {
                   setSelectedOpponent(null);

@@ -91,13 +91,17 @@ export default function MatchDetail() {
   // ── Invite success handler ───────────────────────────────────────
   const handleInviteSuccess = async () => {
     setShowInviteModal(false);
-    const matchRes = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/matches/${id}`,
-      { credentials: "include" }
-    );
-    if (matchRes.ok) {
-      const data: Match = await matchRes.json();
-      setMatch(data);
+    try {
+      const matchRes = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/matches/${id}`,
+        { credentials: "include" }
+      );
+      if (matchRes.ok) {
+        const data: Match = await matchRes.json();
+        setMatch(data);
+      }
+    } catch {
+      // Refetch failed — invite was sent successfully, data will refresh on next load
     }
   };
 
