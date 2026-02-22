@@ -572,7 +572,7 @@ function LogMatch() {
               <span className="font-normal text-stone-400">(optional)</span>
             </label>
             <p className="mb-1.5 text-xs text-stone-400 dark:text-stone-500">
-              Opponents can see the match result, but never your notes.{" "}
+              Private to you.{" "}
               <a
                 href="https://www.markdownguide.org/basic-syntax/"
                 target="_blank"
