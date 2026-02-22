@@ -37,7 +37,7 @@ export default function Home() {
                   ✓
                 </div>
                 <p className="text-lg text-stone-700 dark:text-stone-300">
-                  Log scores game-by-game, with private notes only you can see
+                  Log scores game-by-game, with notes only you can see
                 </p>
               </div>
               <div className="flex items-start gap-3 text-left">
