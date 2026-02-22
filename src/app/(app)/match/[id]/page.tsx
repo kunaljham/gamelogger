@@ -201,6 +201,21 @@ export default function MatchDetail() {
       {/* Notes */}
       {match.notes && (
         <div className="mt-4 border-l-2 border-purple-400 pl-4 dark:border-purple-600">
+          <p className="mb-1 flex items-center gap-1 text-xs font-medium text-purple-500 dark:text-purple-400">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 16 16"
+              fill="currentColor"
+              className="size-3"
+            >
+              <path
+                fillRule="evenodd"
+                d="M8 1a3.5 3.5 0 0 0-3.5 3.5V7A1.5 1.5 0 0 0 3 8.5v4A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5v-4A1.5 1.5 0 0 0 11 7V4.5A3.5 3.5 0 0 0 8 1Zm2 6V4.5a2 2 0 1 0-4 0V7h4Z"
+                clipRule="evenodd"
+              />
+            </svg>
+            Private note — only visible to you
+          </p>
           <div className="prose prose-sm prose-stone dark:prose-invert max-w-none text-stone-600 dark:text-stone-400">
             <ReactMarkdown remarkPlugins={[remarkBreaks]}>{preserveNewlines(match.notes)}</ReactMarkdown>
           </div>
