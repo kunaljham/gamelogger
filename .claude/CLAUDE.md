@@ -9,6 +9,16 @@ The developer is new to web development and is using this project to learn. When
 - Introduce new concepts (frameworks, patterns, tools) when they come up
 - Keep explanations concise but clear
 
+## Code Review Workflow
+
+After every non-trivial code change (new features, multi-file edits, logic changes) and **before committing**:
+
+1. Run the **qa-tester** agent — runs tests, build, and lint; reviews coverage gaps
+2. Run the **sre** agent — audits for performance issues (N+1 queries, slow patterns, bundle size)
+3. Run the **code-reviewer** agent — reviews simplicity, maintainability, and correctness
+
+All three must run and their findings must be addressed before the commit is made. Skip only for trivial changes (typo fixes, comment edits, config tweaks).
+
 ## Tech Stack
 
 **Frontend:**
