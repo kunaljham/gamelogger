@@ -7,48 +7,20 @@ import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import type { Match } from "@/types/match";
 import { preserveNewlines } from "@/lib/markdown";
+import {
+  type GameScore,
+  validateGameScore,
+  countWins,
+  getMatchStatusMessage,
+  formatDateTime,
+} from "@/lib/match";
+import InviteModal from "@/components/invite-modal";
 
-// ── Score validation (same logic as log-match) ──────────────────────
-interface GameScore {
-  userScore: string;
-  opponentScore: string;
-}
-
-function validateGameScore(
-  userScore: number,
-  opponentScore: number
-): string | null {
-  if (userScore < 0 || opponentScore < 0) return "Scores must be 0 or higher";
-  const winnerScore = Math.max(userScore, opponentScore);
-  const loserScore = Math.min(userScore, opponentScore);
-  if (winnerScore === loserScore) return "Game cannot end in a tie";
-  if (loserScore <= 9) {
-    if (winnerScore !== 11)
-      return "Winner must reach exactly 11 (or win by 2 past 10-10)";
-  } else {
-    if (winnerScore - loserScore !== 2)
-      return "Must win by 2 when score goes past 10-10";
-  }
-  return null;
-}
-
-// ── Date formatting ─────────────────────────────────────────────────
 function formatDate(iso: string): string {
   return new Intl.DateTimeFormat("en-US", {
     month: "long",
     day: "numeric",
     year: "numeric",
-  }).format(new Date(iso));
-}
-
-function formatDateTime(iso: string): string {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZoneName: "short",
   }).format(new Date(iso));
 }
 
@@ -74,9 +46,6 @@ export default function MatchDetail() {
 
   // Invite modal
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteError, setInviteError] = useState("");
-  const [inviting, setInviting] = useState(false);
 
   // ── Fetch match on mount ──────────────────────────────────────────
   useEffect(() => {
@@ -119,66 +88,16 @@ export default function MatchDetail() {
     }
   };
 
-  // ── Invite handler ───────────────────────────────────────────────
-  const handleInvite = async () => {
-    setInviteError("");
-    const opponent = match?.opponent;
-    if (!opponent) return;
-
-    const needsEmail = !opponent.email;
-    if (needsEmail) {
-      const trimmed = inviteEmail.trim();
-      if (!trimmed) {
-        setInviteError("Email is required to send an invite.");
-        return;
-      }
-      // Save the email to the opponent first
-      setInviting(true);
-      const updateRes = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/opponents/${opponent.id}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: opponent.name, email: trimmed }),
-          credentials: "include",
-        }
-      );
-      if (!updateRes.ok) {
-        const data = await updateRes.json();
-        setInviteError(data.error || "Failed to save email.");
-        setInviting(false);
-        return;
-      }
-    } else {
-      setInviting(true);
-    }
-
-    // Send the invite
-    try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/opponents/${opponent.id}/invite`,
-        { method: "POST", credentials: "include" }
-      );
-      if (!res.ok) {
-        const data = await res.json();
-        setInviteError(data.error || "Failed to send invite.");
-        return;
-      }
-      // Refetch match to get updated opponent data
-      const matchRes = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/matches/${id}`,
-        { credentials: "include" }
-      );
-      if (matchRes.ok) {
-        const data: Match = await matchRes.json();
-        setMatch(data);
-      }
-      setShowInviteModal(false);
-      setInviteEmail("");
-    } catch {
-      setInviteError("Something went wrong.");
-    } finally {
-      setInviting(false);
+  // ── Invite success handler ───────────────────────────────────────
+  const handleInviteSuccess = async () => {
+    setShowInviteModal(false);
+    const matchRes = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/matches/${id}`,
+      { credentials: "include" }
+    );
+    if (matchRes.ok) {
+      const data: Match = await matchRes.json();
+      setMatch(data);
     }
   };
 
@@ -244,11 +163,7 @@ export default function MatchDetail() {
       {/* Invite button — shown for non-registered opponents (hidden for demo) */}
       {!isDemoUser && match.opponent && match.opponent.status !== "registered" && (
         <button
-          onClick={() => {
-            setInviteEmail("");
-            setInviteError("");
-            setShowInviteModal(true);
-          }}
+          onClick={() => setShowInviteModal(true)}
           className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-full border border-purple-200 bg-purple-50 px-4 py-2.5 text-sm font-medium text-purple-700 transition-colors hover:bg-purple-100 dark:border-purple-800 dark:bg-purple-950/30 dark:text-purple-400 dark:hover:bg-purple-950/50"
         >
           {match.opponent.status === "invited"
@@ -317,76 +232,11 @@ export default function MatchDetail() {
 
       {/* Invite confirmation modal */}
       {showInviteModal && match.opponent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <div
-            className="fixed inset-0 bg-black/50"
-            onClick={() => !inviting && setShowInviteModal(false)}
-          />
-          <div className="relative w-full max-w-sm rounded-xl border border-stone-200 bg-white p-6 shadow-xl dark:border-stone-700 dark:bg-stone-900">
-            <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-50">
-              {match.opponent.status === "invited"
-                ? `Re-invite ${match.opponent.name}?`
-                : `Invite ${match.opponent.name}?`}
-            </h2>
-            <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">
-              {match.opponent.status === "invited"
-                ? `This will send another invitation email to ${match.opponent.email}. They\u2019ll get a link to join GameLogger.`
-                : match.opponent.email
-                  ? `This will send an email to ${match.opponent.email} inviting them to join GameLogger so they can track matches too.`
-                  : "This will send them an email inviting them to join GameLogger so they can track matches too."}
-            </p>
-
-            {match.opponent.status === "invited" && match.opponent.invited_at && (
-              <p className="mt-2 text-xs text-stone-400 dark:text-stone-500">
-                Last invited {formatDateTime(match.opponent.invited_at)}
-              </p>
-            )}
-
-            {/* Email input — only if opponent has no email */}
-            {!match.opponent.email && (
-              <div className="mt-4">
-                <label className="mb-1.5 block text-sm font-medium text-stone-700 dark:text-stone-300">
-                  Their email address
-                </label>
-                <input
-                  type="email"
-                  value={inviteEmail}
-                  onChange={(e) => {
-                    setInviteEmail(e.target.value);
-                    setInviteError("");
-                  }}
-                  disabled={inviting}
-                  placeholder="opponent@example.com"
-                  className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-900 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
-                />
-              </div>
-            )}
-
-            {inviteError && (
-              <p className="mt-2 text-sm text-red-600 dark:text-red-400">{inviteError}</p>
-            )}
-
-            <div className="mt-6 flex gap-3">
-              <button
-                onClick={() => {
-                  setShowInviteModal(false);
-                  setInviteError("");
-                }}
-                disabled={inviting}
-                className="flex-1 rounded-lg border border-stone-300 px-4 py-2.5 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100 disabled:opacity-50 dark:border-stone-600 dark:text-stone-300 dark:hover:bg-stone-800"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleInvite}
-                disabled={inviting}
-                className="flex-1 rounded-lg bg-purple-700 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-purple-800 disabled:opacity-50 dark:bg-purple-600 dark:hover:bg-purple-500"
-              >
-                {inviting ? "Sending..." : "Send Invite"}
-              </button>
-            </div>
-          </div>
-        </div>
+        <InviteModal
+          opponent={match.opponent}
+          onClose={() => setShowInviteModal(false)}
+          onSuccess={handleInviteSuccess}
+        />
       )}
 
       {/* Delete confirmation modal */}
@@ -457,19 +307,7 @@ function EditMode({
   const maxGames = matchType === "bo3" ? 3 : 5;
 
   // ── Derived values ────────────────────────────────────────────────
-  const filledGames = games.filter(
-    (g) => g.userScore !== "" && g.opponentScore !== ""
-  );
-  let userWins = 0;
-  let oppWins = 0;
-  for (const g of filledGames) {
-    const u = parseInt(g.userScore, 10);
-    const o = parseInt(g.opponentScore, 10);
-    if (!isNaN(u) && !isNaN(o)) {
-      if (u > o) userWins++;
-      else if (o > u) oppWins++;
-    }
-  }
+  const { userWins, oppWins, filledGames } = countWins(games);
   const matchComplete = userWins >= requiredWins || oppWins >= requiredWins;
 
   // Auto-add next game row
@@ -566,20 +404,12 @@ function EditMode({
     }
   };
 
-  // Match status message
-  let statusMessage = "";
-  if (filledGames.length > 0) {
-    if (matchComplete) {
-      const winner = userWins > oppWins ? "You won" : "Opponent won";
-      statusMessage = `Match complete — ${winner} ${Math.max(userWins, oppWins)}-${Math.min(userWins, oppWins)}`;
-    } else if (userWins === oppWins) {
-      statusMessage = `Tied ${userWins}-${oppWins}`;
-    } else if (userWins > oppWins) {
-      statusMessage = `You lead ${userWins}-${oppWins}`;
-    } else {
-      statusMessage = `Opponent leads ${oppWins}-${userWins}`;
-    }
-  }
+  const statusMessage = getMatchStatusMessage(
+    userWins,
+    oppWins,
+    matchComplete,
+    filledGames.length > 0
+  );
 
   return (
     <main className="mx-auto w-full max-w-md px-4 py-8">

@@ -18,25 +18,17 @@ import (
 // --- Request/Response types ---
 
 type createMatchRequest struct {
-	OpponentID string             `json:"opponent_id"`
-	MatchType  string             `json:"match_type"`
-	PlayedAt   string             `json:"played_at"`
-	Notes      *string            `json:"notes,omitempty"`
-	Games      []gameRequest      `json:"games"`
+	OpponentID string        `json:"opponent_id"`
+	MatchType  string        `json:"match_type"`
+	PlayedAt   string        `json:"played_at"`
+	Notes      *string       `json:"notes,omitempty"`
+	Games      []gameRequest `json:"games"`
 }
 
 type gameRequest struct {
 	GameNumber    int `json:"game_number"`
 	UserScore     int `json:"user_score"`
 	OpponentScore int `json:"opponent_score"`
-}
-
-type updateMatchRequest struct {
-	OpponentID string             `json:"opponent_id"`
-	MatchType  string             `json:"match_type"`
-	PlayedAt   string             `json:"played_at"`
-	Notes      *string            `json:"notes,omitempty"`
-	Games      []gameRequest      `json:"games"`
 }
 
 type listMatchesResponse struct {
@@ -274,7 +266,7 @@ func (h *Handler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req updateMatchRequest
+	var req createMatchRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid request body"})
 		return

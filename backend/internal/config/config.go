@@ -17,7 +17,6 @@ type Config struct {
 	DatabaseURL string `env:"DATABASE_URL,required"`
 
 	// Authentication
-	JWTSecret       string        `env:"JWT_SECRET,required"`
 	SessionSecret   string        `env:"SESSION_SECRET,required"`
 	MagicLinkExpiry time.Duration `env:"MAGIC_LINK_EXPIRY" envDefault:"15m"`
 	SessionExpiry   time.Duration `env:"SESSION_EXPIRY" envDefault:"720h"`
