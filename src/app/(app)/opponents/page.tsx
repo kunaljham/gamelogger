@@ -351,16 +351,18 @@ export default function OpponentsPage() {
         Opponents
       </h1>
 
-      {/* Search input */}
-      <div className="mb-4">
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => handleSearchChange(e.target.value)}
-          placeholder="Search opponents..."
-          className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-900 transition-colors placeholder:text-stone-400 focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:placeholder:text-stone-500 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
-        />
-      </div>
+      {/* Search input — hidden in the true empty state (no opponents, no active search) */}
+      {(loading || error || opponents.length > 0 || !!searchQuery.trim()) && (
+        <div className="mb-4">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            placeholder="Search opponents..."
+            className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-900 transition-colors placeholder:text-stone-400 focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:placeholder:text-stone-500 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
+          />
+        </div>
+      )}
 
       {/* Error banner */}
       {error && (
@@ -396,12 +398,9 @@ export default function OpponentsPage() {
             </p>
           </div>
         ) : (
-          <div className="text-center">
-            <h2 className="mb-3 text-2xl font-bold text-stone-900 dark:text-stone-50 sm:text-3xl">
-              No opponents yet
-            </h2>
-            <p className="text-base text-stone-600 dark:text-stone-400">
-              Opponents are added automatically when you log a match.
+          <div className="py-12 text-center">
+            <p className="text-sm text-stone-400 dark:text-stone-500">
+              No opponents yet. They&rsquo;re added automatically when you log a match and are private to you.
             </p>
           </div>
         )
