@@ -18,9 +18,8 @@ export default function Home() {
               squash matches
             </h1>
             <p className="mx-auto max-w-xl text-lg leading-relaxed text-stone-600 dark:text-stone-400 sm:text-xl lg:mx-0">
-              A private journal for your squash matches. Log scores, keep
-              personal notes, and build a history of your games without
-              affecting your{" "}
+              Your personal match log for squash. Log scores, keep private
+              notes, and build a history of your games without affecting your{" "}
               <a
                 href="https://ussquash.org/ratings/"
                 target="_blank"
@@ -29,7 +28,7 @@ export default function Home() {
               >
                 USR
               </a>
-              . Invite opponents and they get their own private journal too.
+              . Invite opponents and they can log their own private notes too.
             </p>
 
             <div className="mt-8 flex flex-col gap-4 sm:mx-auto sm:max-w-md lg:mx-0">
@@ -54,7 +53,7 @@ export default function Home() {
                   ✓
                 </div>
                 <p className="text-lg text-stone-700 dark:text-stone-300">
-                  Invite opponents and they get their own private journal, separate from yours
+                  Invite opponents and they can add their own private notes to shared matches
                 </p>
               </div>
             </div>
