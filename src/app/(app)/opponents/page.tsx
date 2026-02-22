@@ -468,12 +468,9 @@ export default function OpponentsPage() {
             </p>
           </div>
         ) : (
-          <div className="text-center">
-            <h2 className="mb-3 text-2xl font-bold text-stone-900 dark:text-stone-50 sm:text-3xl">
-              No opponents yet
-            </h2>
-            <p className="text-base text-stone-600 dark:text-stone-400">
-              Opponents are added automatically when you log a match. They&rsquo;re private to you and won&rsquo;t be visible to anyone else.
+          <div className="py-12 text-center">
+            <p className="text-sm text-stone-400 dark:text-stone-500">
+              No opponents yet. They&rsquo;re added automatically when you log a match and are private to you.
             </p>
           </div>
         )
