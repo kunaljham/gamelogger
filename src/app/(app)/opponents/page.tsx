@@ -8,27 +8,7 @@ import type {
   ListOpponentsWithStatsResponse,
   Opponent,
 } from "@/types/match";
-
-// ── Date formatting ─────────────────────────────────────────────────
-function formatDateTime(iso: string): string {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZoneName: "short",
-  }).format(new Date(iso));
-}
-
-// ── Status badge (registered only) ──────────────────────────────────
-function StatusBadge({ status }: { status: "registered" }) {
-  return (
-    <span className="inline-block rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400">
-      {status === "registered" && "Registered"}
-    </span>
-  );
-}
+import InviteModal from "@/components/invite-modal";
 
 // ── Opponent card ───────────────────────────────────────────────────
 function OpponentCard({
@@ -207,7 +187,9 @@ function OpponentCard({
         {/* Right side: status badge + overflow menu */}
         <div className="flex shrink-0 items-center gap-2">
           {opponent.status === "registered" && (
-            <StatusBadge status={opponent.status} />
+            <span className="inline-block rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400">
+              Registered
+            </span>
           )}
 
           {!isDemoUser && (
@@ -288,9 +270,6 @@ export default function OpponentsPage() {
   const [inviteTarget, setInviteTarget] = useState<OpponentWithStats | null>(
     null
   );
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteError, setInviteError] = useState("");
-  const [inviting, setInviting] = useState(false);
 
   const fetchOpponents = async (cursor?: string, search?: string) => {
     const isLoadMore = !!cursor;
@@ -356,63 +335,14 @@ export default function OpponentsPage() {
   // Open invite modal
   const handleInviteClick = (opponent: OpponentWithStats) => {
     setInviteTarget(opponent);
-    setInviteEmail("");
-    setInviteError("");
   };
 
-  // Send invite
-  const handleInvite = async () => {
-    if (!inviteTarget) return;
-    setInviteError("");
-
-    const needsEmail = !inviteTarget.email;
-    if (needsEmail) {
-      const trimmed = inviteEmail.trim();
-      if (!trimmed) {
-        setInviteError("Email is required to send an invite.");
-        return;
-      }
-      // Save the email first
-      setInviting(true);
-      const updateRes = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/opponents/${inviteTarget.id}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: inviteTarget.name, email: trimmed }),
-          credentials: "include",
-        }
-      );
-      if (!updateRes.ok) {
-        const data = await updateRes.json();
-        setInviteError(data.error || "Failed to save email.");
-        setInviting(false);
-        return;
-      }
-    } else {
-      setInviting(true);
-    }
-
-    try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/opponents/${inviteTarget.id}/invite`,
-        { method: "POST", credentials: "include" }
-      );
-      if (!res.ok) {
-        const data = await res.json();
-        setInviteError(data.error || "Failed to send invite.");
-        return;
-      }
-      // Refetch from the beginning to get updated statuses and stats
-      setInviteTarget(null);
-      setNextCursor(null);
-      setLoading(true);
-      fetchOpponents(undefined, searchQuery.trim() || undefined);
-    } catch {
-      setInviteError("Something went wrong.");
-    } finally {
-      setInviting(false);
-    }
+  // After successful invite: refetch from beginning to get updated statuses
+  const handleInviteSuccess = () => {
+    setInviteTarget(null);
+    setNextCursor(null);
+    setLoading(true);
+    fetchOpponents(undefined, searchQuery.trim() || undefined);
   };
 
   return (
@@ -507,78 +437,11 @@ export default function OpponentsPage() {
 
       {/* Invite modal */}
       {inviteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <div
-            className="fixed inset-0 bg-black/50"
-            onClick={() => !inviting && setInviteTarget(null)}
-          />
-          <div className="relative w-full max-w-sm rounded-xl border border-stone-200 bg-white p-6 shadow-xl dark:border-stone-700 dark:bg-stone-900">
-            <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-50">
-              {inviteTarget.status === "invited"
-                ? `Re-invite ${inviteTarget.name}?`
-                : `Invite ${inviteTarget.name}?`}
-            </h2>
-            <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">
-              {inviteTarget.status === "invited"
-                ? `This will send another invitation email to ${inviteTarget.email}. They\u2019ll get a link to join GameLogger.`
-                : inviteTarget.email
-                  ? `This will send an email to ${inviteTarget.email} inviting them to join GameLogger so they can track matches too.`
-                  : "This will send them an email inviting them to join GameLogger so they can track matches too."}
-            </p>
-
-            {inviteTarget.status === "invited" && inviteTarget.invited_at && (
-              <p className="mt-2 text-xs text-stone-400 dark:text-stone-500">
-                Last invited {formatDateTime(inviteTarget.invited_at)}
-              </p>
-            )}
-
-            {/* Email input — only if opponent has no email */}
-            {!inviteTarget.email && (
-              <div className="mt-4">
-                <label className="mb-1.5 block text-sm font-medium text-stone-700 dark:text-stone-300">
-                  Their email address
-                </label>
-                <input
-                  type="email"
-                  value={inviteEmail}
-                  onChange={(e) => {
-                    setInviteEmail(e.target.value);
-                    setInviteError("");
-                  }}
-                  disabled={inviting}
-                  placeholder="opponent@example.com"
-                  className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-900 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
-                />
-              </div>
-            )}
-
-            {inviteError && (
-              <p className="mt-2 text-sm text-red-600 dark:text-red-400">
-                {inviteError}
-              </p>
-            )}
-
-            <div className="mt-6 flex gap-3">
-              <button
-                onClick={() => {
-                  setInviteTarget(null);
-                  setInviteError("");
-                }}
-                disabled={inviting}
-                className="flex-1 rounded-lg border border-stone-300 px-4 py-2.5 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100 disabled:opacity-50 dark:border-stone-600 dark:text-stone-300 dark:hover:bg-stone-800"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleInvite}
-                disabled={inviting}
-                className="flex-1 rounded-lg bg-purple-700 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-purple-800 disabled:opacity-50 dark:bg-purple-600 dark:hover:bg-purple-500"
-              >
-                {inviting ? "Sending..." : "Send Invite"}
-              </button>
-            </div>
-          </div>
-        </div>
+        <InviteModal
+          opponent={inviteTarget}
+          onClose={() => setInviteTarget(null)}
+          onSuccess={handleInviteSuccess}
+        />
       )}
     </main>
   );

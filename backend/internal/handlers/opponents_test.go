@@ -103,7 +103,7 @@ func TestCreateOpponent_NotAuthenticated(t *testing.T) {
 
 func TestUpdateOpponent_InvalidID(t *testing.T) {
 	h := opponentTestHandler()
-	req := opponentRequest(http.MethodPut, "/api/opponents/not-a-uuid", updateOpponentRequest{Name: "Alice"})
+	req := opponentRequest(http.MethodPut, "/api/opponents/not-a-uuid", createOpponentRequest{Name: "Alice"})
 	w := httptest.NewRecorder()
 
 	// chi.URLParam won't work without chi context, so the ID will be empty string
@@ -118,7 +118,7 @@ func TestUpdateOpponent_InvalidID(t *testing.T) {
 
 func TestUpdateOpponent_MissingName(t *testing.T) {
 	h := opponentTestHandler()
-	req := opponentRequest(http.MethodPut, "/api/opponents/"+uuid.New().String(), updateOpponentRequest{Name: ""})
+	req := opponentRequest(http.MethodPut, "/api/opponents/"+uuid.New().String(), createOpponentRequest{Name: ""})
 	w := httptest.NewRecorder()
 
 	// Without chi route context, URLParam returns "", but we still test name validation
@@ -133,7 +133,7 @@ func TestUpdateOpponent_MissingName(t *testing.T) {
 func TestUpdateOpponent_InvalidEmail(t *testing.T) {
 	h := opponentTestHandler()
 	badEmail := "bad-email"
-	req := opponentRequest(http.MethodPut, "/api/opponents/"+uuid.New().String(), updateOpponentRequest{
+	req := opponentRequest(http.MethodPut, "/api/opponents/"+uuid.New().String(), createOpponentRequest{
 		Name:  "Alice",
 		Email: &badEmail,
 	})

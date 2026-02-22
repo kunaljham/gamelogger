@@ -15,14 +15,8 @@ import (
 	"github.com/kunaljham/gamelogger/backend/internal/repository"
 )
 
-// createOpponentRequest is the JSON body for POST /api/opponents.
+// createOpponentRequest is the JSON body for POST /api/opponents and PUT /api/opponents/{id}.
 type createOpponentRequest struct {
-	Name  string  `json:"name"`
-	Email *string `json:"email,omitempty"`
-}
-
-// updateOpponentRequest is the JSON body for PUT /api/opponents/{id}.
-type updateOpponentRequest struct {
 	Name  string  `json:"name"`
 	Email *string `json:"email,omitempty"`
 }
@@ -258,7 +252,7 @@ func (h *Handler) UpdateOpponent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req updateOpponentRequest
+	var req createOpponentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid request body"})
 		return

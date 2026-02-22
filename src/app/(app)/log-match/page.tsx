@@ -4,38 +4,17 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Opponent, ListOpponentsResponse } from "@/types/match";
 import OpponentChip from "@/components/opponent-chip";
+import {
+  type GameScore,
+  validateGameScore,
+  countWins,
+  getMatchStatusMessage,
+} from "@/lib/match";
 
 type SelectedOpponent =
   | { type: "existing"; id: string; name: string; status?: string }
   | { type: "new"; name: string; email?: string }
   | null;
-
-interface GameScore {
-  userScore: string;
-  opponentScore: string;
-}
-
-function validateGameScore(
-  userScore: number,
-  opponentScore: number
-): string | null {
-  if (userScore < 0 || opponentScore < 0) return "Scores must be 0 or higher";
-
-  const winnerScore = Math.max(userScore, opponentScore);
-  const loserScore = Math.min(userScore, opponentScore);
-
-  if (winnerScore === loserScore) return "Game cannot end in a tie";
-
-  if (loserScore <= 9) {
-    if (winnerScore !== 11)
-      return "Winner must reach exactly 11 (or win by 2 past 10-10)";
-  } else {
-    if (winnerScore - loserScore !== 2)
-      return "Must win by 2 when score goes past 10-10";
-  }
-
-  return null;
-}
 
 export default function LogMatchPage() {
   return (
@@ -159,20 +138,7 @@ function LogMatch() {
   const requiredWins = 3;
   const maxGames = 5;
 
-  // Count wins from filled games
-  const filledGames = games.filter(
-    (g) => g.userScore !== "" && g.opponentScore !== ""
-  );
-  let userWins = 0;
-  let oppWins = 0;
-  for (const g of filledGames) {
-    const u = parseInt(g.userScore, 10);
-    const o = parseInt(g.opponentScore, 10);
-    if (!isNaN(u) && !isNaN(o)) {
-      if (u > o) userWins++;
-      else if (o > u) oppWins++;
-    }
-  }
+  const { userWins, oppWins, filledGames } = countWins(games);
   const matchComplete = userWins >= requiredWins || oppWins >= requiredWins;
 
   // Auto-add next game row when both scores of the last game are filled
@@ -311,20 +277,12 @@ function LogMatch() {
     }
   };
 
-  // Match status message
-  let statusMessage = "";
-  if (filledGames.length > 0) {
-    if (matchComplete) {
-      const winner = userWins > oppWins ? "You won" : "Opponent won";
-      statusMessage = `Match complete — ${winner} ${Math.max(userWins, oppWins)}-${Math.min(userWins, oppWins)}`;
-    } else if (userWins === oppWins) {
-      statusMessage = `Tied ${userWins}-${oppWins}`;
-    } else if (userWins > oppWins) {
-      statusMessage = `You lead ${userWins}-${oppWins}`;
-    } else {
-      statusMessage = `Opponent leads ${oppWins}-${userWins}`;
-    }
-  }
+  const statusMessage = getMatchStatusMessage(
+    userWins,
+    oppWins,
+    matchComplete,
+    filledGames.length > 0
+  );
 
   return (
     <main className="mx-auto w-full max-w-md px-4 py-8">
@@ -349,19 +307,19 @@ function LogMatch() {
               Opponent
             </label>
             {/* Show chip when opponent is selected, input when not */}
-            {selectedOpponent?.type === "existing" ? (() => {
-              const opp = opponents.find((o) => o.id === selectedOpponent.id);
-              return opp ? (
-                <OpponentChip
-                  opponent={opp}
-                  size="lg"
-                  onRemove={() => {
-                    setSelectedOpponent(null);
-                    setOpponentQuery("");
-                  }}
-                />
-              ) : null;
-            })() : (
+            {selectedOpponent?.type === "existing" ? (
+              <OpponentChip
+                opponent={{
+                  name: selectedOpponent.name,
+                  status: (selectedOpponent.status ?? "unregistered") as Opponent["status"],
+                }}
+                size="lg"
+                onRemove={() => {
+                  setSelectedOpponent(null);
+                  setOpponentQuery("");
+                }}
+              />
+            ) : (
               <>
                 <input
                   role="combobox"
