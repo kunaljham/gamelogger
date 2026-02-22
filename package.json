@@ -32,7 +32,7 @@
     "eslint-config-next": "16.1.1",
     "remotion": "^4.0.424",
     "tailwindcss": "^4",
-    "typescript": "^5",
+    "typescript": "5.9.3",
     "vitest": "^3.2.4"
   }
 }
