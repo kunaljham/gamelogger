@@ -261,6 +261,20 @@ func (r *OpponentRepository) FindUserByEmail(ctx context.Context, email string) 
 	return &id, nil
 }
 
+// FindUserEmailByID returns the email address of a user by their ID.
+// Used to look up the registered opponent's actual email for notifications.
+func (r *OpponentRepository) FindUserEmailByID(ctx context.Context, userID uuid.UUID) (*string, error) {
+	var email string
+	err := r.db.QueryRow(ctx, `SELECT email FROM users WHERE id = $1`, userID).Scan(&email)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &email, nil
+}
+
 // UpdateStatusByEmail updates all opponents with the given email to "registered"
 // status with the specified user ID. Used by the sign-in sweep to link opponents
 // when a user creates their account. Skips rows that are already correct.

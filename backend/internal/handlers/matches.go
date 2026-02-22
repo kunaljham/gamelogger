@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -14,6 +15,46 @@ import (
 	"github.com/kunaljham/gamelogger/backend/internal/models"
 	"github.com/kunaljham/gamelogger/backend/internal/repository"
 )
+
+// buildMatchOutbox creates an outbox entry for notifying a registered opponent about a match.
+// Returns nil if the opponent is not registered or has no email.
+// For new matches, pass uuid.Nil as matchID — the repository will inject it after INSERT.
+func (h *Handler) buildMatchOutbox(ctx context.Context, opponent *models.Opponent, user *models.User, matchID uuid.UUID, isNew bool) *repository.OutboxEntry {
+	if opponent.RegisteredUserID == nil {
+		return nil
+	}
+
+	regEmail, err := h.opponentRepo.FindUserEmailByID(ctx, *opponent.RegisteredUserID)
+	if err != nil || regEmail == nil {
+		if err != nil {
+			slog.Error("Failed to look up opponent email for notification", "error", err)
+		}
+		return nil
+	}
+
+	userName := "Someone"
+	if user.Name != nil {
+		userName = *user.Name
+	}
+
+	payload := map[string]any{
+		"to_email":       *regEmail,
+		"from_user_name": userName,
+		"is_new":         isNew,
+	}
+	// For updates, we already know the match ID. For creates, it's injected by the repo.
+	if matchID != uuid.Nil {
+		payload["match_id"] = matchID.String()
+	}
+
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		slog.Error("Failed to marshal outbox payload", "error", err)
+		return nil
+	}
+
+	return &repository.OutboxEntry{Type: "match_notification", Payload: payloadBytes}
+}
 
 // --- Request/Response types ---
 
@@ -121,7 +162,10 @@ func (h *Handler) CreateMatch(w http.ResponseWriter, r *http.Request) {
 	// Compute user_won from validated games before persisting
 	match.ComputeResult()
 
-	created, err := h.matchRepo.Create(r.Context(), match)
+	// Build notification for registered opponent (match_id injected by repo after INSERT)
+	outbox := h.buildMatchOutbox(r.Context(), opponent, user, uuid.Nil, true)
+
+	created, err := h.matchRepo.Create(r.Context(), match, outbox)
 	if err != nil {
 		slog.Error("Failed to create match", "error", err)
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to create match"})
@@ -333,7 +377,10 @@ func (h *Handler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 	// Compute user_won from validated games before persisting
 	match.ComputeResult()
 
-	updated, err := h.matchRepo.Update(r.Context(), match)
+	// Build notification for registered opponent
+	outbox := h.buildMatchOutbox(r.Context(), opponent, user, id, false)
+
+	updated, err := h.matchRepo.Update(r.Context(), match, outbox)
 	if err != nil {
 		if err == repository.ErrMatchNotFound {
 			writeJSON(w, http.StatusNotFound, errorResponse{Error: "Match not found"})

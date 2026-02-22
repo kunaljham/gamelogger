@@ -15,6 +15,9 @@ import (
 	"github.com/kunaljham/gamelogger/backend/internal/config"
 	"github.com/kunaljham/gamelogger/backend/internal/database"
 	"github.com/kunaljham/gamelogger/backend/internal/handlers"
+	"github.com/kunaljham/gamelogger/backend/internal/repository"
+	"github.com/kunaljham/gamelogger/backend/internal/services"
+	"github.com/kunaljham/gamelogger/backend/internal/workers"
 )
 
 func main() {
@@ -58,6 +61,13 @@ func main() {
 
 	// Initialize handlers
 	h := handlers.New(db, cfg)
+
+	// Start background email worker
+	outboxRepo := repository.NewOutboxRepository(db)
+	emailService := services.NewResendEmailService(cfg.ResendAPIKey, cfg.EmailFrom, cfg.FrontendURL, cfg.BackendURL)
+	emailWorker := workers.NewEmailWorker(outboxRepo, emailService, cfg.FrontendURL)
+	workerCtx, workerCancel := context.WithCancel(context.Background())
+	go emailWorker.Run(workerCtx)
 
 	// Routes
 	r.Get("/api/health", h.HealthCheck)
@@ -134,6 +144,9 @@ func main() {
 	if err := srv.Shutdown(ctx); err != nil {
 		slog.Error("Server forced to shutdown", "error", err)
 	}
+
+	// Stop the email worker goroutine
+	workerCancel()
 
 	slog.Info("Server stopped")
 }

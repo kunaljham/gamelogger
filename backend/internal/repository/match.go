@@ -26,7 +26,9 @@ func NewMatchRepository(db *pgxpool.Pool) *MatchRepository {
 
 // Create inserts a match and its games in a single transaction.
 // A transaction groups multiple SQL statements so they all succeed or all fail.
-func (r *MatchRepository) Create(ctx context.Context, match *models.Match) (*models.Match, error) {
+// If outbox is non-nil, an email outbox row is inserted in the same transaction,
+// guaranteeing the notification is never lost if the match is committed.
+func (r *MatchRepository) Create(ctx context.Context, match *models.Match, outbox *OutboxEntry) (*models.Match, error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -57,6 +59,19 @@ func (r *MatchRepository) Create(ctx context.Context, match *models.Match) (*mod
 		`, match.ID, g.GameNumber, g.UserScore, g.OpponentScore).Scan(
 			&g.ID, &g.MatchID, &g.GameNumber, &g.UserScore, &g.OpponentScore,
 		)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Insert outbox entry atomically with the match.
+	// Uses jsonb_set to inject the match_id (which we just got from RETURNING)
+	// into the payload, so the handler doesn't need to know the ID upfront.
+	if outbox != nil {
+		_, err = tx.Exec(ctx, `
+			INSERT INTO email_outbox (type, payload)
+			VALUES ($1, jsonb_set($2::jsonb, '{match_id}', to_jsonb($3::text)))
+		`, outbox.Type, outbox.Payload, match.ID.String())
 		if err != nil {
 			return nil, err
 		}
@@ -201,7 +216,8 @@ func (r *MatchRepository) ListByUser(ctx context.Context, userID uuid.UUID, limi
 }
 
 // Update updates a match and replaces all its games in a transaction.
-func (r *MatchRepository) Update(ctx context.Context, match *models.Match) (*models.Match, error) {
+// If outbox is non-nil, an email outbox row is inserted in the same transaction.
+func (r *MatchRepository) Update(ctx context.Context, match *models.Match, outbox *OutboxEntry) (*models.Match, error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -240,6 +256,16 @@ func (r *MatchRepository) Update(ctx context.Context, match *models.Match) (*mod
 		`, match.ID, g.GameNumber, g.UserScore, g.OpponentScore).Scan(
 			&g.ID, &g.MatchID, &g.GameNumber, &g.UserScore, &g.OpponentScore,
 		)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Insert outbox entry atomically with the match update
+	if outbox != nil {
+		_, err = tx.Exec(ctx, `
+			INSERT INTO email_outbox (type, payload) VALUES ($1, $2)
+		`, outbox.Type, outbox.Payload)
 		if err != nil {
 			return nil, err
 		}

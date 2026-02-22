@@ -58,6 +58,26 @@ func (m *MockEmailService) SendInvitation(ctx context.Context, toEmail, fromUser
 	return nil
 }
 
+// SendMatchNotification records the notification instead of actually sending.
+func (m *MockEmailService) SendMatchNotification(ctx context.Context, toEmail, fromUserName, matchURL string, isNew bool) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.SendError != nil {
+		return m.SendError
+	}
+
+	action := "new-match"
+	if !isNew {
+		action = "updated-match"
+	}
+	m.SentEmails = append(m.SentEmails, SentEmail{
+		To:    toEmail,
+		Token: action + "-from-" + fromUserName,
+	})
+	return nil
+}
+
 // LastSentEmail returns the most recently sent email, or nil if none.
 func (m *MockEmailService) LastSentEmail() *SentEmail {
 	m.mu.Lock()
