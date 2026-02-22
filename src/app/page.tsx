@@ -18,7 +18,8 @@ export default function Home() {
               squash matches
             </h1>
             <p className="mx-auto max-w-xl text-lg leading-relaxed text-stone-600 dark:text-stone-400 sm:text-xl lg:mx-0">
-              Track your friendly squash matches without affecting your{" "}
+              Your personal match log for squash. Record scores and your
+              thoughts around every match, without affecting your{" "}
               <a
                 href="https://ussquash.org/ratings/"
                 target="_blank"
@@ -27,8 +28,7 @@ export default function Home() {
               >
                 USR
               </a>
-              . Log scores, track opponents, and keep your match history
-              organized—no rating pressure.
+              . Invite opponents and they can do the same.
             </p>
 
             <div className="mt-8 flex flex-col gap-4 sm:mx-auto sm:max-w-md lg:mx-0">
@@ -37,7 +37,7 @@ export default function Home() {
                   ✓
                 </div>
                 <p className="text-lg text-stone-700 dark:text-stone-300">
-                  Log scores game-by-game, with private notes on every match
+                  Build a record around every match, from scores to your own thoughts
                 </p>
               </div>
               <div className="flex items-start gap-3 text-left">
@@ -53,8 +53,7 @@ export default function Home() {
                   ✓
                 </div>
                 <p className="text-lg text-stone-700 dark:text-stone-300">
-                  Invite your opponents so they can track their side of the
-                  match too
+                  Invite opponents and they can build their own record too
                 </p>
               </div>
             </div>
