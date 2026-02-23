@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/kunaljham/gamelogger/backend/internal/repository"
 	"github.com/kunaljham/gamelogger/backend/internal/services"
 )
@@ -29,14 +30,16 @@ type matchNotificationPayload struct {
 // EmailWorker polls the email outbox and sends pending emails.
 type EmailWorker struct {
 	outboxRepo   *repository.OutboxRepository
+	opponentRepo *repository.OpponentRepository
 	emailService services.EmailService
 	frontendURL  string
 }
 
 // NewEmailWorker creates a new EmailWorker.
-func NewEmailWorker(outboxRepo *repository.OutboxRepository, emailService services.EmailService, frontendURL string) *EmailWorker {
+func NewEmailWorker(outboxRepo *repository.OutboxRepository, opponentRepo *repository.OpponentRepository, emailService services.EmailService, frontendURL string) *EmailWorker {
 	return &EmailWorker{
 		outboxRepo:   outboxRepo,
+		opponentRepo: opponentRepo,
 		emailService: emailService,
 		frontendURL:  frontendURL,
 	}
@@ -101,6 +104,8 @@ func (w *EmailWorker) processRow(ctx context.Context, row repository.OutboxRow) 
 	switch row.Type {
 	case "match_notification":
 		return w.sendMatchNotification(ctx, row)
+	case "create_reciprocal_opponents":
+		return w.createReciprocalOpponents(ctx, row)
 	default:
 		return fmt.Errorf("unknown outbox type: %s", row.Type)
 	}
@@ -114,4 +119,39 @@ func (w *EmailWorker) sendMatchNotification(ctx context.Context, row repository.
 
 	matchURL := fmt.Sprintf("%s/match/%s", w.frontendURL, payload.MatchID)
 	return w.emailService.SendMatchNotification(ctx, payload.ToEmail, payload.FromUserName, matchURL, payload.MatchDate, payload.IsNew)
+}
+
+// createReciprocalOpponents handles the "create_reciprocal_opponents" outbox job.
+// When a new user signs up, this finds all users who previously logged matches
+// against them and creates opponent records so the new user can see those
+// match creators in their opponents list.
+func (w *EmailWorker) createReciprocalOpponents(ctx context.Context, row repository.OutboxRow) error {
+	var payload struct {
+		UserID string `json:"user_id"`
+	}
+	if err := json.Unmarshal(row.Payload, &payload); err != nil {
+		return fmt.Errorf("invalid payload: %w", err)
+	}
+
+	userID, err := uuid.Parse(payload.UserID)
+	if err != nil {
+		return fmt.Errorf("invalid user_id in payload: %w", err)
+	}
+
+	// Find all users who logged matches where this user was the opponent
+	creatorIDs, err := w.opponentRepo.FindMatchCreatorsForRegisteredUser(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("finding match creators: %w", err)
+	}
+
+	// Create a reciprocal opponent record for each creator.
+	// Each insert is idempotent (ON CONFLICT DO NOTHING), so retries are safe.
+	for _, creatorID := range creatorIDs {
+		if err := w.opponentRepo.CreateReciprocalIfNeeded(ctx, userID, creatorID); err != nil {
+			return fmt.Errorf("creating reciprocal for creator %s: %w", creatorID, err)
+		}
+	}
+
+	slog.Info("Created reciprocal opponents", "user_id", userID, "count", len(creatorIDs))
+	return nil
 }

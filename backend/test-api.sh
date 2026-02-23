@@ -1348,10 +1348,83 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 28. Auth: Logout
+# 28. Reciprocal opponent creation
+#     When User A logs a match against registered User B, User B should
+#     automatically get User A in their opponents list.
 # ---------------------------------------------------------------------------
 echo ""
-echo "28. Auth: Logout"
+echo "28. Reciprocal opponent creation"
+
+# --- Path 1: Match creation against registered opponent (transactional) ---
+# User 1 creates a new opponent with User 4's email (User 4 is already registered)
+api POST /api/opponents "{\"name\": \"Reciprocal Test\", \"email\": \"$TEST_EMAIL_4\"}"
+if [ "$STATUS" = "201" ]; then
+  RECIP_OPP_ID=$(jq -r '.id' "$RESPONSE")
+  pass "Created opponent with User 4's email (registered)"
+else
+  fail "Create reciprocal test opponent → expected 201, got $STATUS"
+fi
+
+# User 1 logs a match → reciprocal should be created in the same transaction
+api POST /api/matches "{
+  \"opponent_id\": \"$RECIP_OPP_ID\",
+  \"match_type\": \"bo3\",
+  \"played_at\": \"2025-08-15T10:00:00Z\",
+  \"games\": [
+    {\"game_number\": 1, \"user_score\": 11, \"opponent_score\": 7},
+    {\"game_number\": 2, \"user_score\": 11, \"opponent_score\": 5}
+  ]
+}"
+if [ "$STATUS" = "201" ]; then
+  RECIP_MATCH_ID=$(jq -r '.id' "$RESPONSE")
+  pass "User 1 logged match against registered User 4"
+else
+  fail "Create reciprocal match → expected 201, got $STATUS"
+fi
+
+# User 4 should immediately have User 1 in their opponents list (no worker needed)
+COOKIE_JAR="$COOKIE_JAR_4"
+api POST /api/auth/dev-login "{\"email\": \"$TEST_EMAIL_4\"}"
+api GET /api/opponents
+if [ "$STATUS" = "200" ]; then
+  FOUND=$(jq --arg uid "$USER1_ID" '[.opponents[] | select(.registered_user_id == $uid)] | length' "$RESPONSE")
+  if [ "$FOUND" -ge 1 ]; then
+    pass "User 4 has User 1 in opponents list (transactional reciprocal)"
+  else
+    fail "User 4 opponents list does not contain User 1 (transactional reciprocal)"
+  fi
+else
+  fail "User 4 list opponents → expected 200, got $STATUS"
+fi
+COOKIE_JAR="$SAVED_COOKIE_JAR"
+
+# --- Path 2: Sign-up triggers worker to create reciprocal ---
+# User 3 signed up in section 17 after User 1 logged a match against them.
+# The sign-in sweep enqueued a create_reciprocal_opponents outbox job.
+# Wait for the worker to process it (polls every 5 seconds).
+echo "  ⏳ Waiting for worker to process reciprocal job..."
+sleep 7
+
+COOKIE_JAR="$COOKIE_JAR_3"
+api POST /api/auth/dev-login "{\"email\": \"$TEST_EMAIL_3\"}"
+api GET /api/opponents
+if [ "$STATUS" = "200" ]; then
+  FOUND=$(jq --arg uid "$USER1_ID" '[.opponents[] | select(.registered_user_id == $uid)] | length' "$RESPONSE")
+  if [ "$FOUND" -ge 1 ]; then
+    pass "User 3 has User 1 in opponents list (worker reciprocal)"
+  else
+    fail "User 3 opponents list does not contain User 1 (worker reciprocal)"
+  fi
+else
+  fail "User 3 list opponents → expected 200, got $STATUS"
+fi
+COOKIE_JAR="$SAVED_COOKIE_JAR"
+
+# ---------------------------------------------------------------------------
+# 29. Auth: Logout
+# ---------------------------------------------------------------------------
+echo ""
+echo "29. Auth: Logout"
 api POST /api/auth/logout
 if [ "$STATUS" = "200" ]; then
   pass "POST /api/auth/logout → 200"
@@ -1368,10 +1441,10 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 29. Cleanup: remove test data from database
+# 30. Cleanup: remove test data from database
 # ---------------------------------------------------------------------------
 echo ""
-echo "29. Cleanup"
+echo "30. Cleanup"
 psql "$DB_URL" -q -c "
   DELETE FROM games WHERE match_id IN (SELECT id FROM matches WHERE user_id IN (SELECT id FROM users WHERE email IN ('$TEST_EMAIL', '$TEST_EMAIL_2', '$TEST_EMAIL_3', '$TEST_EMAIL_4')));
   DELETE FROM matches WHERE user_id IN (SELECT id FROM users WHERE email IN ('$TEST_EMAIL', '$TEST_EMAIL_2', '$TEST_EMAIL_3', '$TEST_EMAIL_4'));

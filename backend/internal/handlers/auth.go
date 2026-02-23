@@ -10,6 +10,9 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/kunaljham/gamelogger/backend/internal/repository"
 )
 
 // sendLinkRequest is the JSON body for POST /api/auth/send-link.
@@ -136,15 +139,13 @@ func (h *Handler) VerifyMagicLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Sign-in sweep: link any opponents with this email to the signed-in user.
-	// Runs asynchronously so it doesn't block the redirect response.
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		if err := h.opponentRepo.UpdateStatusByEmail(ctx, link.Email, "registered", user.ID); err != nil {
-			slog.Error("sign-in sweep failed", "email", link.Email, "error", err)
-		}
-	}()
+	// Sign-in sweep: link opponents + enqueue reciprocal creation in a single
+	// transaction so neither can be lost.
+	if err := h.signInSweep(r.Context(), link.Email, user.ID); err != nil {
+		slog.Error("sign-in sweep failed", "email", link.Email, "error", err)
+		// Non-fatal — the user can still sign in. The sweep will be retried
+		// on next login, and match-time reciprocals cover future matches.
+	}
 
 	// Generate a session token
 	sessionToken, err := generateSecureToken(32)
@@ -304,9 +305,8 @@ func (h *Handler) DevLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Sign-in sweep: link any opponents with this email to the signed-in user.
-	// For dev-login we do this synchronously since tests depend on the result.
-	if err := h.opponentRepo.UpdateStatusByEmail(r.Context(), email, "registered", user.ID); err != nil {
+	// Sign-in sweep: link opponents + enqueue reciprocal creation in a single transaction.
+	if err := h.signInSweep(r.Context(), email, user.ID); err != nil {
 		slog.Error("sign-in sweep failed", "email", email, "error", err)
 	}
 
@@ -396,6 +396,37 @@ func (h *Handler) DemoLogin(w http.ResponseWriter, r *http.Request) {
 	slog.Info("Demo login", "email", h.cfg.DemoUserEmail, "user_id", user.ID)
 
 	writeJSON(w, http.StatusOK, user)
+}
+
+// signInSweep links opponents and enqueues reciprocal creation in a single
+// transaction. Called during sign-in (both magic link and dev-login) to ensure
+// we never lose the opponent status update or the reciprocal outbox job.
+func (h *Handler) signInSweep(ctx context.Context, email string, userID uuid.UUID) error {
+	tx, err := h.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	// Mark all opponent records matching this email as "registered"
+	if err := h.opponentRepo.UpdateStatusByEmailInTx(ctx, tx, email, "registered", userID); err != nil {
+		return err
+	}
+
+	// Enqueue a job for the worker to create reciprocal opponent records.
+	// The worker will find all users who logged matches against this user
+	// and create opponent records pointing back to them.
+	payload, err := json.Marshal(map[string]any{"user_id": userID.String()})
+	if err != nil {
+		return err
+	}
+	if err := h.outboxRepo.EnqueueInTx(ctx, tx, &repository.OutboxEntry{
+		Type: "create_reciprocal_opponents", Payload: payload,
+	}); err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
 }
 
 // writeJSON writes a JSON response with the given status code.

@@ -14,6 +14,14 @@ import (
 
 var ErrMatchNotFound = errors.New("match not found")
 
+// ReciprocalOpponent holds the IDs needed to create a reciprocal opponent record
+// within the match creation transaction. ForUserID is the registered opponent who
+// gets a new opponent record; PointsToUserID is the match creator.
+type ReciprocalOpponent struct {
+	ForUserID      uuid.UUID
+	PointsToUserID uuid.UUID
+}
+
 // MatchRepository handles database operations for matches.
 type MatchRepository struct {
 	db *pgxpool.Pool
@@ -28,7 +36,9 @@ func NewMatchRepository(db *pgxpool.Pool) *MatchRepository {
 // A transaction groups multiple SQL statements so they all succeed or all fail.
 // If outbox is non-nil, an email outbox row is inserted in the same transaction,
 // guaranteeing the notification is never lost if the match is committed.
-func (r *MatchRepository) Create(ctx context.Context, match *models.Match, outbox *OutboxEntry) (*models.Match, error) {
+// If reciprocal is non-nil, a reciprocal opponent record is created in the same
+// transaction so the registered opponent can see the match creator in their list.
+func (r *MatchRepository) Create(ctx context.Context, match *models.Match, outbox *OutboxEntry, reciprocal *ReciprocalOpponent) (*models.Match, error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -72,6 +82,15 @@ func (r *MatchRepository) Create(ctx context.Context, match *models.Match, outbo
 			INSERT INTO email_outbox (type, payload)
 			VALUES ($1, jsonb_set($2::jsonb, '{match_id}', to_jsonb($3::text)))
 		`, outbox.Type, outbox.Payload, match.ID.String())
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Create reciprocal opponent record so the registered opponent has the
+	// match creator in their opponents list. Idempotent via ON CONFLICT DO NOTHING.
+	if reciprocal != nil {
+		_, err = tx.Exec(ctx, reciprocalInsertSQL, reciprocal.ForUserID, reciprocal.PointsToUserID)
 		if err != nil {
 			return nil, err
 		}

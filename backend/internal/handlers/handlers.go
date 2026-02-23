@@ -16,6 +16,7 @@ type Handler struct {
 	sessionRepo     *repository.SessionRepository
 	matchRepo       *repository.MatchRepository
 	opponentRepo    *repository.OpponentRepository
+	outboxRepo      *repository.OutboxRepository
 	emailService    services.EmailService
 }
 
@@ -27,6 +28,7 @@ func New(db *pgxpool.Pool, cfg *config.Config) *Handler {
 	sessionRepo := repository.NewSessionRepository(db)
 	matchRepo := repository.NewMatchRepository(db)
 	opponentRepo := repository.NewOpponentRepository(db)
+	outboxRepo := repository.NewOutboxRepository(db)
 
 	// Create email service
 	emailService := services.NewResendEmailService(
@@ -44,6 +46,7 @@ func New(db *pgxpool.Pool, cfg *config.Config) *Handler {
 		sessionRepo:     sessionRepo,
 		matchRepo:       matchRepo,
 		opponentRepo:    opponentRepo,
+		outboxRepo:      outboxRepo,
 		emailService:    emailService,
 	}
 }

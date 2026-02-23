@@ -64,8 +64,9 @@ func main() {
 
 	// Start background email worker
 	outboxRepo := repository.NewOutboxRepository(db)
+	opponentRepo := repository.NewOpponentRepository(db)
 	emailService := services.NewResendEmailService(cfg.ResendAPIKey, cfg.EmailFrom, cfg.FrontendURL, cfg.BackendURL)
-	emailWorker := workers.NewEmailWorker(outboxRepo, emailService, cfg.FrontendURL)
+	emailWorker := workers.NewEmailWorker(outboxRepo, opponentRepo, emailService, cfg.FrontendURL)
 	workerCtx, workerCancel := context.WithCancel(context.Background())
 	go emailWorker.Run(workerCtx)
 

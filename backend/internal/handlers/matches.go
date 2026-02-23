@@ -168,7 +168,17 @@ func (h *Handler) CreateMatch(w http.ResponseWriter, r *http.Request) {
 	// Build notification for registered opponent (match_id injected by repo after INSERT)
 	outbox := h.buildMatchOutbox(r.Context(), opponent, user, uuid.Nil, playedAt, true)
 
-	created, err := h.matchRepo.Create(r.Context(), match, outbox)
+	// If the opponent is a registered user, create a reciprocal opponent record
+	// so they can see the match creator in their opponents list.
+	var reciprocal *repository.ReciprocalOpponent
+	if opponent.RegisteredUserID != nil {
+		reciprocal = &repository.ReciprocalOpponent{
+			ForUserID:      *opponent.RegisteredUserID,
+			PointsToUserID: user.ID,
+		}
+	}
+
+	created, err := h.matchRepo.Create(r.Context(), match, outbox, reciprocal)
 	if err != nil {
 		slog.Error("Failed to create match", "error", err)
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to create match"})
