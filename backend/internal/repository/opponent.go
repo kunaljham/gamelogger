@@ -20,7 +20,7 @@ const reciprocalInsertSQL = `
 	INSERT INTO opponents (user_id, email, name, status, registered_user_id)
 	SELECT $1, u.email, COALESCE(u.name, u.email), 'registered', $2
 	FROM users u WHERE u.id = $2
-	ON CONFLICT (user_id, registered_user_id) WHERE registered_user_id IS NOT NULL
+	ON CONFLICT (registered_user_id, user_id) WHERE registered_user_id IS NOT NULL
 	DO NOTHING
 `
 
@@ -337,7 +337,7 @@ func (r *OpponentRepository) CreateReciprocalsForUser(ctx context.Context, forUs
 		SELECT $1, u.email, COALESCE(u.name, u.email), 'registered', u.id
 		FROM unnest($2::uuid[]) AS cid(id)
 		JOIN users u ON u.id = cid.id
-		ON CONFLICT (user_id, registered_user_id) WHERE registered_user_id IS NOT NULL
+		ON CONFLICT (registered_user_id, user_id) WHERE registered_user_id IS NOT NULL
 		DO NOTHING
 	`, forUserID, creatorIDs)
 	return err
