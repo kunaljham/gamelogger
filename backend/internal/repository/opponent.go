@@ -309,22 +309,6 @@ func (r *OpponentRepository) UpdateStatusByEmailInTx(ctx context.Context, tx pgx
 	return err
 }
 
-// CreateReciprocalInTx creates a reciprocal opponent record within an existing
-// transaction. forUserID gets a new opponent record pointing to pointsToUserID.
-// Idempotent — does nothing if the record already exists.
-func (r *OpponentRepository) CreateReciprocalInTx(ctx context.Context, tx pgx.Tx, forUserID, pointsToUserID uuid.UUID) error {
-	_, err := tx.Exec(ctx, reciprocalInsertSQL, forUserID, pointsToUserID)
-	return err
-}
-
-// CreateReciprocalIfNeeded creates a reciprocal opponent record using a standalone
-// query (no transaction). Used by the background worker for sign-up reciprocals.
-// Idempotent — does nothing if the record already exists.
-func (r *OpponentRepository) CreateReciprocalIfNeeded(ctx context.Context, forUserID, pointsToUserID uuid.UUID) error {
-	_, err := r.db.Exec(ctx, reciprocalInsertSQL, forUserID, pointsToUserID)
-	return err
-}
-
 // CreateReciprocalsForUser creates reciprocal opponent records for all given
 // creator IDs in a single batched query. forUserID gets a new opponent record
 // pointing to each creator. Idempotent — skips any that already exist.
