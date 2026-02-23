@@ -14,10 +14,12 @@ The developer is new to web development and is using this project to learn. When
 After every non-trivial code change (new features, multi-file edits, logic changes) and **before committing**:
 
 1. Run the **qa-tester** agent — runs tests, build, and lint; reviews coverage gaps
-2. Run the **sre** agent — audits for performance issues (N+1 queries, slow patterns, bundle size)
-3. Run the **code-reviewer** agent — reviews simplicity, maintainability, and correctness
+2. Run the **sre** agent — audits for N+1 queries, missing/redundant indexes, slow query patterns, transaction scope, and bundle size. Also checks whether fixes introduce index overlap or unnecessary database objects.
+3. Run the **code-reviewer** agent — reviews simplicity, maintainability, correctness, and dead code. Also checks whether fixes leave behind unused methods, redundant abstractions, or stale references.
 
 All three must run and their findings must be addressed before the commit is made. Skip only for trivial changes (typo fixes, comment edits, config tweaks).
+
+**Iterate until clean:** When you fix issues reported by the agents, those fixes themselves are non-trivial changes. Re-run the agents after applying fixes before committing. Fixes often introduce secondary issues (e.g., replacing a method with a batched version leaves the old method as dead code; consolidating two indexes makes an older index redundant). Keep running the review cycle until all three agents report no actionable issues, then commit everything together.
 
 ## Tech Stack
 
