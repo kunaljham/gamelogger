@@ -1069,13 +1069,98 @@ fi
 COOKIE_JAR="$SAVED_COOKIE_JAR"
 
 # ---------------------------------------------------------------------------
-# 21. Cross-user match update blocked
+# 21. Opponent can edit match scores and notes
 # ---------------------------------------------------------------------------
 echo ""
-echo "21. Cross-user match update blocked"
+echo "21. Opponent can edit match scores and notes"
 
-# User 2 should NOT be able to update User 1's match
+# User 2 (opponent) CAN update the cross-match scores.
+# Scores are from User 2's perspective: user_score = User 2's points.
+# Original from creator perspective: User 1 won 11-8, 11-6.
+# User 2 submits new scores from their perspective (their user_score first):
+#   Game 1: User 2 scores 9, opp scores 11 → stored as creator 11, opp 9
+#   Game 2: User 2 scores 11, opp scores 7 → stored as creator 7, opp 11
+#   Game 3: User 2 scores 11, opp scores 8 → stored as creator 8, opp 11
 COOKIE_JAR="$COOKIE_JAR_2"
+api PUT "/api/matches/$CROSS_MATCH_ID" "{
+  \"opponent_id\": \"$CROSS_OPP_ID\",
+  \"match_type\": \"bo3\",
+  \"played_at\": \"2025-06-20T12:00:00Z\",
+  \"notes\": \"Opponent updated notes\",
+  \"games\": [
+    {\"game_number\": 1, \"user_score\": 9, \"opponent_score\": 11},
+    {\"game_number\": 2, \"user_score\": 11, \"opponent_score\": 7},
+    {\"game_number\": 3, \"user_score\": 11, \"opponent_score\": 8}
+  ]
+}"
+if [ "$STATUS" = "200" ]; then
+  # User 2 should see the response from their perspective
+  USER_WON=$(jq -r '.user_won' "$RESPONSE")
+  USER_WINS=$(jq -r '.user_wins' "$RESPONSE")
+  OPP_WINS=$(jq -r '.opponent_wins' "$RESPONSE")
+  NOTES=$(jq -r '.notes // "null"' "$RESPONSE")
+  GAME_COUNT=$(jq '.games | length' "$RESPONSE")
+  if [ "$USER_WON" = "true" ] && [ "$USER_WINS" = "2" ] && [ "$OPP_WINS" = "1" ] && [ "$GAME_COUNT" = "3" ]; then
+    pass "User 2 updated match scores → 200 (won 2-1 from their perspective)"
+  else
+    fail "User 2 update: expected true/2/1/3, got $USER_WON/$USER_WINS/$OPP_WINS/$GAME_COUNT"
+  fi
+  if [ "$NOTES" = "Opponent updated notes" ]; then
+    pass "User 2 sees their notes after update"
+  else
+    fail "User 2 notes after update: expected 'Opponent updated notes', got '$NOTES'"
+  fi
+else
+  fail "User 2 update cross-match → expected 200, got $STATUS"
+fi
+
+# User 1 re-reads match → scores from creator perspective (flipped back)
+# Stored: creator won game 1 (11-9), lost game 2 (7-11), lost game 3 (8-11)
+COOKIE_JAR="$SAVED_COOKIE_JAR"
+api GET "/api/matches/$CROSS_MATCH_ID"
+if [ "$STATUS" = "200" ]; then
+  USER_WON=$(jq -r '.user_won' "$RESPONSE")
+  USER_WINS=$(jq -r '.user_wins' "$RESPONSE")
+  OPP_WINS=$(jq -r '.opponent_wins' "$RESPONSE")
+  G1_USER=$(jq -r '.games[0].user_score' "$RESPONSE")
+  G1_OPP=$(jq -r '.games[0].opponent_score' "$RESPONSE")
+  G2_USER=$(jq -r '.games[1].user_score' "$RESPONSE")
+  G2_OPP=$(jq -r '.games[1].opponent_score' "$RESPONSE")
+  G3_USER=$(jq -r '.games[2].user_score' "$RESPONSE")
+  G3_OPP=$(jq -r '.games[2].opponent_score' "$RESPONSE")
+  if [ "$USER_WON" = "false" ] && [ "$USER_WINS" = "1" ] && [ "$OPP_WINS" = "2" ]; then
+    pass "User 1 sees updated result from creator perspective (lost 1-2)"
+  else
+    fail "User 1 result: expected false/1/2, got $USER_WON/$USER_WINS/$OPP_WINS"
+  fi
+  if [ "$G1_USER" = "11" ] && [ "$G1_OPP" = "9" ] && [ "$G2_USER" = "7" ] && [ "$G2_OPP" = "11" ] && [ "$G3_USER" = "8" ] && [ "$G3_OPP" = "11" ]; then
+    pass "User 1 sees correctly flipped scores (11-9, 7-11, 8-11)"
+  else
+    fail "User 1 scores: expected 11-9/7-11/8-11, got $G1_USER-$G1_OPP/$G2_USER-$G2_OPP/$G3_USER-$G3_OPP"
+  fi
+  # Creator's notes should be unchanged (was set to "Cross-user visibility test")
+  NOTES=$(jq -r '.notes // "null"' "$RESPONSE")
+  if [ "$NOTES" = "Cross-user visibility test" ]; then
+    pass "User 1's creator notes unchanged after opponent edit"
+  else
+    fail "User 1 notes: expected 'Cross-user visibility test', got '$NOTES'"
+  fi
+else
+  fail "User 1 GET after opponent edit → expected 200, got $STATUS"
+fi
+
+# User 2 cannot delete the match (still creator-only)
+COOKIE_JAR="$COOKIE_JAR_2"
+api DELETE "/api/matches/$CROSS_MATCH_ID"
+if [ "$STATUS" = "404" ]; then
+  pass "User 2 still cannot delete User 1's match → 404"
+else
+  fail "User 2 delete after edit → expected 404, got $STATUS"
+fi
+
+# Non-participant (User 4) still cannot update → 404
+COOKIE_JAR="$COOKIE_JAR_4"
+api POST /api/auth/dev-login "{\"email\": \"$TEST_EMAIL_4\"}"
 api PUT "/api/matches/$CROSS_MATCH_ID" "{
   \"opponent_id\": \"$CROSS_OPP_ID\",
   \"match_type\": \"bo3\",
@@ -1085,10 +1170,10 @@ api PUT "/api/matches/$CROSS_MATCH_ID" "{
     {\"game_number\": 2, \"user_score\": 11, \"opponent_score\": 1}
   ]
 }"
-if [ "$STATUS" = "400" ] || [ "$STATUS" = "404" ]; then
-  pass "User 2 cannot update User 1's match → $STATUS"
+if [ "$STATUS" = "404" ]; then
+  pass "Non-participant cannot update match → 404"
 else
-  fail "User 2 update cross-match → expected 400 or 404, got $STATUS"
+  fail "Non-participant update → expected 404, got $STATUS"
 fi
 COOKIE_JAR="$SAVED_COOKIE_JAR"
 
@@ -1449,10 +1534,107 @@ fi
 COOKIE_JAR="$SAVED_COOKIE_JAR"
 
 # ---------------------------------------------------------------------------
-# 29. Auth: Logout
+# 29. Opponent notes
 # ---------------------------------------------------------------------------
 echo ""
-echo "29. Auth: Logout"
+echo "29. Opponent notes"
+
+# Create opponent with notes
+api POST /api/opponents '{"name": "Notes Test Opp", "email": "notes-test@example.com", "notes": "Plays aggressive backhand"}'
+if [ "$STATUS" = "201" ]; then
+  NOTES_OPP_ID=$(jq -r '.id' "$RESPONSE")
+  OPP_NOTES=$(jq -r '.notes // "null"' "$RESPONSE")
+  if [ "$OPP_NOTES" = "Plays aggressive backhand" ]; then
+    pass "Create opponent with notes → 201, notes returned"
+  else
+    fail "Create opponent notes: expected 'Plays aggressive backhand', got '$OPP_NOTES'"
+  fi
+else
+  fail "Create opponent with notes → expected 201, got $STATUS"
+fi
+
+# Create opponent without notes
+api POST /api/opponents '{"name": "No Notes Opp"}'
+if [ "$STATUS" = "201" ]; then
+  OPP_NOTES=$(jq -r '.notes // "null"' "$RESPONSE")
+  if [ "$OPP_NOTES" = "null" ]; then
+    pass "Create opponent without notes → 201, notes null"
+  else
+    fail "Create no-notes opponent: expected null, got '$OPP_NOTES'"
+  fi
+else
+  fail "Create opponent without notes → expected 201, got $STATUS"
+fi
+
+# Update notes via PUT /api/opponents/{id}/notes
+api PUT "/api/opponents/$NOTES_OPP_ID/notes" '{"notes": "Updated notes: very fast on court"}'
+if [ "$STATUS" = "200" ]; then
+  OPP_NOTES=$(jq -r '.notes // "null"' "$RESPONSE")
+  if [ "$OPP_NOTES" = "Updated notes: very fast on court" ]; then
+    pass "PUT /api/opponents/$NOTES_OPP_ID/notes → 200, notes updated"
+  else
+    fail "PUT notes: expected 'Updated notes: very fast on court', got '$OPP_NOTES'"
+  fi
+else
+  fail "PUT /api/opponents/$NOTES_OPP_ID/notes → expected 200, got $STATUS"
+fi
+
+# Clear notes (set to null)
+api PUT "/api/opponents/$NOTES_OPP_ID/notes" '{"notes": null}'
+if [ "$STATUS" = "200" ]; then
+  OPP_NOTES=$(jq -r '.notes // "null"' "$RESPONSE")
+  if [ "$OPP_NOTES" = "null" ]; then
+    pass "Clear opponent notes → notes null"
+  else
+    fail "Clear notes: expected null, got '$OPP_NOTES'"
+  fi
+else
+  fail "Clear opponent notes → expected 200, got $STATUS"
+fi
+
+# with-stats endpoint includes notes
+api PUT "/api/opponents/$NOTES_OPP_ID/notes" '{"notes": "Stats check note"}'
+api GET /api/opponents/with-stats
+if [ "$STATUS" = "200" ]; then
+  OPP_NOTES=$(jq -r --arg id "$NOTES_OPP_ID" '[.opponents[] | select(.id == $id)][0].notes // "null"' "$RESPONSE")
+  if [ "$OPP_NOTES" = "Stats check note" ]; then
+    pass "with-stats endpoint includes notes"
+  else
+    fail "with-stats notes: expected 'Stats check note', got '$OPP_NOTES'"
+  fi
+else
+  fail "with-stats → expected 200, got $STATUS"
+fi
+
+# PUT name/email preserves existing notes
+api PUT "/api/opponents/$NOTES_OPP_ID" '{"name": "Notes Test Opp Renamed", "email": "notes-test@example.com"}'
+if [ "$STATUS" = "200" ]; then
+  OPP_NOTES=$(jq -r '.notes // "null"' "$RESPONSE")
+  OPP_NAME=$(jq -r '.name' "$RESPONSE")
+  if [ "$OPP_NAME" = "Notes Test Opp Renamed" ] && [ "$OPP_NOTES" = "Stats check note" ]; then
+    pass "PUT name/email → name updated, notes preserved"
+  else
+    fail "PUT name/email: name=$OPP_NAME, notes=$OPP_NOTES"
+  fi
+else
+  fail "PUT name/email → expected 200, got $STATUS"
+fi
+
+# Other user's opponent → 404
+COOKIE_JAR="$COOKIE_JAR_2"
+api PUT "/api/opponents/$NOTES_OPP_ID/notes" '{"notes": "Hacker notes"}'
+if [ "$STATUS" = "404" ]; then
+  pass "Other user's opponent notes → 404"
+else
+  fail "Other user's opponent notes → expected 404, got $STATUS"
+fi
+COOKIE_JAR="$SAVED_COOKIE_JAR"
+
+# ---------------------------------------------------------------------------
+# 30. Auth: Logout
+# ---------------------------------------------------------------------------
+echo ""
+echo "30. Auth: Logout"
 api POST /api/auth/logout
 if [ "$STATUS" = "200" ]; then
   pass "POST /api/auth/logout → 200"
@@ -1469,10 +1651,10 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 30. Cleanup: remove test data from database
+# 31. Cleanup: remove test data from database
 # ---------------------------------------------------------------------------
 echo ""
-echo "30. Cleanup"
+echo "31. Cleanup"
 psql "$DB_URL" -q -c "
   DELETE FROM games WHERE match_id IN (SELECT id FROM matches WHERE user_id IN (SELECT id FROM users WHERE email IN ('$TEST_EMAIL', '$TEST_EMAIL_2', '$TEST_EMAIL_3', '$TEST_EMAIL_4')));
   DELETE FROM matches WHERE user_id IN (SELECT id FROM users WHERE email IN ('$TEST_EMAIL', '$TEST_EMAIL_2', '$TEST_EMAIL_3', '$TEST_EMAIL_4'));

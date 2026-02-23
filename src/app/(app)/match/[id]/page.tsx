@@ -241,12 +241,14 @@ export default function MatchDetail() {
             >
               Edit
             </button>
-            <button
-              onClick={() => setShowDeleteModal(true)}
-              className="flex-1 cursor-pointer rounded-lg border border-red-200 px-4 py-3 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30"
-            >
-              Delete
-            </button>
+            {match.user_id === user?.id && (
+              <button
+                onClick={() => setShowDeleteModal(true)}
+                className="flex-1 cursor-pointer rounded-lg border border-red-200 px-4 py-3 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30"
+              >
+                Delete
+              </button>
+            )}
           </div>
         </div>
       )}

@@ -324,6 +324,10 @@ func (h *Handler) GetMatch(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateMatch handles PUT /api/matches/{id}.
+// Both the match creator and the registered opponent can edit scores and notes.
+// The opponent cannot change the opponent_id. Scores submitted by the opponent
+// are from their perspective (flipped) and must be flipped back to creator
+// perspective before storage.
 func (h *Handler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 	user, ok := UserFromContext(r.Context())
 	if !ok {
@@ -343,12 +347,6 @@ func (h *Handler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	opponentID, err := uuid.Parse(req.OpponentID)
-	if err != nil {
-		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid opponent_id"})
-		return
-	}
-
 	if err := validateMatchType(req.MatchType); err != nil {
 		writeJSON(w, http.StatusBadRequest, errorResponse{Error: err.Error()})
 		return
@@ -360,25 +358,28 @@ func (h *Handler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-
 	if err := validateGames(req.Games, req.MatchType); err != nil {
 		writeJSON(w, http.StatusBadRequest, errorResponse{Error: err.Error()})
 		return
 	}
 
-	// Verify opponent belongs to user
-	opponent, err := h.opponentRepo.FindByID(r.Context(), opponentID)
+	// Fetch existing match to determine the viewer's role
+	existing, err := h.matchRepo.FindByID(r.Context(), id)
 	if err != nil {
-		if err == repository.ErrOpponentNotFound {
-			writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Opponent not found"})
+		if err == repository.ErrMatchNotFound {
+			writeJSON(w, http.StatusNotFound, errorResponse{Error: "Match not found"})
 			return
 		}
-		slog.Error("Failed to find opponent", "error", err)
+		slog.Error("Failed to find match", "error", err)
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to update match"})
 		return
 	}
-	if opponent.UserID != user.ID {
-		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Opponent not found"})
+
+	isCreator := existing.UserID == user.ID
+	isOpponent := existing.Opponent != nil && existing.Opponent.RegisteredUserID != nil && *existing.Opponent.RegisteredUserID == user.ID
+
+	if !isCreator && !isOpponent {
+		writeJSON(w, http.StatusNotFound, errorResponse{Error: "Match not found"})
 		return
 	}
 
@@ -391,34 +392,93 @@ func (h *Handler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	match := &models.Match{
-		ID:           id,
-		UserID:       user.ID,
-		OpponentID:   opponentID,
-		MatchType:    req.MatchType,
-		PlayedAt:     playedAt,
-		CreatorNotes: req.Notes,
-		Games:        games,
+	if isCreator {
+		// --- Creator path (original logic) ---
+		opponentID, err := uuid.Parse(req.OpponentID)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid opponent_id"})
+			return
+		}
+
+		opponent, err := h.opponentRepo.FindByID(r.Context(), opponentID)
+		if err != nil {
+			if err == repository.ErrOpponentNotFound {
+				writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Opponent not found"})
+				return
+			}
+			slog.Error("Failed to find opponent", "error", err)
+			writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to update match"})
+			return
+		}
+		if opponent.UserID != user.ID {
+			writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Opponent not found"})
+			return
+		}
+
+		match := &models.Match{
+			ID:           id,
+			UserID:       user.ID,
+			OpponentID:   opponentID,
+			MatchType:    req.MatchType,
+			PlayedAt:     playedAt,
+			CreatorNotes: req.Notes,
+			Games:        games,
+		}
+		match.ComputeResult()
+
+		outbox := h.buildMatchOutbox(r.Context(), opponent, user, id, playedAt, false)
+
+		updated, err := h.matchRepo.Update(r.Context(), match, outbox)
+		if err != nil {
+			if err == repository.ErrMatchNotFound {
+				writeJSON(w, http.StatusNotFound, errorResponse{Error: "Match not found"})
+				return
+			}
+			slog.Error("Failed to update match", "error", err)
+			writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to update match"})
+			return
+		}
+
+		updated.Opponent = opponent
+		resolveScoresForViewer(updated, user.ID)
+		resolveNotesForViewer(updated, user.ID)
+		resolveOpponentForViewer(updated, user.ID)
+		writeJSON(w, http.StatusOK, updated)
+		return
 	}
 
-	// Compute user_won from validated games before persisting
+	// --- Opponent path ---
+	// Scores arrive in opponent's perspective → flip back to creator perspective
+	for i := range games {
+		games[i].UserScore, games[i].OpponentScore = games[i].OpponentScore, games[i].UserScore
+	}
+
+	match := &models.Match{
+		ID:            id,
+		UserID:        existing.UserID,
+		OpponentID:    existing.OpponentID,
+		MatchType:     req.MatchType,
+		PlayedAt:      playedAt,
+		OpponentNotes: req.Notes,
+		Games:         games,
+	}
+	// Compute user_won from creator-perspective (flipped) scores
 	match.ComputeResult()
 
-	// Build notification for registered opponent
-	outbox := h.buildMatchOutbox(r.Context(), opponent, user, id, playedAt, false)
-
-	updated, err := h.matchRepo.Update(r.Context(), match, outbox)
+	updated, err := h.matchRepo.UpdateAsOpponent(r.Context(), match)
 	if err != nil {
 		if err == repository.ErrMatchNotFound {
 			writeJSON(w, http.StatusNotFound, errorResponse{Error: "Match not found"})
 			return
 		}
-		slog.Error("Failed to update match", "error", err)
+		slog.Error("Failed to update match as opponent", "error", err)
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to update match"})
 		return
 	}
 
-	updated.Opponent = opponent
+	// Re-attach the opponent data from the existing fetch
+	updated.Opponent = existing.Opponent
+	updated.CreatorName = existing.CreatorName
 	resolveScoresForViewer(updated, user.ID)
 	resolveNotesForViewer(updated, user.ID)
 	resolveOpponentForViewer(updated, user.ID)

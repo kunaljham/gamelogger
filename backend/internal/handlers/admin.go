@@ -26,6 +26,7 @@ type seedOpponent struct {
 	Key   string  `json:"key"`
 	Name  string  `json:"name"`
 	Email *string `json:"email,omitempty"`
+	Notes *string `json:"notes,omitempty"`
 }
 
 type seedMatch struct {
@@ -154,10 +155,10 @@ func (h *Handler) SeedData(w http.ResponseWriter, r *http.Request) {
 	for _, opp := range tmpl.Opponents {
 		var oppID uuid.UUID
 		err := tx.QueryRow(ctx, `
-			INSERT INTO opponents (user_id, email, name, status)
-			VALUES ($1, $2, $3, 'unregistered')
+			INSERT INTO opponents (user_id, email, name, notes, status)
+			VALUES ($1, $2, $3, $4, 'unregistered')
 			RETURNING id
-		`, user.ID, opp.Email, opp.Name).Scan(&oppID)
+		`, user.ID, opp.Email, opp.Name, opp.Notes).Scan(&oppID)
 		if err != nil {
 			slog.Error("Failed to create opponent", "key", opp.Key, "error", err)
 			writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to create opponent: " + opp.Key})

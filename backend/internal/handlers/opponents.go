@@ -19,6 +19,12 @@ import (
 type createOpponentRequest struct {
 	Name  string  `json:"name"`
 	Email *string `json:"email,omitempty"`
+	Notes *string `json:"notes,omitempty"`
+}
+
+// updateOpponentNotesRequest is the JSON body for PUT /api/opponents/{id}/notes.
+type updateOpponentNotesRequest struct {
+	Notes *string `json:"notes"`
 }
 
 // listOpponentsResponse wraps the list for JSON output.
@@ -99,6 +105,7 @@ func (h *Handler) CreateOpponent(w http.ResponseWriter, r *http.Request) {
 		UserID:           user.ID,
 		Name:             name,
 		Email:            email,
+		Notes:            req.Notes,
 		Status:           status,
 		RegisteredUserID: registeredUserID,
 	}
@@ -307,6 +314,8 @@ func (h *Handler) UpdateOpponent(w http.ResponseWriter, r *http.Request) {
 		invitedAt = nil
 	}
 
+	// Notes are intentionally not set here — the Update method doesn't touch the
+	// notes column. Notes are only modified via PUT /{id}/notes (UpdateOpponentNotes).
 	opponent := &models.Opponent{
 		ID:               id,
 		UserID:           user.ID,
@@ -325,6 +334,41 @@ func (h *Handler) UpdateOpponent(w http.ResponseWriter, r *http.Request) {
 		}
 		slog.Error("Failed to update opponent", "error", err)
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to update opponent"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, updated)
+}
+
+// UpdateOpponentNotes handles PUT /api/opponents/{id}/notes.
+// Sets only the notes column on an opponent.
+func (h *Handler) UpdateOpponentNotes(w http.ResponseWriter, r *http.Request) {
+	user, ok := UserFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "Not authenticated"})
+		return
+	}
+
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid opponent ID"})
+		return
+	}
+
+	var req updateOpponentNotesRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid request body"})
+		return
+	}
+
+	updated, err := h.opponentRepo.UpdateNotes(r.Context(), id, user.ID, req.Notes)
+	if err != nil {
+		if err == repository.ErrOpponentNotFound {
+			writeJSON(w, http.StatusNotFound, errorResponse{Error: "Opponent not found"})
+			return
+		}
+		slog.Error("Failed to update opponent notes", "error", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to update notes"})
 		return
 	}
 

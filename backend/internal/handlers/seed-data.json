@@ -1,13 +1,13 @@
 {
   "user_name": "Demo User",
   "opponents": [
-    { "key": "alice", "name": "Alice Chen", "email": "demo-opponent@gamelogger.app" },
-    { "key": "bob", "name": "Bob Martinez" },
+    { "key": "alice", "name": "Alice Chen", "email": "demo-opponent@gamelogger.app", "notes": "Club champion. **Very strong** cross-court drives.\n\nPrefers morning games before 10am." },
+    { "key": "bob", "name": "Bob Martinez", "notes": "Aggressive backhand, tends to tire in game 3. Keep rallies long." },
     { "key": "charlie", "name": "Charlie Park", "email": "charlie.park@example.com" },
-    { "key": "diana", "name": "Diana Wright" },
-    { "key": "elena", "name": "Elena Rodriguez", "email": "elena.r@example.com" },
+    { "key": "diana", "name": "Diana Wright", "notes": "New to squash — started playing in March. Improving quickly." },
+    { "key": "elena", "name": "Elena Rodriguez", "email": "elena.r@example.com", "notes": "Plays at the downtown club on Tuesdays and Thursdays.\n\n- Great drop shots\n- Weak on the backhand volley" },
     { "key": "frank", "name": "Frank Liu" },
-    { "key": "grace", "name": "Grace Kim", "email": "grace.kim@example.com" },
+    { "key": "grace", "name": "Grace Kim", "email": "grace.kim@example.com", "notes": "Former college player. Don't underestimate her serve." },
     { "key": "hank", "name": "Hank O'Brien" },
     { "key": "iris", "name": "Iris Patel", "email": "iris.p@example.com" },
     { "key": "jake", "name": "Jake Thompson" },

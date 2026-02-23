@@ -39,11 +39,11 @@ func NewOpponentRepository(db *pgxpool.Pool) *OpponentRepository {
 // Create inserts a new opponent.
 func (r *OpponentRepository) Create(ctx context.Context, opponent *models.Opponent) (*models.Opponent, error) {
 	err := r.db.QueryRow(ctx, `
-		INSERT INTO opponents (user_id, email, name, status, invited_at, registered_user_id)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id, user_id, email, name, status, invited_at, registered_user_id, created_at, updated_at
-	`, opponent.UserID, opponent.Email, opponent.Name, opponent.Status, opponent.InvitedAt, opponent.RegisteredUserID).Scan(
-		&opponent.ID, &opponent.UserID, &opponent.Email, &opponent.Name,
+		INSERT INTO opponents (user_id, email, name, notes, status, invited_at, registered_user_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING id, user_id, email, name, notes, status, invited_at, registered_user_id, created_at, updated_at
+	`, opponent.UserID, opponent.Email, opponent.Name, opponent.Notes, opponent.Status, opponent.InvitedAt, opponent.RegisteredUserID).Scan(
+		&opponent.ID, &opponent.UserID, &opponent.Email, &opponent.Name, &opponent.Notes,
 		&opponent.Status, &opponent.InvitedAt, &opponent.RegisteredUserID,
 		&opponent.CreatedAt, &opponent.UpdatedAt,
 	)
@@ -57,10 +57,10 @@ func (r *OpponentRepository) Create(ctx context.Context, opponent *models.Oppone
 func (r *OpponentRepository) FindByID(ctx context.Context, id uuid.UUID) (*models.Opponent, error) {
 	var o models.Opponent
 	err := r.db.QueryRow(ctx, `
-		SELECT id, user_id, email, name, status, invited_at, registered_user_id, created_at, updated_at
+		SELECT id, user_id, email, name, notes, status, invited_at, registered_user_id, created_at, updated_at
 		FROM opponents
 		WHERE id = $1
-	`, id).Scan(&o.ID, &o.UserID, &o.Email, &o.Name, &o.Status, &o.InvitedAt, &o.RegisteredUserID, &o.CreatedAt, &o.UpdatedAt)
+	`, id).Scan(&o.ID, &o.UserID, &o.Email, &o.Name, &o.Notes, &o.Status, &o.InvitedAt, &o.RegisteredUserID, &o.CreatedAt, &o.UpdatedAt)
 
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrOpponentNotFound
@@ -75,10 +75,10 @@ func (r *OpponentRepository) FindByID(ctx context.Context, id uuid.UUID) (*model
 func (r *OpponentRepository) FindByEmail(ctx context.Context, userID uuid.UUID, email string) (*models.Opponent, error) {
 	var o models.Opponent
 	err := r.db.QueryRow(ctx, `
-		SELECT id, user_id, email, name, status, invited_at, registered_user_id, created_at, updated_at
+		SELECT id, user_id, email, name, notes, status, invited_at, registered_user_id, created_at, updated_at
 		FROM opponents
 		WHERE user_id = $1 AND email = $2
-	`, userID, email).Scan(&o.ID, &o.UserID, &o.Email, &o.Name, &o.Status, &o.InvitedAt, &o.RegisteredUserID, &o.CreatedAt, &o.UpdatedAt)
+	`, userID, email).Scan(&o.ID, &o.UserID, &o.Email, &o.Name, &o.Notes, &o.Status, &o.InvitedAt, &o.RegisteredUserID, &o.CreatedAt, &o.UpdatedAt)
 
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrOpponentNotFound
@@ -93,10 +93,10 @@ func (r *OpponentRepository) FindByEmail(ctx context.Context, userID uuid.UUID, 
 func (r *OpponentRepository) FindByName(ctx context.Context, userID uuid.UUID, name string) (*models.Opponent, error) {
 	var o models.Opponent
 	err := r.db.QueryRow(ctx, `
-		SELECT id, user_id, email, name, status, invited_at, registered_user_id, created_at, updated_at
+		SELECT id, user_id, email, name, notes, status, invited_at, registered_user_id, created_at, updated_at
 		FROM opponents
 		WHERE user_id = $1 AND LOWER(name) = LOWER($2)
-	`, userID, name).Scan(&o.ID, &o.UserID, &o.Email, &o.Name, &o.Status, &o.InvitedAt, &o.RegisteredUserID, &o.CreatedAt, &o.UpdatedAt)
+	`, userID, name).Scan(&o.ID, &o.UserID, &o.Email, &o.Name, &o.Notes, &o.Status, &o.InvitedAt, &o.RegisteredUserID, &o.CreatedAt, &o.UpdatedAt)
 
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrOpponentNotFound
@@ -116,7 +116,7 @@ func (r *OpponentRepository) ListByUser(ctx context.Context, userID uuid.UUID, l
 
 	if search != nil && cursor != nil {
 		rows, err = r.db.Query(ctx, `
-			SELECT id, user_id, email, name, status, invited_at, registered_user_id, created_at, updated_at
+			SELECT id, user_id, email, name, notes, status, invited_at, registered_user_id, created_at, updated_at
 			FROM opponents
 			WHERE user_id = $1 AND created_at < $2 AND LOWER(name) LIKE LOWER($4) || '%'
 			ORDER BY created_at DESC
@@ -124,7 +124,7 @@ func (r *OpponentRepository) ListByUser(ctx context.Context, userID uuid.UUID, l
 		`, userID, *cursor, limit, *search)
 	} else if search != nil {
 		rows, err = r.db.Query(ctx, `
-			SELECT id, user_id, email, name, status, invited_at, registered_user_id, created_at, updated_at
+			SELECT id, user_id, email, name, notes, status, invited_at, registered_user_id, created_at, updated_at
 			FROM opponents
 			WHERE user_id = $1 AND LOWER(name) LIKE LOWER($3) || '%'
 			ORDER BY created_at DESC
@@ -132,7 +132,7 @@ func (r *OpponentRepository) ListByUser(ctx context.Context, userID uuid.UUID, l
 		`, userID, limit, *search)
 	} else if cursor != nil {
 		rows, err = r.db.Query(ctx, `
-			SELECT id, user_id, email, name, status, invited_at, registered_user_id, created_at, updated_at
+			SELECT id, user_id, email, name, notes, status, invited_at, registered_user_id, created_at, updated_at
 			FROM opponents
 			WHERE user_id = $1 AND created_at < $2
 			ORDER BY created_at DESC
@@ -140,7 +140,7 @@ func (r *OpponentRepository) ListByUser(ctx context.Context, userID uuid.UUID, l
 		`, userID, *cursor, limit)
 	} else {
 		rows, err = r.db.Query(ctx, `
-			SELECT id, user_id, email, name, status, invited_at, registered_user_id, created_at, updated_at
+			SELECT id, user_id, email, name, notes, status, invited_at, registered_user_id, created_at, updated_at
 			FROM opponents
 			WHERE user_id = $1
 			ORDER BY created_at DESC
@@ -155,7 +155,7 @@ func (r *OpponentRepository) ListByUser(ctx context.Context, userID uuid.UUID, l
 	var opponents []models.Opponent
 	for rows.Next() {
 		var o models.Opponent
-		if err := rows.Scan(&o.ID, &o.UserID, &o.Email, &o.Name, &o.Status, &o.InvitedAt, &o.RegisteredUserID, &o.CreatedAt, &o.UpdatedAt); err != nil {
+		if err := rows.Scan(&o.ID, &o.UserID, &o.Email, &o.Name, &o.Notes, &o.Status, &o.InvitedAt, &o.RegisteredUserID, &o.CreatedAt, &o.UpdatedAt); err != nil {
 			return nil, err
 		}
 		opponents = append(opponents, o)
@@ -198,7 +198,7 @@ func (r *OpponentRepository) ListByUserWithStats(ctx context.Context, userID uui
 
 	if search != nil && cursorTime != nil {
 		rows, err = r.db.Query(ctx, `
-			SELECT o.id, o.user_id, o.email, o.name, o.status, o.invited_at, o.registered_user_id, o.created_at, o.updated_at,
+			SELECT o.id, o.user_id, o.email, o.name, o.notes, o.status, o.invited_at, o.registered_user_id, o.created_at, o.updated_at,
 				COALESCE(SUM(stats.wins), 0) AS wins,
 				COALESCE(SUM(stats.losses), 0) AS losses
 			FROM opponents o
@@ -210,7 +210,7 @@ func (r *OpponentRepository) ListByUserWithStats(ctx context.Context, userID uui
 		`, userID, *cursorTime, limit, *search, *cursorID)
 	} else if search != nil {
 		rows, err = r.db.Query(ctx, `
-			SELECT o.id, o.user_id, o.email, o.name, o.status, o.invited_at, o.registered_user_id, o.created_at, o.updated_at,
+			SELECT o.id, o.user_id, o.email, o.name, o.notes, o.status, o.invited_at, o.registered_user_id, o.created_at, o.updated_at,
 				COALESCE(SUM(stats.wins), 0) AS wins,
 				COALESCE(SUM(stats.losses), 0) AS losses
 			FROM opponents o
@@ -222,7 +222,7 @@ func (r *OpponentRepository) ListByUserWithStats(ctx context.Context, userID uui
 		`, userID, limit, *search)
 	} else if cursorTime != nil {
 		rows, err = r.db.Query(ctx, `
-			SELECT o.id, o.user_id, o.email, o.name, o.status, o.invited_at, o.registered_user_id, o.created_at, o.updated_at,
+			SELECT o.id, o.user_id, o.email, o.name, o.notes, o.status, o.invited_at, o.registered_user_id, o.created_at, o.updated_at,
 				COALESCE(SUM(stats.wins), 0) AS wins,
 				COALESCE(SUM(stats.losses), 0) AS losses
 			FROM opponents o
@@ -234,7 +234,7 @@ func (r *OpponentRepository) ListByUserWithStats(ctx context.Context, userID uui
 		`, userID, *cursorTime, *cursorID, limit)
 	} else {
 		rows, err = r.db.Query(ctx, `
-			SELECT o.id, o.user_id, o.email, o.name, o.status, o.invited_at, o.registered_user_id, o.created_at, o.updated_at,
+			SELECT o.id, o.user_id, o.email, o.name, o.notes, o.status, o.invited_at, o.registered_user_id, o.created_at, o.updated_at,
 				COALESCE(SUM(stats.wins), 0) AS wins,
 				COALESCE(SUM(stats.losses), 0) AS losses
 			FROM opponents o
@@ -253,7 +253,7 @@ func (r *OpponentRepository) ListByUserWithStats(ctx context.Context, userID uui
 	var opponents []models.OpponentWithStats
 	for rows.Next() {
 		var o models.OpponentWithStats
-		if err := rows.Scan(&o.ID, &o.UserID, &o.Email, &o.Name, &o.Status, &o.InvitedAt, &o.RegisteredUserID, &o.CreatedAt, &o.UpdatedAt, &o.Wins, &o.Losses); err != nil {
+		if err := rows.Scan(&o.ID, &o.UserID, &o.Email, &o.Name, &o.Notes, &o.Status, &o.InvitedAt, &o.RegisteredUserID, &o.CreatedAt, &o.UpdatedAt, &o.Wins, &o.Losses); err != nil {
 			return nil, err
 		}
 		opponents = append(opponents, o)
@@ -261,15 +261,15 @@ func (r *OpponentRepository) ListByUserWithStats(ctx context.Context, userID uui
 	return opponents, rows.Err()
 }
 
-// Update updates an opponent's name, email, status, invited_at, and registered_user_id.
+// Update updates an opponent's name, email, notes, status, invited_at, and registered_user_id.
 func (r *OpponentRepository) Update(ctx context.Context, opponent *models.Opponent) (*models.Opponent, error) {
 	err := r.db.QueryRow(ctx, `
 		UPDATE opponents
 		SET name = $1, email = $2, status = $3, invited_at = $4, registered_user_id = $5
 		WHERE id = $6 AND user_id = $7
-		RETURNING id, user_id, email, name, status, invited_at, registered_user_id, created_at, updated_at
+		RETURNING id, user_id, email, name, notes, status, invited_at, registered_user_id, created_at, updated_at
 	`, opponent.Name, opponent.Email, opponent.Status, opponent.InvitedAt, opponent.RegisteredUserID, opponent.ID, opponent.UserID).Scan(
-		&opponent.ID, &opponent.UserID, &opponent.Email, &opponent.Name,
+		&opponent.ID, &opponent.UserID, &opponent.Email, &opponent.Name, &opponent.Notes,
 		&opponent.Status, &opponent.InvitedAt, &opponent.RegisteredUserID,
 		&opponent.CreatedAt, &opponent.UpdatedAt,
 	)
@@ -281,6 +281,27 @@ func (r *OpponentRepository) Update(ctx context.Context, opponent *models.Oppone
 		return nil, err
 	}
 	return opponent, nil
+}
+
+// UpdateNotes sets only the notes column on an opponent, returning the full record.
+func (r *OpponentRepository) UpdateNotes(ctx context.Context, id, userID uuid.UUID, notes *string) (*models.Opponent, error) {
+	var o models.Opponent
+	err := r.db.QueryRow(ctx, `
+		UPDATE opponents SET notes = $1
+		WHERE id = $2 AND user_id = $3
+		RETURNING id, user_id, email, name, notes, status, invited_at, registered_user_id, created_at, updated_at
+	`, notes, id, userID).Scan(
+		&o.ID, &o.UserID, &o.Email, &o.Name, &o.Notes,
+		&o.Status, &o.InvitedAt, &o.RegisteredUserID,
+		&o.CreatedAt, &o.UpdatedAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrOpponentNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &o, nil
 }
 
 // FindUserByEmail checks if an email exists in the users table.

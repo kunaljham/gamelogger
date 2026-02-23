@@ -236,6 +236,30 @@ func (r *MatchRepository) ListByUser(ctx context.Context, userID uuid.UUID, limi
 	return matches, nil
 }
 
+// replaceGames deletes existing games for a match and inserts the new ones
+// within the given transaction. Used by both Update and UpdateAsOpponent.
+func replaceGames(ctx context.Context, tx pgx.Tx, match *models.Match) error {
+	_, err := tx.Exec(ctx, `DELETE FROM games WHERE match_id = $1`, match.ID)
+	if err != nil {
+		return err
+	}
+
+	for i := range match.Games {
+		g := &match.Games[i]
+		err = tx.QueryRow(ctx, `
+			INSERT INTO games (match_id, game_number, user_score, opponent_score)
+			VALUES ($1, $2, $3, $4)
+			RETURNING id, match_id, game_number, user_score, opponent_score
+		`, match.ID, g.GameNumber, g.UserScore, g.OpponentScore).Scan(
+			&g.ID, &g.MatchID, &g.GameNumber, &g.UserScore, &g.OpponentScore,
+		)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Update updates a match and replaces all its games in a transaction.
 // If outbox is non-nil, an email outbox row is inserted in the same transaction.
 func (r *MatchRepository) Update(ctx context.Context, match *models.Match, outbox *OutboxEntry) (*models.Match, error) {
@@ -262,24 +286,8 @@ func (r *MatchRepository) Update(ctx context.Context, match *models.Match, outbo
 		return nil, err
 	}
 
-	// Delete existing games and insert new ones
-	_, err = tx.Exec(ctx, `DELETE FROM games WHERE match_id = $1`, match.ID)
-	if err != nil {
+	if err := replaceGames(ctx, tx, match); err != nil {
 		return nil, err
-	}
-
-	for i := range match.Games {
-		g := &match.Games[i]
-		err = tx.QueryRow(ctx, `
-			INSERT INTO games (match_id, game_number, user_score, opponent_score)
-			VALUES ($1, $2, $3, $4)
-			RETURNING id, match_id, game_number, user_score, opponent_score
-		`, match.ID, g.GameNumber, g.UserScore, g.OpponentScore).Scan(
-			&g.ID, &g.MatchID, &g.GameNumber, &g.UserScore, &g.OpponentScore,
-		)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	// Insert outbox entry atomically with the match update
@@ -290,6 +298,43 @@ func (r *MatchRepository) Update(ctx context.Context, match *models.Match, outbo
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return match, nil
+}
+
+// UpdateAsOpponent updates a match from the opponent's perspective.
+// Unlike Update, it does NOT change opponent_id or creator_notes — only
+// match_type, played_at, opponent_notes, user_won, and games.
+// The caller (handler) must flip scores to creator perspective before calling.
+func (r *MatchRepository) UpdateAsOpponent(ctx context.Context, match *models.Match) (*models.Match, error) {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	err = tx.QueryRow(ctx, `
+		UPDATE matches
+		SET match_type = $1, played_at = $2, opponent_notes = $3, user_won = $4
+		WHERE id = $5
+		RETURNING id, user_id, opponent_id, match_type, played_at, creator_notes, opponent_notes, user_won, created_at, updated_at
+	`, match.MatchType, match.PlayedAt, match.OpponentNotes, match.UserWon, match.ID).Scan(
+		&match.ID, &match.UserID, &match.OpponentID, &match.MatchType,
+		&match.PlayedAt, &match.CreatorNotes, &match.OpponentNotes, &match.UserWon, &match.CreatedAt, &match.UpdatedAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrMatchNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if err := replaceGames(ctx, tx, match); err != nil {
+		return nil, err
 	}
 
 	if err := tx.Commit(ctx); err != nil {

@@ -1,0 +1,1 @@
+ALTER TABLE opponents ADD COLUMN notes TEXT;
