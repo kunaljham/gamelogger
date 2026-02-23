@@ -1396,7 +1396,35 @@ if [ "$STATUS" = "200" ]; then
 else
   fail "User 4 list opponents → expected 200, got $STATUS"
 fi
+
+# Verify User 4 sees inverted win/loss stats (User 1 won 2-0, so User 4 lost)
+api GET /api/opponents/with-stats
+if [ "$STATUS" = "200" ]; then
+  U4_WINS=$(jq --arg uid "$USER1_ID" '[.opponents[] | select(.registered_user_id == $uid)] | .[0].wins' "$RESPONSE")
+  U4_LOSSES=$(jq --arg uid "$USER1_ID" '[.opponents[] | select(.registered_user_id == $uid)] | .[0].losses' "$RESPONSE")
+  if [ "$U4_WINS" = "0" ] && [ "$U4_LOSSES" = "1" ]; then
+    pass "User 4 sees 0-1 record vs User 1 (reciprocal stats inverted)"
+  else
+    fail "User 4 reciprocal stats → expected 0 wins 1 loss, got $U4_WINS wins $U4_LOSSES losses"
+  fi
+else
+  fail "User 4 with-stats → expected 200, got $STATUS"
+fi
 COOKIE_JAR="$SAVED_COOKIE_JAR"
+
+# Verify User 1 sees correct outgoing stats (1 win, 0 losses vs User 4)
+api GET /api/opponents/with-stats
+if [ "$STATUS" = "200" ]; then
+  U1_WINS=$(jq --arg oid "$RECIP_OPP_ID" '[.opponents[] | select(.id == $oid)] | .[0].wins' "$RESPONSE")
+  U1_LOSSES=$(jq --arg oid "$RECIP_OPP_ID" '[.opponents[] | select(.id == $oid)] | .[0].losses' "$RESPONSE")
+  if [ "$U1_WINS" = "1" ] && [ "$U1_LOSSES" = "0" ]; then
+    pass "User 1 sees 1-0 record vs User 4 (outgoing stats correct)"
+  else
+    fail "User 1 outgoing stats → expected 1 win 0 losses, got $U1_WINS wins $U1_LOSSES losses"
+  fi
+else
+  fail "User 1 with-stats → expected 200, got $STATUS"
+fi
 
 # --- Path 2: Sign-up triggers worker to create reciprocal ---
 # User 3 signed up in section 17 after User 1 logged a match against them.
