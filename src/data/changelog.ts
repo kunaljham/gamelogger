@@ -6,6 +6,14 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-02-23",
+    title: "Match notifications",
+    items: [
+      "Registered opponents now receive an email when you log or edit a match against them",
+      "Opponents are automatically added to both players' lists — no need to add each other separately",
+    ],
+  },
+  {
     date: "2026-02-19",
     title: "Demo mode",
     items: [
