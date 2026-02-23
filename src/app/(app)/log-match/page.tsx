@@ -50,6 +50,7 @@ function LogMatch() {
   const [playedAt, setPlayedAt] = useState(
     new Date().toISOString().split("T")[0]
   );
+  const [playedTime, setPlayedTime] = useState("");
   const [notes, setNotes] = useState("");
   const [games, setGames] = useState<GameScore[]>([
     { userScore: "", opponentScore: "" },
@@ -246,7 +247,9 @@ function LogMatch() {
       const body: Record<string, unknown> = {
         opponent_id: opponentId,
         match_type: matchType,
-        played_at: `${playedAt}T00:00:00Z`,
+        played_at: playedTime
+          ? `${playedAt}T${playedTime}:00Z`
+          : `${playedAt}T${new Date().toISOString().split("T")[1]}`,
         games: gamePayload,
       };
 
@@ -485,18 +488,31 @@ function LogMatch() {
             </div>
           )}
 
-          {/* Date played */}
+          {/* Date and time played */}
           <div>
             <label className="mb-1.5 block text-sm font-medium text-stone-700 dark:text-stone-300">
               Date Played
             </label>
-            <input
-              type="date"
-              value={playedAt}
-              onChange={(e) => setPlayedAt(e.target.value)}
-              disabled={loading}
-              className="w-full rounded-lg border border-stone-300 bg-white px-4 py-3 text-base text-stone-900 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
-            />
+            <div className="flex gap-3">
+              <input
+                type="date"
+                value={playedAt}
+                onChange={(e) => setPlayedAt(e.target.value)}
+                disabled={loading}
+                className="min-w-0 flex-1 rounded-lg border border-stone-300 bg-white px-4 py-3 text-base text-stone-900 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
+              />
+              <input
+                type="time"
+                value={playedTime}
+                onChange={(e) => setPlayedTime(e.target.value)}
+                disabled={loading}
+                placeholder="Time"
+                className="w-40 rounded-lg border border-stone-300 bg-white px-4 py-3 text-base text-stone-900 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
+              />
+            </div>
+            <p className="mt-1 text-xs text-stone-400 dark:text-stone-500">
+              Time is optional — defaults to now if left blank.
+            </p>
           </div>
 
           {/* Game scores */}

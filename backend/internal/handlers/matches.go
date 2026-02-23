@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -19,7 +20,7 @@ import (
 // buildMatchOutbox creates an outbox entry for notifying a registered opponent about a match.
 // Returns nil if the opponent is not registered or has no email.
 // For new matches, pass uuid.Nil as matchID — the repository will inject it after INSERT.
-func (h *Handler) buildMatchOutbox(ctx context.Context, opponent *models.Opponent, user *models.User, matchID uuid.UUID, isNew bool) *repository.OutboxEntry {
+func (h *Handler) buildMatchOutbox(ctx context.Context, opponent *models.Opponent, user *models.User, matchID uuid.UUID, playedAt time.Time, isNew bool) *repository.OutboxEntry {
 	if opponent.RegisteredUserID == nil {
 		return nil
 	}
@@ -40,6 +41,7 @@ func (h *Handler) buildMatchOutbox(ctx context.Context, opponent *models.Opponen
 	payload := map[string]any{
 		"to_email":       *regEmail,
 		"from_user_name": userName,
+		"match_date":     playedAt.Format("January 2, 2006"),
 		"is_new":         isNew,
 	}
 	// For updates, we already know the match ID. For creates, it's injected by the repo.
@@ -119,6 +121,7 @@ func (h *Handler) CreateMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+
 	if err := validateGames(req.Games, req.MatchType); err != nil {
 		writeJSON(w, http.StatusBadRequest, errorResponse{Error: err.Error()})
 		return
@@ -163,7 +166,7 @@ func (h *Handler) CreateMatch(w http.ResponseWriter, r *http.Request) {
 	match.ComputeResult()
 
 	// Build notification for registered opponent (match_id injected by repo after INSERT)
-	outbox := h.buildMatchOutbox(r.Context(), opponent, user, uuid.Nil, true)
+	outbox := h.buildMatchOutbox(r.Context(), opponent, user, uuid.Nil, playedAt, true)
 
 	created, err := h.matchRepo.Create(r.Context(), match, outbox)
 	if err != nil {
@@ -200,18 +203,30 @@ func (h *Handler) ListMatches(w http.ResponseWriter, r *http.Request) {
 		limit = parsed
 	}
 
-	// Parse optional cursor parameter (RFC3339 timestamp)
-	var cursor *time.Time
+	// Parse optional composite cursor parameter (RFC3339Nano_UUID)
+	var cursorTime *time.Time
+	var cursorID *uuid.UUID
 	if c := r.URL.Query().Get("cursor"); c != "" {
-		parsed, err := time.Parse(time.RFC3339, c)
+		parts := strings.SplitN(c, "_", 2)
+		if len(parts) != 2 {
+			writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid cursor format"})
+			return
+		}
+		parsedTime, err := time.Parse(time.RFC3339Nano, parts[0])
 		if err != nil {
 			writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid cursor format"})
 			return
 		}
-		cursor = &parsed
+		parsedID, err := uuid.Parse(parts[1])
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid cursor format"})
+			return
+		}
+		cursorTime = &parsedTime
+		cursorID = &parsedID
 	}
 
-	matches, err := h.matchRepo.ListByUser(r.Context(), user.ID, limit, cursor)
+	matches, err := h.matchRepo.ListByUser(r.Context(), user.ID, limit, cursorTime, cursorID)
 	if err != nil {
 		slog.Error("Failed to list matches", "error", err)
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to list matches"})
@@ -229,11 +244,12 @@ func (h *Handler) ListMatches(w http.ResponseWriter, r *http.Request) {
 		resolveOpponentForViewer(&matches[i], user.ID)
 	}
 
-	// Build cursor for next page: use the last match's played_at
+	// Build composite cursor for next page: played_at + id
 	resp := listMatchesResponse{Matches: matches}
 	if len(matches) == limit {
-		last := matches[len(matches)-1].PlayedAt.Format(time.RFC3339Nano)
-		resp.NextCursor = &last
+		last := matches[len(matches)-1]
+		cursor := last.PlayedAt.Format(time.RFC3339Nano) + "_" + last.ID.String()
+		resp.NextCursor = &cursor
 	}
 
 	writeJSON(w, http.StatusOK, resp)
@@ -334,6 +350,7 @@ func (h *Handler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+
 	if err := validateGames(req.Games, req.MatchType); err != nil {
 		writeJSON(w, http.StatusBadRequest, errorResponse{Error: err.Error()})
 		return
@@ -378,7 +395,7 @@ func (h *Handler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 	match.ComputeResult()
 
 	// Build notification for registered opponent
-	outbox := h.buildMatchOutbox(r.Context(), opponent, user, id, false)
+	outbox := h.buildMatchOutbox(r.Context(), opponent, user, id, playedAt, false)
 
 	updated, err := h.matchRepo.Update(r.Context(), match, outbox)
 	if err != nil {

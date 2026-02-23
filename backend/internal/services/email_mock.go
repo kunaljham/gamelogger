@@ -59,7 +59,7 @@ func (m *MockEmailService) SendInvitation(ctx context.Context, toEmail, fromUser
 }
 
 // SendMatchNotification records the notification instead of actually sending.
-func (m *MockEmailService) SendMatchNotification(ctx context.Context, toEmail, fromUserName, matchURL string, isNew bool) error {
+func (m *MockEmailService) SendMatchNotification(ctx context.Context, toEmail, fromUserName, matchURL, matchDate string, isNew bool) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

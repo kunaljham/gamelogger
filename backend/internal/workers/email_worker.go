@@ -22,6 +22,7 @@ type matchNotificationPayload struct {
 	ToEmail      string `json:"to_email"`
 	FromUserName string `json:"from_user_name"`
 	MatchID      string `json:"match_id"`
+	MatchDate    string `json:"match_date"`
 	IsNew        bool   `json:"is_new"`
 }
 
@@ -112,5 +113,5 @@ func (w *EmailWorker) sendMatchNotification(ctx context.Context, row repository.
 	}
 
 	matchURL := fmt.Sprintf("%s/match/%s", w.frontendURL, payload.MatchID)
-	return w.emailService.SendMatchNotification(ctx, payload.ToEmail, payload.FromUserName, matchURL, payload.IsNew)
+	return w.emailService.SendMatchNotification(ctx, payload.ToEmail, payload.FromUserName, matchURL, payload.MatchDate, payload.IsNew)
 }

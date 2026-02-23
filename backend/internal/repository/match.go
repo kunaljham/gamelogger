@@ -125,32 +125,34 @@ func (r *MatchRepository) FindByID(ctx context.Context, id uuid.UUID) (*models.M
 
 // ListByUser returns a paginated list of matches for a user, newest first.
 // Includes matches the user created AND matches where they are the opponent
-// (linked via registered_user_id). Uses cursor-based pagination.
-func (r *MatchRepository) ListByUser(ctx context.Context, userID uuid.UUID, limit int, cursor *time.Time) ([]models.Match, error) {
+// (linked via registered_user_id). Uses cursor-based pagination with a
+// composite cursor (played_at, id) to ensure stable ordering when matches
+// share the same played_at timestamp.
+func (r *MatchRepository) ListByUser(ctx context.Context, userID uuid.UUID, limit int, cursorTime *time.Time, cursorID *uuid.UUID) ([]models.Match, error) {
 	var rows pgx.Rows
 	var err error
 
 	// Use UNION so Postgres can use idx_matches_user_id and idx_opponents_registered_user_id
 	// independently instead of doing a sequential scan across the OR-joined condition.
-	if cursor != nil {
+	if cursorTime != nil {
 		rows, err = r.db.Query(ctx, `
 			SELECT m.id, m.user_id, m.opponent_id, m.match_type, m.played_at, m.creator_notes, m.opponent_notes,
 			       m.user_won, m.created_at, m.updated_at,
 			       o.id, o.user_id, o.email, o.name, o.status, o.invited_at, o.registered_user_id, o.created_at, o.updated_at,
 			       u.name
 			FROM (
-				SELECT id FROM matches WHERE user_id = $1 AND played_at < $2
+				SELECT id FROM matches WHERE user_id = $1 AND (played_at, id) < ($2, $4)
 				UNION
 				SELECT m2.id FROM matches m2
 				JOIN opponents o2 ON o2.id = m2.opponent_id
-				WHERE o2.registered_user_id = $1 AND m2.user_id != $1 AND m2.played_at < $2
+				WHERE o2.registered_user_id = $1 AND m2.user_id != $1 AND (m2.played_at, m2.id) < ($2, $4)
 			) AS ids
 			JOIN matches m ON m.id = ids.id
 			JOIN opponents o ON o.id = m.opponent_id
 			JOIN users u ON u.id = m.user_id
-			ORDER BY m.played_at DESC
+			ORDER BY m.played_at DESC, m.id DESC
 			LIMIT $3
-		`, userID, *cursor, limit)
+		`, userID, *cursorTime, limit, *cursorID)
 	} else {
 		rows, err = r.db.Query(ctx, `
 			SELECT m.id, m.user_id, m.opponent_id, m.match_type, m.played_at, m.creator_notes, m.opponent_notes,
@@ -167,7 +169,7 @@ func (r *MatchRepository) ListByUser(ctx context.Context, userID uuid.UUID, limi
 			JOIN matches m ON m.id = ids.id
 			JOIN opponents o ON o.id = m.opponent_id
 			JOIN users u ON u.id = m.user_id
-			ORDER BY m.played_at DESC
+			ORDER BY m.played_at DESC, m.id DESC
 			LIMIT $2
 		`, userID, limit)
 	}

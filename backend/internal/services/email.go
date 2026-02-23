@@ -12,7 +12,7 @@ import (
 type EmailService interface {
 	SendMagicLink(ctx context.Context, email, token string) error
 	SendInvitation(ctx context.Context, toEmail, fromUserName string) error
-	SendMatchNotification(ctx context.Context, toEmail, fromUserName, matchURL string, isNew bool) error
+	SendMatchNotification(ctx context.Context, toEmail, fromUserName, matchURL, matchDate string, isNew bool) error
 }
 
 // ResendEmailService implements EmailService using the Resend API.
@@ -165,7 +165,7 @@ If you're not interested, you can safely ignore this email.
 
 // SendMatchNotification sends an email notifying an opponent about a match.
 // isNew=true means the match was just created; false means it was updated.
-func (s *ResendEmailService) SendMatchNotification(ctx context.Context, toEmail, fromUserName, matchURL string, isNew bool) error {
+func (s *ResendEmailService) SendMatchNotification(ctx context.Context, toEmail, fromUserName, matchURL, matchDate string, isNew bool) error {
 	subject := fmt.Sprintf("%s logged a match with you", fromUserName)
 	action := "logged a new match"
 	if !isNew {
@@ -184,7 +184,7 @@ func (s *ResendEmailService) SendMatchNotification(ctx context.Context, toEmail,
     <div style="max-width: 400px; margin: 0 auto; background: white; border-radius: 8px; padding: 40px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
         <h1 style="font-size: 24px; font-weight: 600; margin: 0 0 16px 0; color: #18181b;">New Match to Review</h1>
         <p style="font-size: 16px; color: #52525b; margin: 0 0 16px 0; line-height: 1.5;">
-            %s %s with you on GameLogger.
+            %s %s with you, played on <strong>%s</strong>.
         </p>
         <p style="font-size: 15px; color: #52525b; margin: 0 0 24px 0; line-height: 1.5;">
             Review the scores and add any notes while it's fresh.
@@ -198,18 +198,18 @@ func (s *ResendEmailService) SendMatchNotification(ctx context.Context, toEmail,
     </div>
 </body>
 </html>
-`, fromUserName, action, matchURL)
+`, fromUserName, action, matchDate, matchURL)
 
 	textBody := fmt.Sprintf(`New Match to Review
 
-%s %s with you on GameLogger.
+%s %s with you, played on %s.
 
 Review the scores and add any notes while it's fresh.
 
 Review the match: %s
 
 You're receiving this because you have a GameLogger account linked to this email.
-`, fromUserName, action, matchURL)
+`, fromUserName, action, matchDate, matchURL)
 
 	params := &resend.SendEmailRequest{
 		From:    s.fromEmail,
