@@ -171,13 +171,38 @@ func (r *OpponentRepository) ListByUserWithStats(ctx context.Context, userID uui
 	var rows pgx.Rows
 	var err error
 
+	// Stats subquery uses UNION ALL to count both outgoing matches (user created)
+	// and incoming matches (opponent created against this user, with inverted win/loss).
+	// SUM aggregates across the two branches per opponent.
+	const statsJoin = `
+		LEFT JOIN (
+			SELECT m.opponent_id,
+				COUNT(*) FILTER (WHERE m.user_won = TRUE) AS wins,
+				COUNT(*) FILTER (WHERE m.user_won = FALSE) AS losses
+			FROM matches m
+			WHERE m.user_id = $1
+			GROUP BY m.opponent_id
+
+			UNION ALL
+
+			SELECT o_ours.id AS opponent_id,
+				COUNT(*) FILTER (WHERE m2.user_won = FALSE) AS wins,
+				COUNT(*) FILTER (WHERE m2.user_won = TRUE) AS losses
+			FROM matches m2
+			JOIN opponents o_theirs ON o_theirs.id = m2.opponent_id AND o_theirs.registered_user_id = $1
+			JOIN opponents o_ours ON o_ours.user_id = $1 AND o_ours.registered_user_id = m2.user_id
+			WHERE m2.user_id != $1
+			GROUP BY o_ours.id
+		) AS stats ON stats.opponent_id = o.id
+	`
+
 	if search != nil && cursorTime != nil {
 		rows, err = r.db.Query(ctx, `
 			SELECT o.id, o.user_id, o.email, o.name, o.status, o.invited_at, o.registered_user_id, o.created_at, o.updated_at,
-				COUNT(m.id) FILTER (WHERE m.user_won = TRUE) AS wins,
-				COUNT(m.id) FILTER (WHERE m.user_won = FALSE) AS losses
+				COALESCE(SUM(stats.wins), 0) AS wins,
+				COALESCE(SUM(stats.losses), 0) AS losses
 			FROM opponents o
-			LEFT JOIN matches m ON m.opponent_id = o.id AND m.user_id = $1
+			`+statsJoin+`
 			WHERE o.user_id = $1 AND (o.created_at, o.id) < ($2, $5) AND LOWER(o.name) LIKE LOWER($4) || '%'
 			GROUP BY o.id
 			ORDER BY o.created_at DESC, o.id DESC
@@ -186,10 +211,10 @@ func (r *OpponentRepository) ListByUserWithStats(ctx context.Context, userID uui
 	} else if search != nil {
 		rows, err = r.db.Query(ctx, `
 			SELECT o.id, o.user_id, o.email, o.name, o.status, o.invited_at, o.registered_user_id, o.created_at, o.updated_at,
-				COUNT(m.id) FILTER (WHERE m.user_won = TRUE) AS wins,
-				COUNT(m.id) FILTER (WHERE m.user_won = FALSE) AS losses
+				COALESCE(SUM(stats.wins), 0) AS wins,
+				COALESCE(SUM(stats.losses), 0) AS losses
 			FROM opponents o
-			LEFT JOIN matches m ON m.opponent_id = o.id AND m.user_id = $1
+			`+statsJoin+`
 			WHERE o.user_id = $1 AND LOWER(o.name) LIKE LOWER($3) || '%'
 			GROUP BY o.id
 			ORDER BY o.created_at DESC, o.id DESC
@@ -198,10 +223,10 @@ func (r *OpponentRepository) ListByUserWithStats(ctx context.Context, userID uui
 	} else if cursorTime != nil {
 		rows, err = r.db.Query(ctx, `
 			SELECT o.id, o.user_id, o.email, o.name, o.status, o.invited_at, o.registered_user_id, o.created_at, o.updated_at,
-				COUNT(m.id) FILTER (WHERE m.user_won = TRUE) AS wins,
-				COUNT(m.id) FILTER (WHERE m.user_won = FALSE) AS losses
+				COALESCE(SUM(stats.wins), 0) AS wins,
+				COALESCE(SUM(stats.losses), 0) AS losses
 			FROM opponents o
-			LEFT JOIN matches m ON m.opponent_id = o.id AND m.user_id = $1
+			`+statsJoin+`
 			WHERE o.user_id = $1 AND (o.created_at, o.id) < ($2, $3)
 			GROUP BY o.id
 			ORDER BY o.created_at DESC, o.id DESC
@@ -210,10 +235,10 @@ func (r *OpponentRepository) ListByUserWithStats(ctx context.Context, userID uui
 	} else {
 		rows, err = r.db.Query(ctx, `
 			SELECT o.id, o.user_id, o.email, o.name, o.status, o.invited_at, o.registered_user_id, o.created_at, o.updated_at,
-				COUNT(m.id) FILTER (WHERE m.user_won = TRUE) AS wins,
-				COUNT(m.id) FILTER (WHERE m.user_won = FALSE) AS losses
+				COALESCE(SUM(stats.wins), 0) AS wins,
+				COALESCE(SUM(stats.losses), 0) AS losses
 			FROM opponents o
-			LEFT JOIN matches m ON m.opponent_id = o.id AND m.user_id = $1
+			`+statsJoin+`
 			WHERE o.user_id = $1
 			GROUP BY o.id
 			ORDER BY o.created_at DESC, o.id DESC
