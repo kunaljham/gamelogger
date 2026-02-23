@@ -11,6 +11,19 @@ import (
 	"github.com/kunaljham/gamelogger/backend/internal/models"
 )
 
+// reciprocalInsertSQL is the shared SQL for creating a reciprocal opponent record.
+// $1 = forUserID (who gets the new opponent record)
+// $2 = pointsToUserID (who becomes their opponent)
+// It looks up the target user's email and name, then inserts an opponent record.
+// ON CONFLICT DO NOTHING makes it idempotent — safe for retries and concurrent execution.
+const reciprocalInsertSQL = `
+	INSERT INTO opponents (user_id, email, name, status, registered_user_id)
+	SELECT $1, u.email, COALESCE(u.name, u.email), 'registered', $2
+	FROM users u WHERE u.id = $2
+	ON CONFLICT (registered_user_id, user_id) WHERE registered_user_id IS NOT NULL
+	DO NOTHING
+`
+
 var ErrOpponentNotFound = errors.New("opponent not found")
 
 // OpponentRepository handles database operations for opponents.
@@ -284,4 +297,58 @@ func (r *OpponentRepository) UpdateStatusByEmail(ctx context.Context, email stri
 		WHERE email = $1 AND (status != 'registered' OR registered_user_id IS DISTINCT FROM $3)
 	`, email, status, registeredUserID)
 	return err
+}
+
+// UpdateStatusByEmailInTx is the same as UpdateStatusByEmail but uses an
+// existing transaction instead of the connection pool.
+func (r *OpponentRepository) UpdateStatusByEmailInTx(ctx context.Context, tx pgx.Tx, email string, status string, registeredUserID uuid.UUID) error {
+	_, err := tx.Exec(ctx, `
+		UPDATE opponents SET status = $2, registered_user_id = $3, invited_at = NULL
+		WHERE email = $1 AND (status != 'registered' OR registered_user_id IS DISTINCT FROM $3)
+	`, email, status, registeredUserID)
+	return err
+}
+
+// CreateReciprocalsForUser creates reciprocal opponent records for all given
+// creator IDs in a single batched query. forUserID gets a new opponent record
+// pointing to each creator. Idempotent — skips any that already exist.
+func (r *OpponentRepository) CreateReciprocalsForUser(ctx context.Context, forUserID uuid.UUID, creatorIDs []uuid.UUID) error {
+	if len(creatorIDs) == 0 {
+		return nil
+	}
+	_, err := r.db.Exec(ctx, `
+		INSERT INTO opponents (user_id, email, name, status, registered_user_id)
+		SELECT $1, u.email, COALESCE(u.name, u.email), 'registered', u.id
+		FROM unnest($2::uuid[]) AS cid(id)
+		JOIN users u ON u.id = cid.id
+		ON CONFLICT (registered_user_id, user_id) WHERE registered_user_id IS NOT NULL
+		DO NOTHING
+	`, forUserID, creatorIDs)
+	return err
+}
+
+// FindMatchCreatorsForRegisteredUser returns the user IDs of all match creators
+// who logged matches against the given registered user. Used during sign-up to
+// find which users need reciprocal opponent records.
+func (r *OpponentRepository) FindMatchCreatorsForRegisteredUser(ctx context.Context, registeredUserID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT DISTINCT m.user_id
+		FROM matches m
+		JOIN opponents o ON o.id = m.opponent_id
+		WHERE o.registered_user_id = $1 AND m.user_id != $1
+	`, registeredUserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var userIDs []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		userIDs = append(userIDs, id)
+	}
+	return userIDs, rows.Err()
 }
