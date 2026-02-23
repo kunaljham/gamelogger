@@ -12,9 +12,10 @@ import (
 )
 
 // reciprocalInsertSQL is the shared SQL for creating a reciprocal opponent record.
-// It looks up the target user's email and name, then inserts an opponent record
-// pointing from forUserID to pointsToUserID. ON CONFLICT DO NOTHING makes it
-// idempotent — safe for retries and concurrent execution.
+// $1 = forUserID (who gets the new opponent record)
+// $2 = pointsToUserID (who becomes their opponent)
+// It looks up the target user's email and name, then inserts an opponent record.
+// ON CONFLICT DO NOTHING makes it idempotent — safe for retries and concurrent execution.
 const reciprocalInsertSQL = `
 	INSERT INTO opponents (user_id, email, name, status, registered_user_id)
 	SELECT $1, u.email, COALESCE(u.name, u.email), 'registered', $2
@@ -321,6 +322,24 @@ func (r *OpponentRepository) CreateReciprocalInTx(ctx context.Context, tx pgx.Tx
 // Idempotent — does nothing if the record already exists.
 func (r *OpponentRepository) CreateReciprocalIfNeeded(ctx context.Context, forUserID, pointsToUserID uuid.UUID) error {
 	_, err := r.db.Exec(ctx, reciprocalInsertSQL, forUserID, pointsToUserID)
+	return err
+}
+
+// CreateReciprocalsForUser creates reciprocal opponent records for all given
+// creator IDs in a single batched query. forUserID gets a new opponent record
+// pointing to each creator. Idempotent — skips any that already exist.
+func (r *OpponentRepository) CreateReciprocalsForUser(ctx context.Context, forUserID uuid.UUID, creatorIDs []uuid.UUID) error {
+	if len(creatorIDs) == 0 {
+		return nil
+	}
+	_, err := r.db.Exec(ctx, `
+		INSERT INTO opponents (user_id, email, name, status, registered_user_id)
+		SELECT $1, u.email, COALESCE(u.name, u.email), 'registered', u.id
+		FROM unnest($2::uuid[]) AS cid(id)
+		JOIN users u ON u.id = cid.id
+		ON CONFLICT (user_id, registered_user_id) WHERE registered_user_id IS NOT NULL
+		DO NOTHING
+	`, forUserID, creatorIDs)
 	return err
 }
 

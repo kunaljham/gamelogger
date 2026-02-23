@@ -144,12 +144,10 @@ func (w *EmailWorker) createReciprocalOpponents(ctx context.Context, row reposit
 		return fmt.Errorf("finding match creators: %w", err)
 	}
 
-	// Create a reciprocal opponent record for each creator.
-	// Each insert is idempotent (ON CONFLICT DO NOTHING), so retries are safe.
-	for _, creatorID := range creatorIDs {
-		if err := w.opponentRepo.CreateReciprocalIfNeeded(ctx, userID, creatorID); err != nil {
-			return fmt.Errorf("creating reciprocal for creator %s: %w", creatorID, err)
-		}
+	// Create all reciprocal opponent records in a single batched query.
+	// Idempotent (ON CONFLICT DO NOTHING), so retries are safe.
+	if err := w.opponentRepo.CreateReciprocalsForUser(ctx, userID, creatorIDs); err != nil {
+		return fmt.Errorf("creating reciprocals: %w", err)
 	}
 
 	slog.Info("Created reciprocal opponents", "user_id", userID, "count", len(creatorIDs))
