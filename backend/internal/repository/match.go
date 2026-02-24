@@ -367,7 +367,7 @@ func (r *MatchRepository) Update(ctx context.Context, match *models.Match, outbo
 	}
 	defer tx.Rollback(ctx)
 
-	// Update the match (only creator_notes is set here; opponent_notes is preserved)
+	// Update the match (opponent_notes is not modified)
 	err = tx.QueryRow(ctx, `
 		UPDATE matches
 		SET opponent_id = $1, match_type = $2, played_at = $3, creator_notes = $4, user_won = $5

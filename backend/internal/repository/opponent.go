@@ -96,24 +96,6 @@ func (r *OpponentRepository) FindByID(ctx context.Context, id uuid.UUID) (*model
 	return &o, nil
 }
 
-// FindByEmail finds an opponent by email for a given user.
-func (r *OpponentRepository) FindByEmail(ctx context.Context, userID uuid.UUID, email string) (*models.Opponent, error) {
-	var o models.Opponent
-	err := r.db.QueryRow(ctx, `
-		SELECT id, user_id, email, name, status, invited_at, registered_user_id, created_at, updated_at
-		FROM opponents
-		WHERE user_id = $1 AND email = $2
-	`, userID, email).Scan(&o.ID, &o.UserID, &o.Email, &o.Name, &o.Status, &o.InvitedAt, &o.RegisteredUserID, &o.CreatedAt, &o.UpdatedAt)
-
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, ErrOpponentNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-	return &o, nil
-}
-
 // FindByName finds an opponent by name (case-insensitive) for a given user.
 func (r *OpponentRepository) FindByName(ctx context.Context, userID uuid.UUID, name string) (*models.Opponent, error) {
 	var o models.Opponent

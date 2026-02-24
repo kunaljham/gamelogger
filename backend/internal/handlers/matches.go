@@ -419,7 +419,6 @@ func (h *Handler) GetMatch(w http.ResponseWriter, r *http.Request) {
 
 // UpdateMatch handles PUT /api/matches/{id}.
 // Only the match creator can edit scores, date, and notes.
-// Opponents can edit their own notes via PUT /api/matches/{id}/notes.
 func (h *Handler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 	user, ok := UserFromContext(r.Context())
 	if !ok {
