@@ -39,8 +39,8 @@ export default function MatchDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Mode: "view" | "edit"
-  const [mode, setMode] = useState<"view" | "edit">("view");
+  // Mode: "view" | "edit" | "edit-notes"
+  const [mode, setMode] = useState<"view" | "edit" | "edit-notes">("view");
 
   // Delete modal
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -150,6 +150,19 @@ export default function MatchDetail() {
     );
   }
 
+  if (mode === "edit-notes") {
+    return (
+      <EditNotesMode
+        match={match}
+        onCancel={() => setMode("view")}
+        onSaved={(updated) => {
+          setMatch(updated);
+          setMode("view");
+        }}
+      />
+    );
+  }
+
   // ── View mode ─────────────────────────────────────────────────────
   const { user_won: didWin, user_wins: userWins, opponent_wins: opponentWins } = match;
   const totalGames = match.match_type === "bo3" ? 3 : 5;
@@ -236,10 +249,12 @@ export default function MatchDetail() {
         <div className="fixed inset-x-0 bottom-0 border-t border-stone-200 bg-stone-50/90 p-4 backdrop-blur-sm dark:border-stone-800 dark:bg-stone-950/90">
           <div className="mx-auto flex max-w-md gap-3">
             <button
-              onClick={() => setMode("edit")}
+              onClick={() =>
+                setMode(match.user_id === user?.id ? "edit" : "edit-notes")
+              }
               className="flex-1 cursor-pointer rounded-lg border border-stone-300 px-4 py-3 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100 dark:border-stone-600 dark:text-stone-300 dark:hover:bg-stone-800"
             >
-              Edit
+              {match.user_id === user?.id ? "Edit" : "Edit Notes"}
             </button>
             {match.user_id === user?.id && (
               <button
@@ -597,6 +612,114 @@ function EditMode({
             </button>
           </div>
         </form>
+    </main>
+  );
+}
+
+// =====================================================================
+// Edit Notes Mode component (for opponents — notes only, no scores/date)
+// =====================================================================
+function EditNotesMode({
+  match,
+  onCancel,
+  onSaved,
+}: {
+  match: Match;
+  onCancel: () => void;
+  onSaved: (updated: Match) => void;
+}) {
+  const [notes, setNotes] = useState(match.notes ?? "");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setSaving(true);
+
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/matches/${match.id}/notes`,
+        {
+          method: "PUT",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ notes: notes.trim() || null }),
+        }
+      );
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error ?? `Failed to save notes (${res.status})`);
+      }
+
+      const updated: Match = await res.json();
+      onSaved(updated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <main className="mx-auto max-w-md px-4 py-8">
+      <h1 className="text-3xl font-bold tracking-tight text-stone-900 dark:text-stone-50 sm:text-4xl">
+        Edit Notes
+      </h1>
+      <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
+        Your notes are private — only visible to you.
+      </p>
+
+      <form onSubmit={handleSubmit} className="mt-6 space-y-6">
+        <div>
+          <label className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
+            Notes{" "}
+            <span className="font-normal text-stone-400">(optional)</span>
+          </label>
+          <p className="mb-1.5 text-xs text-stone-400 dark:text-stone-500">
+            <a
+              href="https://www.markdownguide.org/basic-syntax/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-stone-600 dark:hover:text-stone-300"
+            >
+              Markdown
+            </a>{" "}
+            supported.
+          </p>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            disabled={saving}
+            placeholder="How did the match go?"
+            rows={4}
+            className="w-full rounded-lg border border-stone-300 bg-white px-4 py-3 text-base text-stone-900 placeholder-stone-400 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:placeholder-stone-500 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
+          />
+        </div>
+
+        {error && (
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        )}
+
+        <div className="space-y-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={saving}
+            className="w-full rounded-lg border border-stone-300 px-4 py-3 text-base font-medium text-stone-700 transition-colors hover:bg-stone-100 disabled:opacity-50 dark:border-stone-600 dark:text-stone-300 dark:hover:bg-stone-800"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="w-full rounded-lg bg-purple-700 px-4 py-3 text-base font-medium text-white transition-colors hover:bg-purple-800 disabled:opacity-50 dark:bg-purple-600 dark:text-white dark:hover:bg-purple-500"
+          >
+            {saving ? "Saving..." : "Save Notes"}
+          </button>
+        </div>
+      </form>
     </main>
   );
 }

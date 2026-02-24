@@ -17,7 +17,6 @@ type Opponent struct {
 	UserID           uuid.UUID  `json:"user_id"`
 	Email            *string    `json:"email,omitempty"`
 	Name             string     `json:"name"`
-	Notes            *string    `json:"notes,omitempty"`
 	Status           string     `json:"status"`
 	InvitedAt        *time.Time `json:"invited_at,omitempty"`
 	RegisteredUserID *uuid.UUID `json:"registered_user_id,omitempty"`

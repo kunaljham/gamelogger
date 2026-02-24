@@ -4,9 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useUser } from "@/contexts/user-context";
-import ReactMarkdown from "react-markdown";
-import remarkBreaks from "remark-breaks";
-import { preserveNewlines } from "@/lib/markdown";
 import type {
   OpponentWithStats,
   Match,
@@ -39,12 +36,6 @@ export default function OpponentDetail() {
   const [matchesLoading, setMatchesLoading] = useState(true);
   const [matchesCursor, setMatchesCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
-
-  // Notes editing
-  const [editingNotes, setEditingNotes] = useState(false);
-  const [editNotes, setEditNotes] = useState("");
-  const [savingNotes, setSavingNotes] = useState(false);
-  const [notesError, setNotesError] = useState("");
 
   // Name/email editing
   const [editing, setEditing] = useState(false);
@@ -136,35 +127,6 @@ export default function OpponentDetail() {
       // Non-fatal
     } finally {
       setLoadingMore(false);
-    }
-  };
-
-  // Save notes
-  const handleSaveNotes = async () => {
-    setNotesError("");
-    setSavingNotes(true);
-    try {
-      const notes = editNotes.trim() || null;
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/opponents/${id}/notes`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ notes }),
-          credentials: "include",
-        }
-      );
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to update notes");
-      }
-      const updated: Opponent = await res.json();
-      setOpponent((prev) => (prev ? { ...prev, ...updated } : prev));
-      setEditingNotes(false);
-    } catch (err) {
-      setNotesError(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
-      setSavingNotes(false);
     }
   };
 
@@ -330,17 +292,6 @@ export default function OpponentDetail() {
                 >
                   Log match
                 </button>
-                <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    setEditNotes(opponent.notes ?? "");
-                    setNotesError("");
-                    setEditingNotes(true);
-                  }}
-                  className="w-full px-4 py-2.5 text-left text-sm text-stone-700 transition-colors hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-700"
-                >
-                  {opponent.notes ? "Edit notes" : "Add notes"}
-                </button>
                 {opponent.status !== "registered" && (
                   <>
                     <button
@@ -434,114 +385,6 @@ export default function OpponentDetail() {
             </span>
           </div>
         </div>
-      </div>
-
-      {/* Notes section */}
-      <div className="mt-4">
-        {!editingNotes ? (
-          <>
-            {opponent.notes && (
-              <div className="rounded-xl border border-stone-200 bg-white px-5 py-4 dark:border-stone-800 dark:bg-stone-900">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="flex items-center gap-1 text-xs font-medium text-purple-500 dark:text-purple-400">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 16 16"
-                      fill="currentColor"
-                      className="size-3"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M8 1a3.5 3.5 0 0 0-3.5 3.5V7A1.5 1.5 0 0 0 3 8.5v4A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5v-4A1.5 1.5 0 0 0 11 7V4.5A3.5 3.5 0 0 0 8 1Zm2 6V4.5a2 2 0 1 0-4 0V7h4Z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    Private notes
-                  </p>
-                  {!isDemoUser && (
-                    <button
-                      onClick={() => {
-                        setEditNotes(opponent.notes ?? "");
-                        setNotesError("");
-                        setEditingNotes(true);
-                      }}
-                      className="text-xs font-medium text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300"
-                    >
-                      Edit
-                    </button>
-                  )}
-                </div>
-                <div className="prose prose-sm prose-stone dark:prose-invert max-w-none text-stone-600 dark:text-stone-400">
-                  <ReactMarkdown remarkPlugins={[remarkBreaks]}>
-                    {preserveNewlines(opponent.notes)}
-                  </ReactMarkdown>
-                </div>
-              </div>
-            )}
-            {!opponent.notes && !isDemoUser && (
-              <button
-                onClick={() => {
-                  setEditNotes("");
-                  setNotesError("");
-                  setEditingNotes(true);
-                }}
-                className="w-full cursor-pointer rounded-xl border border-dashed border-stone-300 px-5 py-3 text-sm font-medium text-stone-500 transition-colors hover:border-stone-400 hover:text-stone-700 dark:border-stone-700 dark:text-stone-400 dark:hover:border-stone-600 dark:hover:text-stone-300"
-              >
-                + Add notes
-              </button>
-            )}
-          </>
-        ) : (
-          <div className="rounded-xl border border-stone-200 bg-white px-5 py-4 dark:border-stone-800 dark:bg-stone-900">
-            <div className="space-y-2">
-              <textarea
-                value={editNotes}
-                onChange={(e) => setEditNotes(e.target.value)}
-                disabled={savingNotes}
-                placeholder="Add notes about this opponent..."
-                rows={4}
-                autoFocus
-                className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 placeholder-stone-400 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:placeholder-stone-500 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
-              />
-              <p className="text-xs text-stone-400 dark:text-stone-500">
-                Private to you.{" "}
-                <a
-                  href="https://www.markdownguide.org/basic-syntax/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline hover:text-stone-600 dark:hover:text-stone-300"
-                >
-                  Markdown
-                </a>{" "}
-                supported.
-              </p>
-              {notesError && (
-                <p className="text-sm text-red-600 dark:text-red-400">
-                  {notesError}
-                </p>
-              )}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    setEditingNotes(false);
-                    setNotesError("");
-                  }}
-                  disabled={savingNotes}
-                  className="flex-1 rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100 disabled:opacity-50 dark:border-stone-600 dark:text-stone-300 dark:hover:bg-stone-800"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveNotes}
-                  disabled={savingNotes}
-                  className="flex-1 rounded-lg bg-purple-700 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-800 disabled:opacity-50 dark:bg-purple-600 dark:hover:bg-purple-500"
-                >
-                  {savingNotes ? "Saving..." : "Save"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Inline edit form */}

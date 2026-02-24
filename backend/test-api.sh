@@ -1069,18 +1069,13 @@ fi
 COOKIE_JAR="$SAVED_COOKIE_JAR"
 
 # ---------------------------------------------------------------------------
-# 21. Opponent can edit match scores and notes
+# 21. Opponent edit permissions (scores blocked, notes allowed)
 # ---------------------------------------------------------------------------
 echo ""
-echo "21. Opponent can edit match scores and notes"
+echo "21. Opponent edit permissions (scores blocked, notes allowed)"
 
-# User 2 (opponent) CAN update the cross-match scores.
-# Scores are from User 2's perspective: user_score = User 2's points.
-# Original from creator perspective: User 1 won 11-8, 11-6.
-# User 2 submits new scores from their perspective (their user_score first):
-#   Game 1: User 2 scores 9, opp scores 11 → stored as creator 11, opp 9
-#   Game 2: User 2 scores 11, opp scores 7 → stored as creator 7, opp 11
-#   Game 3: User 2 scores 11, opp scores 8 → stored as creator 8, opp 11
+# User 2 (opponent) CANNOT update match scores — only the creator can.
+# The request body is irrelevant; rejection happens at the match ownership check.
 COOKIE_JAR="$COOKIE_JAR_2"
 api PUT "/api/matches/$CROSS_MATCH_ID" "{
   \"opponent_id\": \"$CROSS_OPP_ID\",
@@ -1093,29 +1088,26 @@ api PUT "/api/matches/$CROSS_MATCH_ID" "{
     {\"game_number\": 3, \"user_score\": 11, \"opponent_score\": 8}
   ]
 }"
-if [ "$STATUS" = "200" ]; then
-  # User 2 should see the response from their perspective
-  USER_WON=$(jq -r '.user_won' "$RESPONSE")
-  USER_WINS=$(jq -r '.user_wins' "$RESPONSE")
-  OPP_WINS=$(jq -r '.opponent_wins' "$RESPONSE")
-  NOTES=$(jq -r '.notes // "null"' "$RESPONSE")
-  GAME_COUNT=$(jq '.games | length' "$RESPONSE")
-  if [ "$USER_WON" = "true" ] && [ "$USER_WINS" = "2" ] && [ "$OPP_WINS" = "1" ] && [ "$GAME_COUNT" = "3" ]; then
-    pass "User 2 updated match scores → 200 (won 2-1 from their perspective)"
-  else
-    fail "User 2 update: expected true/2/1/3, got $USER_WON/$USER_WINS/$OPP_WINS/$GAME_COUNT"
-  fi
-  if [ "$NOTES" = "Opponent updated notes" ]; then
-    pass "User 2 sees their notes after update"
-  else
-    fail "User 2 notes after update: expected 'Opponent updated notes', got '$NOTES'"
-  fi
+if [ "$STATUS" = "400" ] || [ "$STATUS" = "404" ]; then
+  pass "User 2 cannot edit match scores → $STATUS (creator-only)"
 else
-  fail "User 2 update cross-match → expected 200, got $STATUS"
+  fail "User 2 score edit → expected 400 or 404, got $STATUS"
 fi
 
-# User 1 re-reads match → scores from creator perspective (flipped back)
-# Stored: creator won game 1 (11-9), lost game 2 (7-11), lost game 3 (8-11)
+# User 2 CAN edit their own notes via PUT /notes
+api PUT "/api/matches/$CROSS_MATCH_ID/notes" '{"notes": "Opponent updated notes"}'
+if [ "$STATUS" = "200" ]; then
+  NOTES=$(jq -r '.notes // "null"' "$RESPONSE")
+  if [ "$NOTES" = "Opponent updated notes" ]; then
+    pass "User 2 updated notes via PUT /notes → 200"
+  else
+    fail "User 2 notes: expected 'Opponent updated notes', got '$NOTES'"
+  fi
+else
+  fail "User 2 PUT /notes → expected 200, got $STATUS"
+fi
+
+# User 1 re-reads match → scores unchanged (creator's original: 11-8, 11-6)
 COOKIE_JAR="$SAVED_COOKIE_JAR"
 api GET "/api/matches/$CROSS_MATCH_ID"
 if [ "$STATUS" = "200" ]; then
@@ -1126,27 +1118,25 @@ if [ "$STATUS" = "200" ]; then
   G1_OPP=$(jq -r '.games[0].opponent_score' "$RESPONSE")
   G2_USER=$(jq -r '.games[1].user_score' "$RESPONSE")
   G2_OPP=$(jq -r '.games[1].opponent_score' "$RESPONSE")
-  G3_USER=$(jq -r '.games[2].user_score' "$RESPONSE")
-  G3_OPP=$(jq -r '.games[2].opponent_score' "$RESPONSE")
-  if [ "$USER_WON" = "false" ] && [ "$USER_WINS" = "1" ] && [ "$OPP_WINS" = "2" ]; then
-    pass "User 1 sees updated result from creator perspective (lost 1-2)"
+  if [ "$USER_WON" = "true" ] && [ "$USER_WINS" = "2" ] && [ "$OPP_WINS" = "0" ]; then
+    pass "User 1 scores unchanged after opponent notes edit (won 2-0)"
   else
-    fail "User 1 result: expected false/1/2, got $USER_WON/$USER_WINS/$OPP_WINS"
+    fail "User 1 result: expected true/2/0, got $USER_WON/$USER_WINS/$OPP_WINS"
   fi
-  if [ "$G1_USER" = "11" ] && [ "$G1_OPP" = "9" ] && [ "$G2_USER" = "7" ] && [ "$G2_OPP" = "11" ] && [ "$G3_USER" = "8" ] && [ "$G3_OPP" = "11" ]; then
-    pass "User 1 sees correctly flipped scores (11-9, 7-11, 8-11)"
+  if [ "$G1_USER" = "11" ] && [ "$G1_OPP" = "8" ] && [ "$G2_USER" = "11" ] && [ "$G2_OPP" = "6" ]; then
+    pass "User 1 scores still 11-8, 11-6 (untouched)"
   else
-    fail "User 1 scores: expected 11-9/7-11/8-11, got $G1_USER-$G1_OPP/$G2_USER-$G2_OPP/$G3_USER-$G3_OPP"
+    fail "User 1 scores: expected 11-8/11-6, got $G1_USER-$G1_OPP/$G2_USER-$G2_OPP"
   fi
-  # Creator's notes should be unchanged (was set to "Cross-user visibility test")
+  # Creator's notes should be unchanged
   NOTES=$(jq -r '.notes // "null"' "$RESPONSE")
   if [ "$NOTES" = "Cross-user visibility test" ]; then
-    pass "User 1's creator notes unchanged after opponent edit"
+    pass "User 1's creator notes unchanged after opponent notes edit"
   else
     fail "User 1 notes: expected 'Cross-user visibility test', got '$NOTES'"
   fi
 else
-  fail "User 1 GET after opponent edit → expected 200, got $STATUS"
+  fail "User 1 GET after opponent notes edit → expected 200, got $STATUS"
 fi
 
 # User 2 cannot delete the match (still creator-only)

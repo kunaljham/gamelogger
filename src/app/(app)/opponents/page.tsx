@@ -3,9 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/contexts/user-context";
-import ReactMarkdown from "react-markdown";
-import remarkBreaks from "remark-breaks";
-import { preserveNewlines } from "@/lib/markdown";
 import type {
   OpponentWithStats,
   ListOpponentsWithStatsResponse,
@@ -27,15 +24,12 @@ function OpponentCard({
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
-  const [editingNotes, setEditingNotes] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const [editName, setEditName] = useState(opponent.name);
   const [editEmail, setEditEmail] = useState(opponent.email ?? "");
-  const [editNotes, setEditNotes] = useState(opponent.notes ?? "");
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState("");
-  const [notesExpanded, setNotesExpanded] = useState(false);
 
   // Close menu on click outside
   useEffect(() => {
@@ -81,36 +75,6 @@ function OpponentCard({
       const updated: Opponent = await res.json();
       onUpdated(updated);
       setEditing(false);
-    } catch (err) {
-      setEditError(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleSaveNotes = async () => {
-    setEditError("");
-    setSaving(true);
-    try {
-      const notes = editNotes.trim() || null;
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/opponents/${opponent.id}/notes`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ notes }),
-          credentials: "include",
-        }
-      );
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to update notes");
-      }
-
-      const updated: Opponent = await res.json();
-      onUpdated(updated);
-      setEditingNotes(false);
     } catch (err) {
       setEditError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -285,226 +249,7 @@ function OpponentCard({
           )}
         </div>
       </div>
-
-      {/* Notes display */}
-      {opponent.notes && !editingNotes && (
-        <div className="mt-3 border-t border-stone-100 pt-3 dark:border-stone-800">
-          <div
-            className={`prose prose-sm prose-stone dark:prose-invert max-w-none text-stone-500 dark:text-stone-400 ${!notesExpanded ? "line-clamp-2" : ""}`}
-          >
-            <ReactMarkdown remarkPlugins={[remarkBreaks]}>{preserveNewlines(opponent.notes)}</ReactMarkdown>
-          </div>
-          {opponent.notes.length > 100 && (
-            <button
-              onClick={() => setNotesExpanded(!notesExpanded)}
-              className="mt-1 text-xs font-medium text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300"
-            >
-              {notesExpanded ? "Show less" : "Show more"}
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Inline notes editing */}
-      {editingNotes && (
-        <div className="mt-3 space-y-2 border-t border-stone-100 pt-3 dark:border-stone-800">
-          <textarea
-            value={editNotes}
-            onChange={(e) => setEditNotes(e.target.value)}
-            disabled={saving}
-            placeholder="Add notes about this opponent..."
-            rows={3}
-            className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 placeholder-stone-400 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:placeholder-stone-500 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
-          />
-          <p className="text-xs text-stone-400 dark:text-stone-500">
-            Private to you.{" "}
-            <a
-              href="https://www.markdownguide.org/basic-syntax/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-stone-600 dark:hover:text-stone-300"
-            >
-              Markdown
-            </a>{" "}
-            supported.
-          </p>
-          {editError && (
-            <p className="text-sm text-red-600 dark:text-red-400">
-              {editError}
-            </p>
-          )}
-          <div className="flex gap-2">
-            <button
-              onClick={() => {
-                setEditingNotes(false);
-                setEditError("");
-              }}
-              disabled={saving}
-              className="flex-1 rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100 disabled:opacity-50 dark:border-stone-600 dark:text-stone-300 dark:hover:bg-stone-800"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSaveNotes}
-              disabled={saving}
-              className="flex-1 rounded-lg bg-purple-700 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-800 disabled:opacity-50 dark:bg-purple-600 dark:hover:bg-purple-500"
-            >
-              {saving ? "Saving..." : "Save"}
-            </button>
-          </div>
-        </div>
-      )}
     </div>
-  );
-}
-
-// ── Add Opponent Form ────────────────────────────────────────────────
-function AddOpponentForm({
-  onCreated,
-}: {
-  onCreated: (created: Opponent) => void;
-}) {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [notes, setNotes] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [open, setOpen] = useState(false);
-
-  if (!open) {
-    return (
-      <button
-        onClick={() => setOpen(true)}
-        className="w-full cursor-pointer rounded-xl border border-dashed border-stone-300 px-5 py-3 text-sm font-medium text-stone-500 transition-colors hover:border-stone-400 hover:text-stone-700 dark:border-stone-700 dark:text-stone-400 dark:hover:border-stone-600 dark:hover:text-stone-300"
-      >
-        + Add Opponent
-      </button>
-    );
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    const trimmedName = name.trim();
-    if (!trimmedName) {
-      setError("Name is required");
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const body: { name: string; email?: string; notes?: string } = {
-        name: trimmedName,
-      };
-      const trimmedEmail = email.trim();
-      if (trimmedEmail) body.email = trimmedEmail;
-      const trimmedNotes = notes.trim();
-      if (trimmedNotes) body.notes = trimmedNotes;
-
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/opponents`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-          credentials: "include",
-        }
-      );
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to create opponent");
-      }
-
-      const created: Opponent = await res.json();
-      onCreated(created);
-      setName("");
-      setEmail("");
-      setNotes("");
-      setOpen(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <form
-      onSubmit={handleSubmit}
-      className="rounded-xl border border-stone-200 bg-white px-5 py-4 dark:border-stone-800 dark:bg-stone-900"
-    >
-      <div className="space-y-3">
-        <div>
-          <label className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
-            Name
-          </label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            disabled={saving}
-            placeholder="Opponent name"
-            autoFocus
-            className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 transition-colors placeholder:text-stone-400 focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:placeholder:text-stone-500 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
-            Email{" "}
-            <span className="font-normal text-stone-400">(optional)</span>
-          </label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            disabled={saving}
-            placeholder="opponent@example.com"
-            className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 transition-colors placeholder:text-stone-400 focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:placeholder:text-stone-500 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
-            Notes{" "}
-            <span className="font-normal text-stone-400">(optional)</span>
-          </label>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            disabled={saving}
-            placeholder="Playing style, schedule preferences..."
-            rows={2}
-            className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 placeholder-stone-400 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:placeholder-stone-500 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
-          />
-        </div>
-        {error && (
-          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-        )}
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              setOpen(false);
-              setError("");
-              setName("");
-              setEmail("");
-              setNotes("");
-            }}
-            disabled={saving}
-            className="flex-1 rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100 disabled:opacity-50 dark:border-stone-600 dark:text-stone-300 dark:hover:bg-stone-800"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={saving}
-            className="flex-1 rounded-lg bg-purple-700 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-800 disabled:opacity-50 dark:bg-purple-600 dark:hover:bg-purple-500"
-          >
-            {saving ? "Creating..." : "Create"}
-          </button>
-        </div>
-      </div>
-    </form>
   );
 }
 
@@ -587,12 +332,6 @@ export default function OpponentsPage() {
     );
   };
 
-  // After creating a new opponent, add it to the top of the list with 0/0 stats
-  const handleOpponentCreated = (created: Opponent) => {
-    const withStats: OpponentWithStats = { ...created, wins: 0, losses: 0 };
-    setOpponents((prev) => [withStats, ...prev]);
-  };
-
   // Open invite modal
   const handleInviteClick = (opponent: OpponentWithStats) => {
     setInviteTarget(opponent);
@@ -611,13 +350,6 @@ export default function OpponentsPage() {
       <h1 className="mb-6 text-3xl font-bold tracking-tight text-stone-900 dark:text-stone-50">
         Opponents
       </h1>
-
-      {/* Add Opponent button — hidden for demo user */}
-      {!isDemoUser && !loading && (
-        <div className="mb-4">
-          <AddOpponentForm onCreated={handleOpponentCreated} />
-        </div>
-      )}
 
       {/* Search input — hidden in the true empty state (no opponents, no active search) */}
       {(loading || error || opponents.length > 0 || !!searchQuery.trim()) && (
@@ -668,7 +400,7 @@ export default function OpponentsPage() {
         ) : (
           <div className="py-12 text-center">
             <p className="text-sm text-stone-400 dark:text-stone-500">
-              No opponents yet. Add one above or they&rsquo;ll be created automatically when you log a match.
+              No opponents yet. They&rsquo;re added automatically when you log a match and are private to you.
             </p>
           </div>
         )

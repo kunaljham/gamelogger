@@ -625,3 +625,4 @@ func TestUpdateMatchNotes_OpponentDoesNotOverwriteCreatorNotes(t *testing.T) {
 	// Covered by integration tests (test-api.sh step 25: Notes edge cases).
 	t.Skip("Requires database — will be covered by integration tests")
 }
+

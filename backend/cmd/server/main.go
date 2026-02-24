@@ -112,7 +112,6 @@ func main() {
 		r.Get("/{id}", h.GetOpponent)
 		r.Get("/{id}/matches", h.ListMatchesByOpponent)
 		r.Put("/{id}", h.UpdateOpponent)
-		r.Put("/{id}/notes", h.UpdateOpponentNotes)
 		r.Post("/{id}/invite", h.InviteOpponent)
 	})
 
