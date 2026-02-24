@@ -331,6 +331,86 @@ func (h *Handler) UpdateOpponent(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, updated)
 }
 
+// GetOpponent handles GET /api/opponents/{id}.
+// Returns a single opponent with win/loss stats and registration date.
+func (h *Handler) GetOpponent(w http.ResponseWriter, r *http.Request) {
+	user, ok := UserFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "Not authenticated"})
+		return
+	}
+
+	idStr := chi.URLParam(r, "id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid opponent ID"})
+		return
+	}
+
+	opponent, err := h.opponentRepo.FindByIDWithStats(r.Context(), id, user.ID)
+	if err != nil {
+		if err == repository.ErrOpponentNotFound {
+			writeJSON(w, http.StatusNotFound, errorResponse{Error: "Opponent not found"})
+			return
+		}
+		slog.Error("Failed to get opponent", "error", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to get opponent"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, opponent)
+}
+
+// updateOpponentNotesRequest is the JSON body for PUT /api/opponents/{id}/notes.
+type updateOpponentNotesRequest struct {
+	Notes *string `json:"notes"`
+}
+
+// UpdateOpponentNotes handles PUT /api/opponents/{id}/notes.
+// Updates the notes for an opponent. Pass null or empty string to clear.
+func (h *Handler) UpdateOpponentNotes(w http.ResponseWriter, r *http.Request) {
+	user, ok := UserFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "Not authenticated"})
+		return
+	}
+
+	idStr := chi.URLParam(r, "id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid opponent ID"})
+		return
+	}
+
+	var req updateOpponentNotesRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid request body"})
+		return
+	}
+
+	// Trim whitespace, treat empty string as null (clear notes)
+	var notes *string
+	if req.Notes != nil {
+		trimmed := strings.TrimSpace(*req.Notes)
+		if trimmed != "" {
+			notes = &trimmed
+		}
+	}
+
+	updated, err := h.opponentRepo.UpdateNotes(r.Context(), id, user.ID, notes)
+	if err != nil {
+		if err == repository.ErrOpponentNotFound {
+			writeJSON(w, http.StatusNotFound, errorResponse{Error: "Opponent not found"})
+			return
+		}
+		slog.Error("Failed to update opponent notes", "error", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to update notes"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, updated)
+}
+
 // InviteOpponent handles POST /api/opponents/{id}/invite.
 // Sends an invitation email to an unregistered or previously invited opponent.
 func (h *Handler) InviteOpponent(w http.ResponseWriter, r *http.Request) {

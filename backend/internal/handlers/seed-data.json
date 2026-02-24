@@ -1,11 +1,11 @@
 {
   "user_name": "Demo User",
   "opponents": [
-    { "key": "alice", "name": "Alice Chen", "email": "demo-opponent@gamelogger.app" },
-    { "key": "bob", "name": "Bob Martinez" },
-    { "key": "charlie", "name": "Charlie Park", "email": "charlie.park@example.com" },
-    { "key": "diana", "name": "Diana Wright" },
-    { "key": "elena", "name": "Elena Rodriguez", "email": "elena.r@example.com" },
+    { "key": "alice", "name": "Alice Chen", "email": "demo-opponent@gamelogger.app", "notes": "My most regular opponent. Very consistent and reads the game well.\n\n**Strengths:** Great length, accurate drops, rarely makes unforced errors.\n\n**Weaknesses:** Can struggle with pace — when I take the ball early and volley, she gets pushed back.\n\n**Game plan:** Keep rallies short, attack with volleys, vary the serve." },
+    { "key": "bob", "name": "Bob Martinez", "notes": "Dangerous when he gets momentum. Strong forehand but backhand drops are weak.\n\nTend to beat him when I stay patient and play to his backhand side. Falls apart if I can get a lead early." },
+    { "key": "charlie", "name": "Charlie Park", "email": "charlie.park@example.com", "notes": "Charlie dominates the T better than anyone else I play. Really tough to move him off the middle.\n\nBest strategy: high lobs to the back corners, then look for the crosscourt drive when he's deep." },
+    { "key": "diana", "name": "Diana Wright", "notes": "Incredibly fit — outlasts me in long rallies. I need to keep points short against her.\n\nHer crosscourt drop is her go-to shot under pressure. If I can read it, I can usually counter with a straight drive." },
+    { "key": "elena", "name": "Elena Rodriguez", "email": "elena.r@example.com", "notes": "Deceptive serve — watch the wrist, not the racquet face." },
     { "key": "frank", "name": "Frank Liu" },
     { "key": "grace", "name": "Grace Kim", "email": "grace.kim@example.com" },
     { "key": "hank", "name": "Hank O'Brien" },
@@ -21,10 +21,10 @@
     { "key": "rachel", "name": "Rachel Singh" },
     { "key": "sam", "name": "Sam Taylor" },
     { "key": "tina", "name": "Tina Zhao", "email": "tina.z@example.com" },
-    { "key": "uma", "name": "Uma Krishnan" },
-    { "key": "victor", "name": "Victor Osei" },
+    { "key": "uma", "name": "Uma Krishnan", "notes": "Left-handed! Target her backhand (my forehand side). My usual crosscourt goes straight to her forehand — avoid it." },
+    { "key": "victor", "name": "Victor Osei", "notes": "A grinder. Every point is a battle. Need to be very fit to play him in a bo5." },
     { "key": "wendy", "name": "Wendy Chang", "email": "wendy.c@example.com" },
-    { "key": "xavier", "name": "Xavier Dupont" },
+    { "key": "xavier", "name": "Xavier Dupont", "notes": "Fastest pace I've faced. Stand further back on the receive. Slow him down with lobs — he makes errors when the pace drops." },
     { "key": "yuki", "name": "Yuki Tanaka", "email": "yuki.t@example.com" }
   ],
   "matches": [

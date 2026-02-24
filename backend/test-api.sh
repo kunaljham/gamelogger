@@ -260,6 +260,89 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# 7b. Opponent Detail: GET /api/opponents/{id}
+# ---------------------------------------------------------------------------
+echo ""
+echo "7b. Opponent Detail"
+
+api GET "/api/opponents/$OPPONENT_ID"
+if [ "$STATUS" = "200" ]; then
+  NAME=$(jq -r '.name' "$RESPONSE")
+  WINS=$(jq -r '.wins' "$RESPONSE")
+  LOSSES=$(jq -r '.losses' "$RESPONSE")
+  if [ "$NAME" = "Alice Updated" ] && [ "$WINS" != "null" ] && [ "$LOSSES" != "null" ]; then
+    pass "GET /api/opponents/$OPPONENT_ID → 200 (name=$NAME, wins=$WINS, losses=$LOSSES)"
+  else
+    fail "GET /api/opponents detail → name=$NAME, wins=$WINS, losses=$LOSSES"
+  fi
+else
+  fail "GET /api/opponents/$OPPONENT_ID → expected 200, got $STATUS"
+fi
+
+# Non-existent opponent
+api GET "/api/opponents/00000000-0000-0000-0000-000000000000"
+if [ "$STATUS" = "404" ]; then
+  pass "GET /api/opponents/missing → 404"
+else
+  fail "GET /api/opponents/missing → expected 404, got $STATUS"
+fi
+
+# ---------------------------------------------------------------------------
+# 7c. Opponent Notes: Set, update, clear
+# ---------------------------------------------------------------------------
+echo ""
+echo "7c. Opponent Notes"
+
+# Set notes
+api PUT "/api/opponents/$OPPONENT_ID/notes" '{"notes": "Likes to serve short"}'
+if [ "$STATUS" = "200" ]; then
+  NOTES=$(jq -r '.notes // empty' "$RESPONSE")
+  NOTES_AT=$(jq -r '.notes_updated_at // empty' "$RESPONSE")
+  if [ "$NOTES" = "Likes to serve short" ] && [ -n "$NOTES_AT" ]; then
+    pass "PUT /api/opponents/$OPPONENT_ID/notes → 200 (notes set, notes_updated_at present)"
+  else
+    fail "PUT /api/opponents/notes → notes=$NOTES, notes_updated_at=$NOTES_AT"
+  fi
+else
+  fail "PUT /api/opponents/notes → expected 200, got $STATUS"
+fi
+
+# Update notes
+api PUT "/api/opponents/$OPPONENT_ID/notes" '{"notes": "Updated strategy notes"}'
+if [ "$STATUS" = "200" ]; then
+  NOTES=$(jq -r '.notes // empty' "$RESPONSE")
+  if [ "$NOTES" = "Updated strategy notes" ]; then
+    pass "PUT /api/opponents/notes → 200 (notes updated)"
+  else
+    fail "PUT /api/opponents/notes update → notes=$NOTES"
+  fi
+else
+  fail "PUT /api/opponents/notes update → expected 200, got $STATUS"
+fi
+
+# Clear notes
+api PUT "/api/opponents/$OPPONENT_ID/notes" '{"notes": null}'
+if [ "$STATUS" = "200" ]; then
+  NOTES=$(jq -r '.notes // empty' "$RESPONSE")
+  NOTES_AT=$(jq -r '.notes_updated_at // empty' "$RESPONSE")
+  if [ -z "$NOTES" ] && [ -z "$NOTES_AT" ]; then
+    pass "PUT /api/opponents/notes → 200 (notes cleared, notes_updated_at cleared)"
+  else
+    fail "PUT /api/opponents/notes clear → notes=$NOTES, notes_updated_at=$NOTES_AT"
+  fi
+else
+  fail "PUT /api/opponents/notes clear → expected 200, got $STATUS"
+fi
+
+# Notes on non-existent opponent
+api PUT "/api/opponents/00000000-0000-0000-0000-000000000000/notes" '{"notes": "ghost"}'
+if [ "$STATUS" = "404" ]; then
+  pass "PUT /api/opponents/missing/notes → 404"
+else
+  fail "PUT /api/opponents/missing/notes → expected 404, got $STATUS"
+fi
+
+# ---------------------------------------------------------------------------
 # 8. Matches: Create (best of 3, user wins 2-0)
 # ---------------------------------------------------------------------------
 echo ""
