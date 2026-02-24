@@ -1069,13 +1069,88 @@ fi
 COOKIE_JAR="$SAVED_COOKIE_JAR"
 
 # ---------------------------------------------------------------------------
-# 21. Cross-user match update blocked
+# 21. Opponent edit permissions (scores blocked, notes allowed)
 # ---------------------------------------------------------------------------
 echo ""
-echo "21. Cross-user match update blocked"
+echo "21. Opponent edit permissions (scores blocked, notes allowed)"
 
-# User 2 should NOT be able to update User 1's match
+# User 2 (opponent) CANNOT update match scores — only the creator can.
+# The request body is irrelevant; rejection happens at the match ownership check.
 COOKIE_JAR="$COOKIE_JAR_2"
+api PUT "/api/matches/$CROSS_MATCH_ID" "{
+  \"opponent_id\": \"$CROSS_OPP_ID\",
+  \"match_type\": \"bo3\",
+  \"played_at\": \"2025-06-20T12:00:00Z\",
+  \"notes\": \"Opponent updated notes\",
+  \"games\": [
+    {\"game_number\": 1, \"user_score\": 9, \"opponent_score\": 11},
+    {\"game_number\": 2, \"user_score\": 11, \"opponent_score\": 7},
+    {\"game_number\": 3, \"user_score\": 11, \"opponent_score\": 8}
+  ]
+}"
+if [ "$STATUS" = "400" ] || [ "$STATUS" = "404" ]; then
+  pass "User 2 cannot edit match scores → $STATUS (creator-only)"
+else
+  fail "User 2 score edit → expected 400 or 404, got $STATUS"
+fi
+
+# User 2 CAN edit their own notes via PUT /notes
+api PUT "/api/matches/$CROSS_MATCH_ID/notes" '{"notes": "Opponent updated notes"}'
+if [ "$STATUS" = "200" ]; then
+  NOTES=$(jq -r '.notes // "null"' "$RESPONSE")
+  if [ "$NOTES" = "Opponent updated notes" ]; then
+    pass "User 2 updated notes via PUT /notes → 200"
+  else
+    fail "User 2 notes: expected 'Opponent updated notes', got '$NOTES'"
+  fi
+else
+  fail "User 2 PUT /notes → expected 200, got $STATUS"
+fi
+
+# User 1 re-reads match → scores unchanged (creator's original: 11-8, 11-6)
+COOKIE_JAR="$SAVED_COOKIE_JAR"
+api GET "/api/matches/$CROSS_MATCH_ID"
+if [ "$STATUS" = "200" ]; then
+  USER_WON=$(jq -r '.user_won' "$RESPONSE")
+  USER_WINS=$(jq -r '.user_wins' "$RESPONSE")
+  OPP_WINS=$(jq -r '.opponent_wins' "$RESPONSE")
+  G1_USER=$(jq -r '.games[0].user_score' "$RESPONSE")
+  G1_OPP=$(jq -r '.games[0].opponent_score' "$RESPONSE")
+  G2_USER=$(jq -r '.games[1].user_score' "$RESPONSE")
+  G2_OPP=$(jq -r '.games[1].opponent_score' "$RESPONSE")
+  if [ "$USER_WON" = "true" ] && [ "$USER_WINS" = "2" ] && [ "$OPP_WINS" = "0" ]; then
+    pass "User 1 scores unchanged after opponent notes edit (won 2-0)"
+  else
+    fail "User 1 result: expected true/2/0, got $USER_WON/$USER_WINS/$OPP_WINS"
+  fi
+  if [ "$G1_USER" = "11" ] && [ "$G1_OPP" = "8" ] && [ "$G2_USER" = "11" ] && [ "$G2_OPP" = "6" ]; then
+    pass "User 1 scores still 11-8, 11-6 (untouched)"
+  else
+    fail "User 1 scores: expected 11-8/11-6, got $G1_USER-$G1_OPP/$G2_USER-$G2_OPP"
+  fi
+  # Creator's notes should be unchanged
+  NOTES=$(jq -r '.notes // "null"' "$RESPONSE")
+  if [ "$NOTES" = "Cross-user visibility test" ]; then
+    pass "User 1's creator notes unchanged after opponent notes edit"
+  else
+    fail "User 1 notes: expected 'Cross-user visibility test', got '$NOTES'"
+  fi
+else
+  fail "User 1 GET after opponent notes edit → expected 200, got $STATUS"
+fi
+
+# User 2 cannot delete the match (still creator-only)
+COOKIE_JAR="$COOKIE_JAR_2"
+api DELETE "/api/matches/$CROSS_MATCH_ID"
+if [ "$STATUS" = "404" ]; then
+  pass "User 2 still cannot delete User 1's match → 404"
+else
+  fail "User 2 delete after edit → expected 404, got $STATUS"
+fi
+
+# Non-participant (User 4) still cannot update → 404
+COOKIE_JAR="$COOKIE_JAR_4"
+api POST /api/auth/dev-login "{\"email\": \"$TEST_EMAIL_4\"}"
 api PUT "/api/matches/$CROSS_MATCH_ID" "{
   \"opponent_id\": \"$CROSS_OPP_ID\",
   \"match_type\": \"bo3\",
@@ -1085,10 +1160,10 @@ api PUT "/api/matches/$CROSS_MATCH_ID" "{
     {\"game_number\": 2, \"user_score\": 11, \"opponent_score\": 1}
   ]
 }"
-if [ "$STATUS" = "400" ] || [ "$STATUS" = "404" ]; then
-  pass "User 2 cannot update User 1's match → $STATUS"
+if [ "$STATUS" = "404" ]; then
+  pass "Non-participant cannot update match → 404"
 else
-  fail "User 2 update cross-match → expected 400 or 404, got $STATUS"
+  fail "Non-participant update → expected 404, got $STATUS"
 fi
 COOKIE_JAR="$SAVED_COOKIE_JAR"
 
