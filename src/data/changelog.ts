@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-02-24",
+    title: "Opponent notes & detail page",
+    items: [
+      "Add private notes to any opponent — track play style, strategy, strengths, or anything you want to remember",
+      "New opponent detail page with match stats, notes, and quick access to log a match",
+      "Add opponents directly from the opponents list",
+    ],
+  },
+  {
     date: "2026-02-23",
     title: "Match notifications",
     items: [
