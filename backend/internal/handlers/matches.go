@@ -324,6 +324,8 @@ func (h *Handler) GetMatch(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateMatch handles PUT /api/matches/{id}.
+// Only the match creator can edit scores, date, and notes.
+// Opponents can edit their own notes via PUT /api/matches/{id}/notes.
 func (h *Handler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 	user, ok := UserFromContext(r.Context())
 	if !ok {
@@ -400,14 +402,10 @@ func (h *Handler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 		CreatorNotes: req.Notes,
 		Games:        games,
 	}
-
 	// Compute user_won from validated games before persisting
 	match.ComputeResult()
 
-	// Build notification for registered opponent
-	outbox := h.buildMatchOutbox(r.Context(), opponent, user, id, playedAt, false)
-
-	updated, err := h.matchRepo.Update(r.Context(), match, outbox)
+	updated, err := h.matchRepo.Update(r.Context(), match, nil)
 	if err != nil {
 		if err == repository.ErrMatchNotFound {
 			writeJSON(w, http.StatusNotFound, errorResponse{Error: "Match not found"})

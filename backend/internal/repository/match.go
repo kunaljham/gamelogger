@@ -138,7 +138,6 @@ func (r *MatchRepository) FindByID(ctx context.Context, id uuid.UUID) (*models.M
 		return nil, err
 	}
 	m.Games = games
-
 	return &m, nil
 }
 
@@ -361,7 +360,6 @@ func (r *MatchRepository) UpdateNotes(ctx context.Context, matchID uuid.UUID, us
 		return nil, err
 	}
 	m.Games = games
-
 	return &m, nil
 }
 
