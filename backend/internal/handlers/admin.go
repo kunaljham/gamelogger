@@ -156,7 +156,7 @@ func (h *Handler) SeedData(w http.ResponseWriter, r *http.Request) {
 		var oppID uuid.UUID
 		err := tx.QueryRow(ctx, `
 			INSERT INTO opponents (user_id, email, name, status, notes, notes_updated_at)
-			VALUES ($1, $2, $3, 'unregistered', $4::text, CASE WHEN $4::text IS NOT NULL THEN NOW() ELSE NULL END)
+			VALUES ($1, $2, $3, 'unregistered', $4::text, CASE WHEN $4 IS NOT NULL THEN NOW() ELSE NULL END)
 			RETURNING id
 		`, user.ID, opp.Email, opp.Name, opp.Notes).Scan(&oppID)
 		if err != nil {

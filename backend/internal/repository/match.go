@@ -102,6 +102,17 @@ func (r *MatchRepository) Create(ctx context.Context, match *models.Match, outbo
 	return match, nil
 }
 
+// FindOwner returns the user_id of the match owner. Lightweight single-column
+// lookup used for ownership checks without fetching the full match.
+func (r *MatchRepository) FindOwner(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+	var ownerID uuid.UUID
+	err := r.db.QueryRow(ctx, `SELECT user_id FROM matches WHERE id = $1`, id).Scan(&ownerID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return uuid.Nil, ErrMatchNotFound
+	}
+	return ownerID, err
+}
+
 // FindByID fetches a match by ID, including its games and opponent.
 func (r *MatchRepository) FindByID(ctx context.Context, id uuid.UUID) (*models.Match, error) {
 	var m models.Match
