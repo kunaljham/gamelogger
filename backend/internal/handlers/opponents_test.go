@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -166,6 +167,56 @@ func TestListOpponents_InvalidCursor(t *testing.T) {
 	var resp errorResponse
 	require.NoError(t, json.NewDecoder(w.Body).Decode(&resp))
 	assert.Contains(t, resp.Error, "cursor")
+}
+
+func TestUpdateOpponentNotes_Unauthenticated(t *testing.T) {
+	h := opponentTestHandler()
+	body, _ := json.Marshal(updateOpponentNotesRequest{})
+	req := httptest.NewRequest(http.MethodPut, "/api/opponents/"+uuid.New().String()+"/notes", bytes.NewBuffer(body))
+	w := httptest.NewRecorder()
+
+	h.UpdateOpponentNotes(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+}
+
+func TestUpdateOpponentNotes_InvalidID(t *testing.T) {
+	h := opponentTestHandler()
+	body, _ := json.Marshal(updateOpponentNotesRequest{})
+	req := httptest.NewRequest(http.MethodPut, "/api/opponents/not-a-uuid/notes", bytes.NewBuffer(body))
+	user := &models.User{ID: uuid.New(), Email: "test@example.com"}
+	ctx := context.WithValue(req.Context(), userContextKey, user)
+	req = req.WithContext(ctx)
+	w := httptest.NewRecorder()
+
+	// Without chi context, URLParam returns "" which uuid.Parse rejects
+	h.UpdateOpponentNotes(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	var resp errorResponse
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&resp))
+	assert.Equal(t, "Invalid opponent ID", resp.Error)
+}
+
+func TestUpdateOpponentNotes_InvalidJSON(t *testing.T) {
+	h := opponentTestHandler()
+	opponentID := uuid.New().String()
+	req := httptest.NewRequest(http.MethodPut, "/api/opponents/"+opponentID+"/notes", bytes.NewBufferString("not json"))
+	user := &models.User{ID: uuid.New(), Email: "test@example.com"}
+	ctx := context.WithValue(req.Context(), userContextKey, user)
+	// Inject chi route context so URLParam works
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", opponentID)
+	ctx = context.WithValue(ctx, chi.RouteCtxKey, rctx)
+	req = req.WithContext(ctx)
+	w := httptest.NewRecorder()
+
+	h.UpdateOpponentNotes(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	var resp errorResponse
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&resp))
+	assert.Equal(t, "Invalid request body", resp.Error)
 }
 
 func TestListOpponentsWithStats_InvalidCursor(t *testing.T) {

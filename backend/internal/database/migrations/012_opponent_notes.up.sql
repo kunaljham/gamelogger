@@ -1,0 +1,2 @@
+ALTER TABLE opponents ADD COLUMN notes TEXT;
+ALTER TABLE opponents ADD COLUMN notes_updated_at TIMESTAMP WITH TIME ZONE;

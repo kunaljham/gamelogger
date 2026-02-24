@@ -2,11 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { useUser } from "@/contexts/user-context";
-import ReactMarkdown from "react-markdown";
-import remarkBreaks from "remark-breaks";
 import type { Match } from "@/types/match";
-import { preserveNewlines } from "@/lib/markdown";
 import {
   type GameScore,
   validateGameScore,
@@ -15,6 +13,8 @@ import {
   formatDateTime,
 } from "@/lib/match";
 import InviteModal from "@/components/invite-modal";
+import InviteButton from "@/components/invite-button";
+import NotesSection from "@/components/notes-section";
 
 function formatDate(iso: string): string {
   return new Intl.DateTimeFormat("en-US", {
@@ -171,7 +171,17 @@ export default function MatchDetail() {
     <main className="mx-auto max-w-md px-4 pb-24 pt-8">
       {/* Header zone */}
       <h1 className="text-3xl font-bold tracking-tight text-stone-900 dark:text-stone-50 sm:text-4xl">
-        {user?.name ?? "You"} vs. {match.opponent?.name ?? "Unknown"}
+        {user?.name ?? "You"} vs.{" "}
+        {match.opponent ? (
+          <Link
+            href={`/opponents/${match.opponent_id}`}
+            className="underline decoration-stone-300 underline-offset-4 transition-colors hover:decoration-purple-500 dark:decoration-stone-600 dark:hover:decoration-purple-400"
+          >
+            {match.opponent.name}
+          </Link>
+        ) : (
+          "Unknown"
+        )}
       </h1>
       <p className="mt-1 text-sm text-stone-400 dark:text-stone-500">
         {formatDate(match.played_at)}
@@ -181,14 +191,12 @@ export default function MatchDetail() {
 
       {/* Invite button — shown for non-registered opponents (hidden for demo) */}
       {!isDemoUser && match.opponent && match.opponent.status !== "registered" && (
-        <button
-          onClick={() => setShowInviteModal(true)}
-          className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-full border border-purple-200 bg-purple-50 px-4 py-2.5 text-sm font-medium text-purple-700 transition-colors hover:bg-purple-100 dark:border-purple-800 dark:bg-purple-950/30 dark:text-purple-400 dark:hover:bg-purple-950/50"
-        >
-          {match.opponent.status === "invited"
-            ? `Re-invite ${match.opponent.name}`
-            : `Invite ${match.opponent.name} to GameLogger`}
-        </button>
+        <div className="mt-4">
+          <InviteButton
+            opponent={match.opponent}
+            onClick={() => setShowInviteModal(true)}
+          />
+        </div>
       )}
 
       {/* Result card */}
@@ -215,25 +223,8 @@ export default function MatchDetail() {
 
       {/* Notes */}
       {match.notes && (
-        <div className="mt-4 border-l-2 border-purple-400 pl-4 dark:border-purple-600">
-          <p className="mb-1 flex items-center gap-1 text-xs font-medium text-purple-500 dark:text-purple-400">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 16 16"
-              fill="currentColor"
-              className="size-3"
-            >
-              <path
-                fillRule="evenodd"
-                d="M8 1a3.5 3.5 0 0 0-3.5 3.5V7A1.5 1.5 0 0 0 3 8.5v4A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5v-4A1.5 1.5 0 0 0 11 7V4.5A3.5 3.5 0 0 0 8 1Zm2 6V4.5a2 2 0 1 0-4 0V7h4Z"
-                clipRule="evenodd"
-              />
-            </svg>
-            Private note — only visible to you
-          </p>
-          <div className="prose prose-sm prose-stone dark:prose-invert max-w-none text-stone-600 dark:text-stone-400">
-            <ReactMarkdown remarkPlugins={[remarkBreaks]}>{preserveNewlines(match.notes)}</ReactMarkdown>
-          </div>
+        <div className="mt-4">
+          <NotesSection notes={match.notes} readOnly />
         </div>
       )}
 
@@ -245,18 +236,18 @@ export default function MatchDetail() {
       </p>
 
       {/* Action buttons (anchored to bottom) — hidden for demo user */}
-      {!isDemoUser && (
+      {!isDemoUser && user && (
         <div className="fixed inset-x-0 bottom-0 border-t border-stone-200 bg-stone-50/90 p-4 backdrop-blur-sm dark:border-stone-800 dark:bg-stone-950/90">
           <div className="mx-auto flex max-w-md gap-3">
             <button
               onClick={() =>
-                setMode(match.user_id === user?.id ? "edit" : "edit-notes")
+                setMode(match.user_id === user.id ? "edit" : "edit-notes")
               }
               className="flex-1 cursor-pointer rounded-lg border border-stone-300 px-4 py-3 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100 dark:border-stone-600 dark:text-stone-300 dark:hover:bg-stone-800"
             >
-              {match.user_id === user?.id ? "Edit" : "Edit Notes"}
+              {match.user_id === user.id ? "Edit" : "Edit Notes"}
             </button>
-            {match.user_id === user?.id && (
+            {match.user_id === user.id && (
               <button
                 onClick={() => setShowDeleteModal(true)}
                 className="flex-1 cursor-pointer rounded-lg border border-red-200 px-4 py-3 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30"

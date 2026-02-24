@@ -17,6 +17,8 @@ export interface Opponent {
   status: "unregistered" | "invited" | "registered";
   invited_at?: string;
   registered_user_id?: string;
+  notes?: string;
+  notes_updated_at?: string;
   created_at: string;
   updated_at: string;
 }
@@ -50,9 +52,7 @@ export interface ListOpponentsResponse {
 export interface OpponentWithStats extends Opponent {
   wins: number;
   losses: number;
+  registered_user_created_at?: string;
 }
 
-export interface ListOpponentsWithStatsResponse {
-  opponents: OpponentWithStats[];
-  next_cursor?: string;
-}
+

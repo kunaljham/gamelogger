@@ -20,6 +20,8 @@ type Opponent struct {
 	Status           string     `json:"status"`
 	InvitedAt        *time.Time `json:"invited_at,omitempty"`
 	RegisteredUserID *uuid.UUID `json:"registered_user_id,omitempty"`
+	Notes            *string    `json:"notes,omitempty"`
+	NotesUpdatedAt   *time.Time `json:"notes_updated_at,omitempty"`
 	CreatedAt        time.Time  `json:"created_at"`
 	UpdatedAt        time.Time  `json:"updated_at"`
 }
@@ -27,6 +29,7 @@ type Opponent struct {
 // OpponentWithStats extends Opponent with win/loss record against the user.
 type OpponentWithStats struct {
 	Opponent
-	Wins   int `json:"wins"`
-	Losses int `json:"losses"`
+	Wins                    int        `json:"wins"`
+	Losses                  int        `json:"losses"`
+	RegisteredUserCreatedAt *time.Time `json:"registered_user_created_at,omitempty"`
 }

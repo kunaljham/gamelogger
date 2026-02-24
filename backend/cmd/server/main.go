@@ -109,7 +109,9 @@ func main() {
 		r.Get("/", h.ListOpponents)
 		r.Get("/with-stats", h.ListOpponentsWithStats)
 		r.Post("/", h.CreateOpponent)
+		r.Get("/{id}", h.GetOpponent)
 		r.Put("/{id}", h.UpdateOpponent)
+		r.Put("/{id}/notes", h.UpdateOpponentNotes)
 		r.Post("/{id}/invite", h.InviteOpponent)
 	})
 
