@@ -345,6 +345,24 @@ func (h *Handler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Verify match exists and belongs to the current user before validating
+	// the rest of the request. Non-owners must get 404 (not a 400 from a
+	// downstream validation step like opponent ownership).
+	existing, err := h.matchRepo.FindByID(r.Context(), id)
+	if err != nil {
+		if err == repository.ErrMatchNotFound {
+			writeJSON(w, http.StatusNotFound, errorResponse{Error: "Match not found"})
+			return
+		}
+		slog.Error("Failed to find match", "error", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to update match"})
+		return
+	}
+	if existing.UserID != user.ID {
+		writeJSON(w, http.StatusNotFound, errorResponse{Error: "Match not found"})
+		return
+	}
+
 	opponentID, err := uuid.Parse(req.OpponentID)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid opponent_id"})
