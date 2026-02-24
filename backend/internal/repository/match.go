@@ -236,6 +236,129 @@ func (r *MatchRepository) ListByUser(ctx context.Context, userID uuid.UUID, limi
 	return matches, nil
 }
 
+// ListMatchesByOpponent returns a paginated list of matches between a user and a specific opponent.
+// Includes both matches the user created against this opponent AND reciprocal matches
+// (if the opponent is a registered user who logged matches against the viewer).
+// Uses cursor-based pagination with a composite cursor (played_at, id).
+func (r *MatchRepository) ListMatchesByOpponent(ctx context.Context, userID, opponentID uuid.UUID, registeredUserID *uuid.UUID, limit int, cursorTime *time.Time, cursorID *uuid.UUID) ([]models.Match, error) {
+	var rows pgx.Rows
+	var err error
+
+	if registeredUserID != nil {
+		// Opponent is a registered user — include reciprocal matches
+		if cursorTime != nil {
+			rows, err = r.db.Query(ctx, `
+				SELECT m.id, m.user_id, m.opponent_id, m.match_type, m.played_at, m.creator_notes, m.opponent_notes,
+				       m.user_won, m.created_at, m.updated_at,
+				       o.id, o.user_id, o.email, o.name, o.status, o.invited_at, o.registered_user_id, o.created_at, o.updated_at,
+				       u.name
+				FROM (
+					SELECT id FROM matches WHERE user_id = $1 AND opponent_id = $2 AND (played_at, id) < ($4, $5)
+					UNION
+					SELECT m2.id FROM matches m2
+					JOIN opponents o2 ON o2.id = m2.opponent_id
+					WHERE m2.user_id = $3 AND o2.registered_user_id = $1 AND (m2.played_at, m2.id) < ($4, $5)
+				) AS ids
+				JOIN matches m ON m.id = ids.id
+				JOIN opponents o ON o.id = m.opponent_id
+				JOIN users u ON u.id = m.user_id
+				ORDER BY m.played_at DESC, m.id DESC
+				LIMIT $6
+			`, userID, opponentID, *registeredUserID, *cursorTime, *cursorID, limit)
+		} else {
+			rows, err = r.db.Query(ctx, `
+				SELECT m.id, m.user_id, m.opponent_id, m.match_type, m.played_at, m.creator_notes, m.opponent_notes,
+				       m.user_won, m.created_at, m.updated_at,
+				       o.id, o.user_id, o.email, o.name, o.status, o.invited_at, o.registered_user_id, o.created_at, o.updated_at,
+				       u.name
+				FROM (
+					SELECT id FROM matches WHERE user_id = $1 AND opponent_id = $2
+					UNION
+					SELECT m2.id FROM matches m2
+					JOIN opponents o2 ON o2.id = m2.opponent_id
+					WHERE m2.user_id = $3 AND o2.registered_user_id = $1
+				) AS ids
+				JOIN matches m ON m.id = ids.id
+				JOIN opponents o ON o.id = m.opponent_id
+				JOIN users u ON u.id = m.user_id
+				ORDER BY m.played_at DESC, m.id DESC
+				LIMIT $4
+			`, userID, opponentID, *registeredUserID, limit)
+		}
+	} else {
+		// Opponent is not registered — only user-created matches
+		if cursorTime != nil {
+			rows, err = r.db.Query(ctx, `
+				SELECT m.id, m.user_id, m.opponent_id, m.match_type, m.played_at, m.creator_notes, m.opponent_notes,
+				       m.user_won, m.created_at, m.updated_at,
+				       o.id, o.user_id, o.email, o.name, o.status, o.invited_at, o.registered_user_id, o.created_at, o.updated_at,
+				       u.name
+				FROM matches m
+				JOIN opponents o ON o.id = m.opponent_id
+				JOIN users u ON u.id = m.user_id
+				WHERE m.user_id = $1 AND m.opponent_id = $2 AND (m.played_at, m.id) < ($3, $4)
+				ORDER BY m.played_at DESC, m.id DESC
+				LIMIT $5
+			`, userID, opponentID, *cursorTime, *cursorID, limit)
+		} else {
+			rows, err = r.db.Query(ctx, `
+				SELECT m.id, m.user_id, m.opponent_id, m.match_type, m.played_at, m.creator_notes, m.opponent_notes,
+				       m.user_won, m.created_at, m.updated_at,
+				       o.id, o.user_id, o.email, o.name, o.status, o.invited_at, o.registered_user_id, o.created_at, o.updated_at,
+				       u.name
+				FROM matches m
+				JOIN opponents o ON o.id = m.opponent_id
+				JOIN users u ON u.id = m.user_id
+				WHERE m.user_id = $1 AND m.opponent_id = $2
+				ORDER BY m.played_at DESC, m.id DESC
+				LIMIT $3
+			`, userID, opponentID, limit)
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var matches []models.Match
+	for rows.Next() {
+		var m models.Match
+		var opp models.Opponent
+		if err := rows.Scan(
+			&m.ID, &m.UserID, &m.OpponentID, &m.MatchType, &m.PlayedAt, &m.CreatorNotes, &m.OpponentNotes,
+			&m.UserWon, &m.CreatedAt, &m.UpdatedAt,
+			&opp.ID, &opp.UserID, &opp.Email, &opp.Name, &opp.Status,
+			&opp.InvitedAt, &opp.RegisteredUserID,
+			&opp.CreatedAt, &opp.UpdatedAt,
+			&m.CreatorName,
+		); err != nil {
+			return nil, err
+		}
+		m.Opponent = &opp
+		matches = append(matches, m)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Batch-fetch all games in a single query (avoids N+1)
+	if len(matches) > 0 {
+		matchIDs := make([]uuid.UUID, len(matches))
+		for i := range matches {
+			matchIDs[i] = matches[i].ID
+		}
+		gamesByMatch, err := r.fetchGamesBatch(ctx, matchIDs)
+		if err != nil {
+			return nil, err
+		}
+		for i := range matches {
+			matches[i].Games = gamesByMatch[matches[i].ID]
+		}
+	}
+
+	return matches, nil
+}
+
 // replaceGames deletes existing games for a match and inserts the new ones
 // within the given transaction. Used by both Update and UpdateAsOpponent.
 func replaceGames(ctx context.Context, tx pgx.Tx, match *models.Match) error {

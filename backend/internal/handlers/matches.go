@@ -284,6 +284,100 @@ func (h *Handler) GetMatchStats(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, statsResponse{Wins: wins, Losses: losses})
 }
 
+// ListMatchesByOpponent handles GET /api/opponents/{id}/matches.
+// Returns a paginated list of matches between the authenticated user and a specific opponent.
+func (h *Handler) ListMatchesByOpponent(w http.ResponseWriter, r *http.Request) {
+	user, ok := UserFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "Not authenticated"})
+		return
+	}
+
+	opponentID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid opponent ID"})
+		return
+	}
+
+	// Verify opponent belongs to user and get registered_user_id for reciprocal match lookup
+	opponent, err := h.opponentRepo.FindByID(r.Context(), opponentID)
+	if err != nil {
+		if err == repository.ErrOpponentNotFound {
+			writeJSON(w, http.StatusNotFound, errorResponse{Error: "Opponent not found"})
+			return
+		}
+		slog.Error("Failed to find opponent", "error", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to list matches"})
+		return
+	}
+	if opponent.UserID != user.ID {
+		writeJSON(w, http.StatusNotFound, errorResponse{Error: "Opponent not found"})
+		return
+	}
+
+	// Parse optional limit
+	limit := defaultPageSize
+	if l := r.URL.Query().Get("limit"); l != "" {
+		parsed, err := strconv.Atoi(l)
+		if err != nil || parsed < 1 || parsed > 100 {
+			writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid limit (must be 1-100)"})
+			return
+		}
+		limit = parsed
+	}
+
+	// Parse optional composite cursor (RFC3339Nano_UUID)
+	var cursorTime *time.Time
+	var cursorID *uuid.UUID
+	if c := r.URL.Query().Get("cursor"); c != "" {
+		parts := strings.SplitN(c, "_", 2)
+		if len(parts) != 2 {
+			writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid cursor format"})
+			return
+		}
+		parsedTime, err := time.Parse(time.RFC3339Nano, parts[0])
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid cursor format"})
+			return
+		}
+		parsedID, err := uuid.Parse(parts[1])
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid cursor format"})
+			return
+		}
+		cursorTime = &parsedTime
+		cursorID = &parsedID
+	}
+
+	matches, err := h.matchRepo.ListMatchesByOpponent(r.Context(), user.ID, opponentID, opponent.RegisteredUserID, limit, cursorTime, cursorID)
+	if err != nil {
+		slog.Error("Failed to list matches by opponent", "error", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to list matches"})
+		return
+	}
+
+	if matches == nil {
+		matches = []models.Match{}
+	}
+
+	// Populate computed fields from the viewer's perspective
+	for i := range matches {
+		resolveScoresForViewer(&matches[i], user.ID)
+		resolveNotesForViewer(&matches[i], user.ID)
+		resolveOpponentForViewer(&matches[i], user.ID)
+	}
+
+	// Build composite cursor for next page
+	resp := listMatchesResponse{Matches: matches}
+	if len(matches) == limit {
+		last := matches[len(matches)-1]
+		cursor := last.PlayedAt.Format(time.RFC3339Nano) + "_" + last.ID.String()
+		resp.NextCursor = &cursor
+	}
+
+	writeJSON(w, http.StatusOK, resp)
+}
+
 // GetMatch handles GET /api/matches/{id}.
 func (h *Handler) GetMatch(w http.ResponseWriter, r *http.Request) {
 	user, ok := UserFromContext(r.Context())

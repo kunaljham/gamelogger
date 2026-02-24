@@ -26,6 +26,31 @@ const reciprocalInsertSQL = `
 
 var ErrOpponentNotFound = errors.New("opponent not found")
 
+// statsJoin is the shared LEFT JOIN subquery for computing per-opponent win/loss stats.
+// Uses UNION ALL to count both outgoing matches (user created) and incoming matches
+// (opponent created against this user, with inverted win/loss). $1 must be the user ID.
+const statsJoin = `
+	LEFT JOIN (
+		SELECT m.opponent_id,
+			COUNT(*) FILTER (WHERE m.user_won = TRUE) AS wins,
+			COUNT(*) FILTER (WHERE m.user_won = FALSE) AS losses
+		FROM matches m
+		WHERE m.user_id = $1
+		GROUP BY m.opponent_id
+
+		UNION ALL
+
+		SELECT o_ours.id AS opponent_id,
+			COUNT(*) FILTER (WHERE m2.user_won = FALSE) AS wins,
+			COUNT(*) FILTER (WHERE m2.user_won = TRUE) AS losses
+		FROM matches m2
+		JOIN opponents o_theirs ON o_theirs.id = m2.opponent_id AND o_theirs.registered_user_id = $1
+		JOIN opponents o_ours ON o_ours.user_id = $1 AND o_ours.registered_user_id = m2.user_id
+		WHERE m2.user_id != $1
+		GROUP BY o_ours.id
+	) AS stats ON stats.opponent_id = o.id
+`
+
 // OpponentRepository handles database operations for opponents.
 type OpponentRepository struct {
 	db *pgxpool.Pool
@@ -171,31 +196,6 @@ func (r *OpponentRepository) ListByUserWithStats(ctx context.Context, userID uui
 	var rows pgx.Rows
 	var err error
 
-	// Stats subquery uses UNION ALL to count both outgoing matches (user created)
-	// and incoming matches (opponent created against this user, with inverted win/loss).
-	// SUM aggregates across the two branches per opponent.
-	const statsJoin = `
-		LEFT JOIN (
-			SELECT m.opponent_id,
-				COUNT(*) FILTER (WHERE m.user_won = TRUE) AS wins,
-				COUNT(*) FILTER (WHERE m.user_won = FALSE) AS losses
-			FROM matches m
-			WHERE m.user_id = $1
-			GROUP BY m.opponent_id
-
-			UNION ALL
-
-			SELECT o_ours.id AS opponent_id,
-				COUNT(*) FILTER (WHERE m2.user_won = FALSE) AS wins,
-				COUNT(*) FILTER (WHERE m2.user_won = TRUE) AS losses
-			FROM matches m2
-			JOIN opponents o_theirs ON o_theirs.id = m2.opponent_id AND o_theirs.registered_user_id = $1
-			JOIN opponents o_ours ON o_ours.user_id = $1 AND o_ours.registered_user_id = m2.user_id
-			WHERE m2.user_id != $1
-			GROUP BY o_ours.id
-		) AS stats ON stats.opponent_id = o.id
-	`
-
 	if search != nil && cursorTime != nil {
 		rows, err = r.db.Query(ctx, `
 			SELECT o.id, o.user_id, o.email, o.name, o.notes, o.status, o.invited_at, o.registered_user_id, o.created_at, o.updated_at,
@@ -259,6 +259,33 @@ func (r *OpponentRepository) ListByUserWithStats(ctx context.Context, userID uui
 		opponents = append(opponents, o)
 	}
 	return opponents, rows.Err()
+}
+
+// FindByIDWithStats returns a single opponent with win/loss stats, scoped to the requesting user.
+// Returns ErrOpponentNotFound if the opponent doesn't exist or doesn't belong to the user.
+func (r *OpponentRepository) FindByIDWithStats(ctx context.Context, id, userID uuid.UUID) (*models.OpponentWithStats, error) {
+	var o models.OpponentWithStats
+	err := r.db.QueryRow(ctx, `
+		SELECT o.id, o.user_id, o.email, o.name, o.notes, o.status, o.invited_at, o.registered_user_id, o.created_at, o.updated_at,
+			COALESCE(SUM(stats.wins), 0) AS wins,
+			COALESCE(SUM(stats.losses), 0) AS losses
+		FROM opponents o
+		`+statsJoin+`
+		WHERE o.id = $2 AND o.user_id = $1
+		GROUP BY o.id
+	`, userID, id).Scan(
+		&o.ID, &o.UserID, &o.Email, &o.Name, &o.Notes, &o.Status,
+		&o.InvitedAt, &o.RegisteredUserID, &o.CreatedAt, &o.UpdatedAt,
+		&o.Wins, &o.Losses,
+	)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrOpponentNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &o, nil
 }
 
 // Update updates an opponent's name, email, notes, status, invited_at, and registered_user_id.

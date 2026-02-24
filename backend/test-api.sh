@@ -1631,10 +1631,98 @@ fi
 COOKIE_JAR="$SAVED_COOKIE_JAR"
 
 # ---------------------------------------------------------------------------
-# 30. Auth: Logout
+# 30. Opponent Detail: GET /api/opponents/{id}
 # ---------------------------------------------------------------------------
 echo ""
-echo "30. Auth: Logout"
+echo "30. Opponent Detail: GET /api/opponents/{id}"
+
+# Fetch first opponent (OPPONENT_ID was created earlier and has matches)
+api GET "/api/opponents/$OPPONENT_ID"
+if [ "$STATUS" = "200" ]; then
+  OPP_NAME=$(jq -r '.name' "$RESPONSE")
+  OPP_WINS=$(jq -r '.wins' "$RESPONSE")
+  OPP_LOSSES=$(jq -r '.losses' "$RESPONSE")
+  pass "GET /api/opponents/$OPPONENT_ID → 200 (name=$OPP_NAME, wins=$OPP_WINS, losses=$OPP_LOSSES)"
+else
+  fail "GET /api/opponents/$OPPONENT_ID → expected 200, got $STATUS"
+fi
+
+# Other user's opponent → 404
+SAVED_COOKIE_JAR_30="$COOKIE_JAR"
+COOKIE_JAR="$COOKIE_JAR_2"
+api GET "/api/opponents/$OPPONENT_ID"
+if [ "$STATUS" = "404" ]; then
+  pass "Other user's opponent → 404"
+else
+  fail "Other user's opponent → expected 404, got $STATUS"
+fi
+COOKIE_JAR="$SAVED_COOKIE_JAR_30"
+
+# Invalid UUID → 400
+api GET "/api/opponents/not-a-uuid"
+if [ "$STATUS" = "400" ]; then
+  pass "Invalid opponent ID → 400"
+else
+  fail "Invalid opponent ID → expected 400, got $STATUS"
+fi
+
+# ---------------------------------------------------------------------------
+# 31. Opponent Matches: GET /api/opponents/{id}/matches
+# ---------------------------------------------------------------------------
+echo ""
+echo "31. Opponent Matches: GET /api/opponents/{id}/matches"
+
+api GET "/api/opponents/$OPPONENT_ID/matches"
+if [ "$STATUS" = "200" ]; then
+  MATCH_COUNT=$(jq '.matches | length' "$RESPONSE")
+  if [ "$MATCH_COUNT" -gt 0 ]; then
+    pass "GET /api/opponents/$OPPONENT_ID/matches → 200 ($MATCH_COUNT matches)"
+  else
+    fail "GET /api/opponents/$OPPONENT_ID/matches → 200 but no matches found (expected > 0)"
+  fi
+else
+  fail "GET /api/opponents/$OPPONENT_ID/matches → expected 200, got $STATUS"
+fi
+
+# Verify each match has games loaded (no N+1 — games should be present)
+FIRST_MATCH_GAMES=$(jq '.matches[0].games | length' "$RESPONSE")
+if [ "$FIRST_MATCH_GAMES" -gt 0 ]; then
+  pass "First match has games loaded ($FIRST_MATCH_GAMES games)"
+else
+  fail "First match has no games (expected > 0)"
+fi
+
+# Other user's opponent → 404
+COOKIE_JAR="$COOKIE_JAR_2"
+api GET "/api/opponents/$OPPONENT_ID/matches"
+if [ "$STATUS" = "404" ]; then
+  pass "Other user's opponent matches → 404"
+else
+  fail "Other user's opponent matches → expected 404, got $STATUS"
+fi
+COOKIE_JAR="$SAVED_COOKIE_JAR_30"
+
+# Pagination: limit=1
+api GET "/api/opponents/$OPPONENT_ID/matches?limit=1"
+if [ "$STATUS" = "200" ]; then
+  PAGE_COUNT=$(jq '.matches | length' "$RESPONSE")
+  HAS_CURSOR=$(jq -r '.next_cursor // "null"' "$RESPONSE")
+  if [ "$PAGE_COUNT" = "1" ] && [ "$HAS_CURSOR" != "null" ]; then
+    pass "Pagination limit=1 → 1 match, has next_cursor"
+  elif [ "$PAGE_COUNT" = "1" ]; then
+    pass "Pagination limit=1 → 1 match (only 1 match total, no cursor needed)"
+  else
+    fail "Pagination limit=1 → expected 1 match, got $PAGE_COUNT"
+  fi
+else
+  fail "Pagination limit=1 → expected 200, got $STATUS"
+fi
+
+# ---------------------------------------------------------------------------
+# 32. Auth: Logout
+# ---------------------------------------------------------------------------
+echo ""
+echo "32. Auth: Logout"
 api POST /api/auth/logout
 if [ "$STATUS" = "200" ]; then
   pass "POST /api/auth/logout → 200"
@@ -1651,10 +1739,10 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 31. Cleanup: remove test data from database
+# 33. Cleanup: remove test data from database
 # ---------------------------------------------------------------------------
 echo ""
-echo "31. Cleanup"
+echo "33. Cleanup"
 psql "$DB_URL" -q -c "
   DELETE FROM games WHERE match_id IN (SELECT id FROM matches WHERE user_id IN (SELECT id FROM users WHERE email IN ('$TEST_EMAIL', '$TEST_EMAIL_2', '$TEST_EMAIL_3', '$TEST_EMAIL_4')));
   DELETE FROM matches WHERE user_id IN (SELECT id FROM users WHERE email IN ('$TEST_EMAIL', '$TEST_EMAIL_2', '$TEST_EMAIL_3', '$TEST_EMAIL_4'));

@@ -242,6 +242,35 @@ func (h *Handler) ListOpponentsWithStats(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusOK, resp)
 }
 
+// GetOpponent handles GET /api/opponents/{id}.
+// Returns a single opponent with win/loss stats, scoped to the authenticated user.
+func (h *Handler) GetOpponent(w http.ResponseWriter, r *http.Request) {
+	user, ok := UserFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "Not authenticated"})
+		return
+	}
+
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid opponent ID"})
+		return
+	}
+
+	opponent, err := h.opponentRepo.FindByIDWithStats(r.Context(), id, user.ID)
+	if err != nil {
+		if err == repository.ErrOpponentNotFound {
+			writeJSON(w, http.StatusNotFound, errorResponse{Error: "Opponent not found"})
+			return
+		}
+		slog.Error("Failed to get opponent", "error", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to get opponent"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, opponent)
+}
+
 // UpdateOpponent handles PUT /api/opponents/{id}.
 // Updates an opponent's name and/or email. Re-derives status on email change.
 func (h *Handler) UpdateOpponent(w http.ResponseWriter, r *http.Request) {
