@@ -189,7 +189,13 @@ func (h *Handler) CreateMatch(w http.ResponseWriter, r *http.Request) {
 	created.Opponent = opponent
 	created.ComputeResult()
 	resolveNotesForViewer(created, user.ID)
-	resolveOpponentForViewer(created, user.ID, h.reciprocalIDsForMatch(r.Context(), created, user.ID))
+	reciprocalIDs, err := h.reciprocalIDsForMatch(r.Context(), created, user.ID)
+	if err != nil {
+		slog.Error("Failed to resolve reciprocal opponent", "error", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to create match"})
+		return
+	}
+	resolveOpponentForViewer(created, user.ID, reciprocalIDs)
 
 	writeJSON(w, http.StatusCreated, created)
 }
@@ -249,7 +255,12 @@ func (h *Handler) ListMatches(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Batch-resolve reciprocal opponent IDs (single query instead of N+1)
-	reciprocalIDs := h.reciprocalIDsForMatches(r.Context(), matches, user.ID)
+	reciprocalIDs, err := h.reciprocalIDsForMatches(r.Context(), matches, user.ID)
+	if err != nil {
+		slog.Error("Failed to resolve reciprocal opponents", "error", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to list matches"})
+		return
+	}
 
 	// Populate computed fields from the viewer's perspective
 	for i := range matches {
@@ -323,7 +334,13 @@ func (h *Handler) GetMatch(w http.ResponseWriter, r *http.Request) {
 
 	resolveScoresForViewer(match, user.ID)
 	resolveNotesForViewer(match, user.ID)
-	resolveOpponentForViewer(match, user.ID, h.reciprocalIDsForMatch(r.Context(), match, user.ID))
+	reciprocalIDs, err := h.reciprocalIDsForMatch(r.Context(), match, user.ID)
+	if err != nil {
+		slog.Error("Failed to resolve reciprocal opponent", "error", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to get match"})
+		return
+	}
+	resolveOpponentForViewer(match, user.ID, reciprocalIDs)
 	writeJSON(w, http.StatusOK, match)
 }
 
@@ -441,7 +458,13 @@ func (h *Handler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 	updated.Opponent = opponent
 	resolveScoresForViewer(updated, user.ID)
 	resolveNotesForViewer(updated, user.ID)
-	resolveOpponentForViewer(updated, user.ID, h.reciprocalIDsForMatch(r.Context(), updated, user.ID))
+	reciprocalIDs, err := h.reciprocalIDsForMatch(r.Context(), updated, user.ID)
+	if err != nil {
+		slog.Error("Failed to resolve reciprocal opponent", "error", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to update match"})
+		return
+	}
+	resolveOpponentForViewer(updated, user.ID, reciprocalIDs)
 	writeJSON(w, http.StatusOK, updated)
 }
 
@@ -518,26 +541,25 @@ func resolveOpponentForViewer(match *models.Match, userID uuid.UUID, reciprocalI
 
 // reciprocalIDsForMatch resolves the reciprocal opponent ID for a single match.
 // Returns a map usable by resolveOpponentForViewer. If the viewer is not the
-// opponent or no reciprocal record exists, returns nil.
-func (h *Handler) reciprocalIDsForMatch(ctx context.Context, match *models.Match, viewerID uuid.UUID) map[uuid.UUID]uuid.UUID {
+// opponent, returns (nil, nil).
+func (h *Handler) reciprocalIDsForMatch(ctx context.Context, match *models.Match, viewerID uuid.UUID) (map[uuid.UUID]uuid.UUID, error) {
 	isOpponent := match.UserID != viewerID &&
 		match.Opponent != nil && match.Opponent.RegisteredUserID != nil && *match.Opponent.RegisteredUserID == viewerID
 	if !isOpponent {
-		return nil
+		return nil, nil
 	}
 
 	reciprocal, err := h.opponentRepo.FindByUserAndRegisteredUser(ctx, viewerID, match.UserID)
 	if err != nil {
-		slog.Warn("Could not resolve reciprocal opponent for viewer", "viewer", viewerID, "creator", match.UserID, "error", err)
-		return nil
+		return nil, fmt.Errorf("resolve reciprocal opponent: %w", err)
 	}
-	return map[uuid.UUID]uuid.UUID{match.UserID: reciprocal.ID}
+	return map[uuid.UUID]uuid.UUID{match.UserID: reciprocal.ID}, nil
 }
 
 // reciprocalIDsForMatches batch-resolves reciprocal opponent IDs for a page of
 // matches. Collects distinct creator IDs where the viewer is the opponent, then
 // issues a single DB query. Returns a map usable by resolveOpponentForViewer.
-func (h *Handler) reciprocalIDsForMatches(ctx context.Context, matches []models.Match, viewerID uuid.UUID) map[uuid.UUID]uuid.UUID {
+func (h *Handler) reciprocalIDsForMatches(ctx context.Context, matches []models.Match, viewerID uuid.UUID) (map[uuid.UUID]uuid.UUID, error) {
 	var creatorIDs []uuid.UUID
 	seen := map[uuid.UUID]bool{}
 	for i := range matches {
@@ -550,15 +572,14 @@ func (h *Handler) reciprocalIDsForMatches(ctx context.Context, matches []models.
 		}
 	}
 	if len(creatorIDs) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	result, err := h.opponentRepo.FindReciprocalIDs(ctx, viewerID, creatorIDs)
 	if err != nil {
-		slog.Warn("Failed to batch-resolve reciprocal opponent IDs", "viewer", viewerID, "error", err)
-		return nil
+		return nil, fmt.Errorf("batch-resolve reciprocal opponents: %w", err)
 	}
-	return result
+	return result, nil
 }
 
 // --- Notes ---
@@ -615,7 +636,13 @@ func (h *Handler) UpdateMatchNotes(w http.ResponseWriter, r *http.Request) {
 
 	resolveScoresForViewer(match, user.ID)
 	resolveNotesForViewer(match, user.ID)
-	resolveOpponentForViewer(match, user.ID, h.reciprocalIDsForMatch(r.Context(), match, user.ID))
+	reciprocalIDs, err := h.reciprocalIDsForMatch(r.Context(), match, user.ID)
+	if err != nil {
+		slog.Error("Failed to resolve reciprocal opponent", "error", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to update notes"})
+		return
+	}
+	resolveOpponentForViewer(match, user.ID, reciprocalIDs)
 	writeJSON(w, http.StatusOK, match)
 }
 
