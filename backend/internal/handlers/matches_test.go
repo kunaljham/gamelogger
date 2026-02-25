@@ -522,7 +522,7 @@ func TestResolveOpponentForViewer_Creator(t *testing.T) {
 		Opponent:    &models.Opponent{Name: "Alice Chen", RegisteredUserID: &oppUserID},
 	}
 
-	resolveOpponentForViewer(match, creatorID)
+	resolveOpponentForViewer(match, creatorID, nil)
 
 	// Creator sees the original opponent name
 	assert.Equal(t, "Alice Chen", match.Opponent.Name)
@@ -539,10 +539,34 @@ func TestResolveOpponentForViewer_Opponent(t *testing.T) {
 		Opponent:    &models.Opponent{Name: "Alice Chen", RegisteredUserID: &oppUserID},
 	}
 
-	resolveOpponentForViewer(match, oppUserID)
+	resolveOpponentForViewer(match, oppUserID, nil)
 
 	// Opponent sees the creator's name instead of their own
 	assert.Equal(t, "Seed User", match.Opponent.Name)
+}
+
+func TestResolveOpponentForViewer_OpponentWithIDSwap(t *testing.T) {
+	creatorID := uuid.New()
+	oppUserID := uuid.New()
+	originalOppID := uuid.New()
+	reciprocalOppID := uuid.New()
+	creatorName := "Seed User"
+
+	match := &models.Match{
+		UserID:      creatorID,
+		OpponentID:  originalOppID,
+		CreatorName: &creatorName,
+		Opponent:    &models.Opponent{ID: originalOppID, Name: "Alice Chen", RegisteredUserID: &oppUserID},
+	}
+
+	reciprocalIDs := map[uuid.UUID]uuid.UUID{creatorID: reciprocalOppID}
+	resolveOpponentForViewer(match, oppUserID, reciprocalIDs)
+
+	// Opponent sees the creator's name
+	assert.Equal(t, "Seed User", match.Opponent.Name)
+	// Opponent ID is swapped to their own reciprocal record
+	assert.Equal(t, reciprocalOppID, match.OpponentID)
+	assert.Equal(t, reciprocalOppID, match.Opponent.ID)
 }
 
 func TestResolveOpponentForViewer_OpponentCreatorNameNil(t *testing.T) {
@@ -555,7 +579,7 @@ func TestResolveOpponentForViewer_OpponentCreatorNameNil(t *testing.T) {
 		Opponent:    &models.Opponent{Name: "Alice Chen", RegisteredUserID: &oppUserID},
 	}
 
-	resolveOpponentForViewer(match, oppUserID)
+	resolveOpponentForViewer(match, oppUserID, nil)
 
 	// Falls back to "Unknown" when creator hasn't set a name
 	assert.Equal(t, "Unknown", match.Opponent.Name)
@@ -572,7 +596,7 @@ func TestResolveOpponentForViewer_Neither(t *testing.T) {
 		Opponent:    &models.Opponent{Name: "Alice Chen", RegisteredUserID: &oppUserID},
 	}
 
-	resolveOpponentForViewer(match, uuid.New())
+	resolveOpponentForViewer(match, uuid.New(), nil)
 
 	// Stranger sees the original opponent name
 	assert.Equal(t, "Alice Chen", match.Opponent.Name)
