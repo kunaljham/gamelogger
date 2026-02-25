@@ -1,18 +1,39 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const navLinks = [
   { href: "/feed", label: "Feed" },
   { href: "/opponents", label: "Opponents" },
-  { href: "/profile", label: "Profile" },
+  { href: "/profile", label: "Profile", mobileOverflow: true },
 ];
 
 export default function Nav() {
   const pathname = usePathname();
   const [showFeedback, setShowFeedback] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showMenu) return;
+    const handlePointerDown = (e: Event) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [showMenu]);
+
+  // Close menu on browser back/forward navigation
+  useEffect(() => {
+    if (!showMenu) return;
+    const handlePopState = () => setShowMenu(false);
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [showMenu]);
 
   return (
     <>
@@ -25,13 +46,15 @@ export default function Nav() {
             GameLogger
           </Link>
           <nav className="flex items-center gap-5">
-            {navLinks.map(({ href, label }) => {
+            {navLinks.map(({ href, label, mobileOverflow }) => {
               const isActive = pathname.startsWith(href);
               return (
                 <Link
                   key={href}
                   href={href}
                   className={`text-sm font-medium transition-colors ${
+                    mobileOverflow ? "hidden sm:inline" : ""
+                  } ${
                     isActive
                       ? "text-purple-700 dark:text-purple-400"
                       : "text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200"
@@ -54,6 +77,51 @@ export default function Nav() {
             >
               Feedback
             </button>
+            {/* Mobile overflow menu */}
+            <div ref={menuRef} className="relative sm:hidden">
+              <button
+                onClick={() => setShowMenu((prev) => !prev)}
+                className="cursor-pointer p-2 text-stone-500 transition-colors hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200"
+                aria-label="More options"
+              >
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                  <circle cx="4" cy="10" r="1.5" />
+                  <circle cx="10" cy="10" r="1.5" />
+                  <circle cx="16" cy="10" r="1.5" />
+                </svg>
+              </button>
+              {showMenu && (
+                <div className="absolute right-0 top-full mt-2 w-40 rounded-lg border border-stone-200 bg-stone-50 py-1 shadow-lg dark:border-stone-700 dark:bg-stone-800">
+                  <Link
+                    href="/profile"
+                    onClick={() => setShowMenu(false)}
+                    className={`block px-4 py-2 text-sm transition-colors ${
+                      pathname.startsWith("/profile")
+                        ? "text-purple-700 hover:bg-stone-100 dark:text-purple-400 dark:hover:bg-stone-700"
+                        : "text-stone-700 hover:bg-stone-100 dark:text-stone-200 dark:hover:bg-stone-700"
+                    }`}
+                  >
+                    Profile
+                  </Link>
+                  <Link
+                    href="/changelog"
+                    onClick={() => setShowMenu(false)}
+                    className="block px-4 py-2 text-sm text-stone-700 transition-colors hover:bg-stone-100 dark:text-stone-200 dark:hover:bg-stone-700"
+                  >
+                    Changelog
+                  </Link>
+                  <button
+                    onClick={() => {
+                      setShowMenu(false);
+                      setShowFeedback(true);
+                    }}
+                    className="block w-full cursor-pointer px-4 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-100 dark:text-stone-200 dark:hover:bg-stone-700"
+                  >
+                    Feedback
+                  </button>
+                </div>
+              )}
+            </div>
           </nav>
         </div>
       </header>
