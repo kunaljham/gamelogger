@@ -79,6 +79,47 @@ func (r *OpponentRepository) FindByID(ctx context.Context, id uuid.UUID) (*model
 	`, id))
 }
 
+// FindByUserAndRegisteredUser finds an opponent record owned by userID that
+// points to the given registered user. Used to resolve the reciprocal opponent
+// when a non-creator views a match (so the opponent link points to their own
+// opponent record, not the creator's).
+func (r *OpponentRepository) FindByUserAndRegisteredUser(ctx context.Context, userID, registeredUserID uuid.UUID) (*models.Opponent, error) {
+	return scanOpponent(r.db.QueryRow(ctx, `
+		SELECT `+opponentColumns+`
+		FROM opponents
+		WHERE user_id = $1 AND registered_user_id = $2
+	`, userID, registeredUserID))
+}
+
+// FindReciprocalIDs returns a map from registered_user_id to opponent ID for
+// all opponent records owned by userID that point to any of the given registered
+// users. Used to batch-resolve reciprocal opponent IDs in list endpoints,
+// avoiding N+1 queries.
+func (r *OpponentRepository) FindReciprocalIDs(ctx context.Context, userID uuid.UUID, registeredUserIDs []uuid.UUID) (map[uuid.UUID]uuid.UUID, error) {
+	if len(registeredUserIDs) == 0 {
+		return nil, nil
+	}
+	rows, err := r.db.Query(ctx, `
+		SELECT registered_user_id, id
+		FROM opponents
+		WHERE user_id = $1 AND registered_user_id = ANY($2)
+	`, userID, registeredUserIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[uuid.UUID]uuid.UUID, len(registeredUserIDs))
+	for rows.Next() {
+		var regID, oppID uuid.UUID
+		if err := rows.Scan(&regID, &oppID); err != nil {
+			return nil, err
+		}
+		result[regID] = oppID
+	}
+	return result, rows.Err()
+}
+
 // FindByEmail finds an opponent by email for a given user.
 func (r *OpponentRepository) FindByEmail(ctx context.Context, userID uuid.UUID, email string) (*models.Opponent, error) {
 	return scanOpponent(r.db.QueryRow(ctx, `
