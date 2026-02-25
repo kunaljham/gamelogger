@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useUser } from "@/contexts/user-context";
+import SiteHeader from "@/components/site-header";
 
 const navLinks = [
   { href: "/feed", label: "Feed" },
@@ -11,6 +13,7 @@ const navLinks = [
 ];
 
 export default function Nav() {
+  const { user, loading } = useUser();
   const pathname = usePathname();
   const [showFeedback, setShowFeedback] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -34,6 +37,12 @@ export default function Nav() {
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, [showMenu]);
+
+  // While checking auth, render nothing to avoid flashing the wrong nav
+  if (loading) return null;
+
+  // Show public header for unauthenticated visitors (e.g. /changelog)
+  if (!user) return <SiteHeader />;
 
   return (
     <>
