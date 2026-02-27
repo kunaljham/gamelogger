@@ -40,6 +40,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
               `${process.env.NEXT_PUBLIC_API_URL}/api/auth/logout`,
               { method: "POST", credentials: "include" }
             ).catch(() => {});
+            setLoading(false);
             router.replace("/login");
             return;
           }

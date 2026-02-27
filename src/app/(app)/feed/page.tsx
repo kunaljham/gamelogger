@@ -8,11 +8,12 @@ import MatchCard from "./match-card";
 
 export default function Feed() {
   const router = useRouter();
-  const { isDemoUser } = useUser();
+  const { isDemoUser, signOut } = useUser();
 
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isAuthError, setIsAuthError] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
 
@@ -36,6 +37,9 @@ export default function Feed() {
       ]);
 
       if (!res.ok) {
+        if (res.status === 401) {
+          setIsAuthError(true);
+        }
         throw new Error(`Failed to load matches (${res.status})`);
       }
 
@@ -74,11 +78,26 @@ export default function Feed() {
       )}
 
       {/* Error banner */}
-      {error && (
+      {isAuthError ? (
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 dark:border-red-800 dark:bg-red-950/50">
+          <p className="text-sm font-medium text-red-700 dark:text-red-400">
+            Your session has expired
+          </p>
+          <p className="mt-1 text-sm text-red-600 dark:text-red-400/80">
+            Please sign in again to continue.
+          </p>
+          <button
+            onClick={signOut}
+            className="mt-3 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
+            Sign out
+          </button>
+        </div>
+      ) : error ? (
         <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/50 dark:text-red-400">
           {error}
         </div>
-      )}
+      ) : null}
 
       {/* Loading state: skeleton cards */}
       {loading && (
