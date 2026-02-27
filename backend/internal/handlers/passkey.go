@@ -282,7 +282,7 @@ func (h *Handler) FinishPasskeyLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.SetCookie(w, &http.Cookie{
-		Name:     "session",
+		Name:     h.cfg.CookieName,
 		Value:    sessionToken,
 		Path:     "/",
 		Domain:   h.cfg.CookieDomain,
