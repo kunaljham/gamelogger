@@ -316,7 +316,7 @@ func (h *Handler) GetMatch(w http.ResponseWriter, r *http.Request) {
 
 	match, err := h.matchRepo.FindByID(r.Context(), id)
 	if err != nil {
-		if err == repository.ErrMatchNotFound {
+		if errors.Is(err, repository.ErrMatchNotFound) {
 			writeJSON(w, http.StatusNotFound, errorResponse{Error: "Match not found"})
 			return
 		}
@@ -372,7 +372,7 @@ func (h *Handler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 	// downstream validation step like opponent ownership).
 	ownerID, err := h.matchRepo.FindOwner(r.Context(), id)
 	if err != nil {
-		if err == repository.ErrMatchNotFound {
+		if errors.Is(err, repository.ErrMatchNotFound) {
 			writeJSON(w, http.StatusNotFound, errorResponse{Error: "Match not found"})
 			return
 		}
@@ -447,7 +447,7 @@ func (h *Handler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 
 	updated, err := h.matchRepo.Update(r.Context(), match, nil)
 	if err != nil {
-		if err == repository.ErrMatchNotFound {
+		if errors.Is(err, repository.ErrMatchNotFound) {
 			writeJSON(w, http.StatusNotFound, errorResponse{Error: "Match not found"})
 			return
 		}
@@ -484,7 +484,7 @@ func (h *Handler) DeleteMatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.matchRepo.Delete(r.Context(), id, user.ID); err != nil {
-		if err == repository.ErrMatchNotFound {
+		if errors.Is(err, repository.ErrMatchNotFound) {
 			writeJSON(w, http.StatusNotFound, errorResponse{Error: "Match not found"})
 			return
 		}
@@ -629,7 +629,7 @@ func (h *Handler) UpdateMatchNotes(w http.ResponseWriter, r *http.Request) {
 
 	match, err := h.matchRepo.UpdateNotes(r.Context(), id, user.ID, req.Notes)
 	if err != nil {
-		if err == repository.ErrMatchNotFound {
+		if errors.Is(err, repository.ErrMatchNotFound) {
 			writeJSON(w, http.StatusNotFound, errorResponse{Error: "Match not found"})
 			return
 		}
