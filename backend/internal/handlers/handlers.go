@@ -51,7 +51,7 @@ func New(db *pgxpool.Pool, cfg *config.Config) *Handler {
 		RPDisplayName: cfg.WebAuthnRPDisplayName,
 		RPOrigins:     cfg.GetWebAuthnRPOrigins(),
 		AuthenticatorSelection: protocol.AuthenticatorSelection{
-			UserVerification: protocol.VerificationPreferred,
+			UserVerification: protocol.VerificationRequired,
 		},
 	})
 	if err != nil {
