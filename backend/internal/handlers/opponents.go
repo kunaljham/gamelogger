@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -72,7 +73,7 @@ func (h *Handler) CreateOpponent(w http.ResponseWriter, r *http.Request) {
 
 	// Check for duplicate name
 	existing, err := h.opponentRepo.FindByName(r.Context(), user.ID, name)
-	if err != nil && err != repository.ErrOpponentNotFound {
+	if err != nil && !errors.Is(err, repository.ErrOpponentNotFound) {
 		slog.Error("Failed to check opponent name", "error", err)
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to create opponent"})
 		return
@@ -281,7 +282,7 @@ func (h *Handler) UpdateOpponent(w http.ResponseWriter, r *http.Request) {
 
 	// Check for duplicate name (exclude the opponent being updated)
 	existing, err := h.opponentRepo.FindByName(r.Context(), user.ID, name)
-	if err != nil && err != repository.ErrOpponentNotFound {
+	if err != nil && !errors.Is(err, repository.ErrOpponentNotFound) {
 		slog.Error("Failed to check opponent name", "error", err)
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to update opponent"})
 		return
@@ -319,7 +320,7 @@ func (h *Handler) UpdateOpponent(w http.ResponseWriter, r *http.Request) {
 
 	updated, err := h.opponentRepo.Update(r.Context(), opponent)
 	if err != nil {
-		if err == repository.ErrOpponentNotFound {
+		if errors.Is(err, repository.ErrOpponentNotFound) {
 			writeJSON(w, http.StatusNotFound, errorResponse{Error: "Opponent not found"})
 			return
 		}
@@ -349,7 +350,7 @@ func (h *Handler) GetOpponent(w http.ResponseWriter, r *http.Request) {
 
 	opponent, err := h.opponentRepo.FindByIDWithStats(r.Context(), id, user.ID)
 	if err != nil {
-		if err == repository.ErrOpponentNotFound {
+		if errors.Is(err, repository.ErrOpponentNotFound) {
 			writeJSON(w, http.StatusNotFound, errorResponse{Error: "Opponent not found"})
 			return
 		}
@@ -399,7 +400,7 @@ func (h *Handler) UpdateOpponentNotes(w http.ResponseWriter, r *http.Request) {
 
 	updated, err := h.opponentRepo.UpdateNotes(r.Context(), id, user.ID, notes)
 	if err != nil {
-		if err == repository.ErrOpponentNotFound {
+		if errors.Is(err, repository.ErrOpponentNotFound) {
 			writeJSON(w, http.StatusNotFound, errorResponse{Error: "Opponent not found"})
 			return
 		}
@@ -430,7 +431,7 @@ func (h *Handler) InviteOpponent(w http.ResponseWriter, r *http.Request) {
 	// Fetch the opponent
 	opponent, err := h.opponentRepo.FindByID(r.Context(), id)
 	if err != nil {
-		if err == repository.ErrOpponentNotFound {
+		if errors.Is(err, repository.ErrOpponentNotFound) {
 			writeJSON(w, http.StatusNotFound, errorResponse{Error: "Opponent not found"})
 			return
 		}

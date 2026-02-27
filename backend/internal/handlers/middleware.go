@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -38,7 +39,7 @@ func (h *Handler) AuthMiddleware(next http.Handler) http.Handler {
 		// Look up the session and user in a single query (JOIN)
 		session, user, err := h.sessionRepo.FindByTokenWithUser(r.Context(), cookie.Value)
 		if err != nil {
-			if err == repository.ErrSessionNotFound {
+			if errors.Is(err, repository.ErrSessionNotFound) {
 				writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "Not authenticated"})
 			} else {
 				slog.Error("Failed to look up session", "error", err)
