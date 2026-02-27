@@ -86,11 +86,14 @@ func (r *PasskeyRepository) FindByUserID(ctx context.Context, userID uuid.UUID) 
 }
 
 // UpdateSignCount updates the sign count and last used timestamp after a successful login.
+// The sign_count <= $1 guard ensures the stored count never goes backwards, which would
+// weaken clone detection on future logins. For synced passkeys (iCloud Keychain, etc.)
+// that always send 0, the condition 0 <= 0 is true so last_used_at still updates.
 func (r *PasskeyRepository) UpdateSignCount(ctx context.Context, credentialID []byte, newSignCount uint32) error {
 	_, err := r.db.Exec(ctx, `
 		UPDATE passkeys
 		SET sign_count = $1, last_used_at = NOW()
-		WHERE credential_id = $2
+		WHERE credential_id = $2 AND sign_count <= $1
 	`, newSignCount, credentialID)
 	return err
 }
