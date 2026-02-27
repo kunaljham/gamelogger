@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -130,7 +131,7 @@ func (h *Handler) CreateMatch(w http.ResponseWriter, r *http.Request) {
 	// Verify the opponent belongs to this user
 	opponent, err := h.opponentRepo.FindByID(r.Context(), opponentID)
 	if err != nil {
-		if err == repository.ErrOpponentNotFound {
+		if errors.Is(err, repository.ErrOpponentNotFound) {
 			writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Opponent not found"})
 			return
 		}
@@ -410,7 +411,7 @@ func (h *Handler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 	// Verify opponent belongs to user
 	opponent, err := h.opponentRepo.FindByID(r.Context(), opponentID)
 	if err != nil {
-		if err == repository.ErrOpponentNotFound {
+		if errors.Is(err, repository.ErrOpponentNotFound) {
 			writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Opponent not found"})
 			return
 		}
@@ -550,6 +551,9 @@ func (h *Handler) reciprocalIDsForMatch(ctx context.Context, match *models.Match
 	}
 
 	reciprocal, err := h.opponentRepo.FindByUserAndRegisteredUser(ctx, viewerID, match.UserID)
+	if errors.Is(err, repository.ErrOpponentNotFound) {
+		return nil, nil // Worker hasn't created the reciprocal yet — not an error
+	}
 	if err != nil {
 		return nil, fmt.Errorf("resolve reciprocal opponent: %w", err)
 	}
