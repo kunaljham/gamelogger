@@ -1,6 +1,10 @@
 package handlers
 
 import (
+	"log/slog"
+
+	"github.com/go-webauthn/webauthn/protocol"
+	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kunaljham/gamelogger/backend/internal/config"
 	"github.com/kunaljham/gamelogger/backend/internal/repository"
@@ -17,7 +21,9 @@ type Handler struct {
 	matchRepo       *repository.MatchRepository
 	opponentRepo    *repository.OpponentRepository
 	outboxRepo      *repository.OutboxRepository
+	passkeyRepo     *repository.PasskeyRepository
 	emailService    services.EmailService
+	webauthn        *webauthn.WebAuthn
 }
 
 // New creates a new Handler with the given dependencies.
@@ -29,6 +35,7 @@ func New(db *pgxpool.Pool, cfg *config.Config) *Handler {
 	matchRepo := repository.NewMatchRepository(db)
 	opponentRepo := repository.NewOpponentRepository(db)
 	outboxRepo := repository.NewOutboxRepository(db)
+	passkeyRepo := repository.NewPasskeyRepository(db)
 
 	// Create email service
 	emailService := services.NewResendEmailService(
@@ -37,6 +44,20 @@ func New(db *pgxpool.Pool, cfg *config.Config) *Handler {
 		cfg.FrontendURL,
 		cfg.BackendURL,
 	)
+
+	// Initialize WebAuthn
+	wauthn, err := webauthn.New(&webauthn.Config{
+		RPID:          cfg.WebAuthnRPID,
+		RPDisplayName: cfg.WebAuthnRPDisplayName,
+		RPOrigins:     cfg.GetWebAuthnRPOrigins(),
+		AuthenticatorSelection: protocol.AuthenticatorSelection{
+			UserVerification: protocol.VerificationRequired,
+		},
+	})
+	if err != nil {
+		slog.Error("Failed to initialize WebAuthn", "error", err)
+		panic("failed to initialize WebAuthn: " + err.Error())
+	}
 
 	return &Handler{
 		db:              db,
@@ -47,6 +68,8 @@ func New(db *pgxpool.Pool, cfg *config.Config) *Handler {
 		matchRepo:       matchRepo,
 		opponentRepo:    opponentRepo,
 		outboxRepo:      outboxRepo,
+		passkeyRepo:     passkeyRepo,
 		emailService:    emailService,
+		webauthn:        wauthn,
 	}
 }

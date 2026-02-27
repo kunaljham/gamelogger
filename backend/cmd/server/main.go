@@ -62,13 +62,16 @@ func main() {
 	// Initialize handlers
 	h := handlers.New(db, cfg)
 
-	// Start background email worker
+	// Start background workers
 	outboxRepo := repository.NewOutboxRepository(db)
 	opponentRepo := repository.NewOpponentRepository(db)
+	passkeyRepo := repository.NewPasskeyRepository(db)
 	emailService := services.NewResendEmailService(cfg.ResendAPIKey, cfg.EmailFrom, cfg.FrontendURL, cfg.BackendURL)
 	emailWorker := workers.NewEmailWorker(outboxRepo, opponentRepo, emailService, cfg.FrontendURL)
+	cleanupWorker := workers.NewCleanupWorker(passkeyRepo)
 	workerCtx, workerCancel := context.WithCancel(context.Background())
 	go emailWorker.Run(workerCtx)
+	go cleanupWorker.Run(workerCtx)
 
 	// Routes
 	r.Get("/api/health", h.HealthCheck)
@@ -84,6 +87,14 @@ func main() {
 		if cfg.IsDevelopment() {
 			r.Post("/dev-login", h.DevLogin)
 		}
+
+		// Passkey routes
+		r.With(h.AuthMiddleware).Post("/passkey/register/begin", h.BeginPasskeyRegistration)
+		r.With(h.AuthMiddleware).Post("/passkey/register/finish", h.FinishPasskeyRegistration)
+		r.Post("/passkey/login/begin", h.BeginPasskeyLogin)
+		r.Post("/passkey/login/finish", h.FinishPasskeyLogin)
+		r.With(h.AuthMiddleware).Get("/passkeys", h.ListPasskeys)
+		r.With(h.AuthMiddleware).Delete("/passkeys/{id}", h.DeletePasskey)
 	})
 
 	// Match routes — all require authentication
@@ -148,7 +159,7 @@ func main() {
 		slog.Error("Server forced to shutdown", "error", err)
 	}
 
-	// Stop the email worker goroutine
+	// Stop background worker goroutines
 	workerCancel()
 
 	slog.Info("Server stopped")

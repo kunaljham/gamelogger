@@ -1,15 +1,86 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import {
+  startAuthentication,
+  browserSupportsWebAuthn,
+} from "@simplewebauthn/browser";
 
 export default function Login() {
   const isDevMode = process.env.NEXT_PUBLIC_DEV_MODE === "true";
   const [email, setEmail] = useState(isDevMode ? "seed-user@example.com" : "");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [devLoading, setDevLoading] = useState<string | null>(null);
+  const [supportsPasskeys, setSupportsPasskeys] = useState(false);
   const router = useRouter();
+
+  // Check if the browser supports WebAuthn passkeys
+  useEffect(() => {
+    setSupportsPasskeys(browserSupportsWebAuthn());
+  }, []);
+
+  // Passkey login: triggers the browser's authenticator (Face ID, fingerprint,
+  // 1Password, etc.) to sign a challenge from the server. This is the
+  // "discoverable credential" flow — the authenticator knows which account to
+  // use, so the user doesn't need to type their email.
+  const handlePasskeyLogin = async () => {
+    setError("");
+    setPasskeyLoading(true);
+
+    try {
+      // Step 1: Get challenge options from the server
+      const beginRes = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/passkey/login/begin`,
+        {
+          method: "POST",
+          credentials: "include",
+        }
+      );
+
+      if (!beginRes.ok) {
+        const data = await beginRes.json();
+        throw new Error(data.error || "Failed to start passkey login");
+      }
+
+      const { options, challengeID } = await beginRes.json();
+
+      // Step 2: Prompt the user's authenticator
+      // go-webauthn wraps the WebAuthn options inside a "publicKey" field,
+      // but @simplewebauthn/browser expects the inner object directly.
+      const credential = await startAuthentication({ optionsJSON: options.publicKey });
+
+      // Step 3: Send the signed response back for verification
+      const finishRes = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/passkey/login/finish`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ challengeID, credential }),
+          credentials: "include",
+        }
+      );
+
+      if (!finishRes.ok) {
+        const data = await finishRes.json();
+        throw new Error(data.error || "Passkey verification failed");
+      }
+
+      router.push("/feed");
+    } catch (err) {
+      // Don't show error if the user simply cancelled the passkey prompt
+      if (err instanceof Error && err.name === "NotAllowedError") {
+        return;
+      }
+      setError(
+        err instanceof Error ? err.message : "Passkey login failed"
+      );
+    } finally {
+      setPasskeyLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +105,6 @@ export default function Login() {
         throw new Error(data.error || "Something went wrong");
       }
 
-      // Store email for the check-email page to display
       sessionStorage.setItem("loginEmail", email);
       router.push("/login/check-email");
     } catch (err) {
@@ -84,7 +154,7 @@ export default function Login() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
             type="email"
-            autoComplete="email"
+            autoComplete="email webauthn"
             name="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -106,6 +176,46 @@ export default function Login() {
             {loading ? "Sending..." : "Continue"}
           </button>
         </form>
+
+        {/* Passkey sign-in: shown when the browser supports WebAuthn.
+            Works with platform authenticators (Face ID, fingerprint) and
+            roaming authenticators (1Password, YubiKey, iCloud Keychain). */}
+        {supportsPasskeys && (
+          <div className="mt-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-stone-200 dark:border-stone-700" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="bg-gradient-to-br from-stone-50 to-stone-100 px-2 text-stone-400 dark:from-stone-900 dark:to-stone-950 dark:text-stone-500">
+                  or
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handlePasskeyLogin}
+              disabled={passkeyLoading}
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-stone-300 bg-white px-4 py-3 text-base font-medium text-stone-700 transition-colors hover:bg-stone-50 disabled:opacity-50 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-200 dark:hover:bg-stone-700"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-5 w-5"
+              >
+                <path d="M2 18v3c0 .6.4 1 1 1h4v-3h3v-3h2l1.4-1.4a6.5 6.5 0 1 0-4-4Z" />
+                <circle cx="16.5" cy="7.5" r=".5" fill="currentColor" />
+              </svg>
+              {passkeyLoading ? "Verifying..." : "Sign in with passkey"}
+            </button>
+          </div>
+        )}
 
         <p className="mt-4 text-xs text-stone-400 dark:text-stone-500">
           By signing in, you agree to our{" "}

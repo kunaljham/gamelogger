@@ -36,6 +36,12 @@ type Config struct {
 	BackendURL   string   `env:"BACKEND_URL" envDefault:"http://localhost:8080"`
 	CookieDomain string   `env:"COOKIE_DOMAIN,required"`
 	AllowedOrigins []string `env:"ALLOWED_ORIGINS,required" envSeparator:","`
+
+	// WebAuthn / Passkeys
+	WebAuthnRPID          string        `env:"WEBAUTHN_RP_ID" envDefault:"localhost"`
+	WebAuthnRPDisplayName string        `env:"WEBAUTHN_RP_DISPLAY_NAME" envDefault:"GameLogger"`
+	WebAuthnRPOrigins     []string      `env:"WEBAUTHN_RP_ORIGINS" envSeparator:","`
+	WebAuthnChallengeTTL  time.Duration `env:"WEBAUTHN_CHALLENGE_TTL" envDefault:"5m"`
 }
 
 // Load reads configuration from environment variables.
@@ -60,4 +66,12 @@ func (c *Config) IsProduction() bool {
 // IsDemoUser returns true if the given email matches the configured demo user.
 func (c *Config) IsDemoUser(email string) bool {
 	return c.DemoUserEmail != "" && email == c.DemoUserEmail
+}
+
+// GetWebAuthnRPOrigins returns the configured RP origins, falling back to FrontendURL.
+func (c *Config) GetWebAuthnRPOrigins() []string {
+	if len(c.WebAuthnRPOrigins) > 0 {
+		return c.WebAuthnRPOrigins
+	}
+	return []string{c.FrontendURL}
 }

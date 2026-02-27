@@ -6,6 +6,15 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-02-26",
+    title: "Passkey support",
+    items: [
+      "Sign in with Face ID, fingerprint, or a security key — no email link needed",
+      "Register passkeys from your profile page",
+      "After signing in with a magic link, a prompt suggests setting up a passkey for faster future logins",
+    ],
+  },
+  {
     date: "2026-02-24",
     title: "Opponent notes & detail page",
     items: [

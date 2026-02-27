@@ -12,6 +12,7 @@
     "remotion:render": "npx remotion render remotion/index.ts GameLoggerDemo out/demo.mp4 --codec=h264 --crf=18"
   },
   "dependencies": {
+    "@simplewebauthn/browser": "^13.2.2",
     "@tailwindcss/typography": "^0.5.19",
     "next": "16.1.1",
     "react": "19.2.3",

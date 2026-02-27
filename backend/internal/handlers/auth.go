@@ -179,8 +179,10 @@ func (h *Handler) VerifyMagicLink(w http.ResponseWriter, r *http.Request) {
 
 	slog.Info("User signed in", "email", link.Email, "user_id", user.ID)
 
-	// Redirect to the frontend feed page
-	http.Redirect(w, r, h.cfg.FrontendURL+"/feed", http.StatusFound)
+	// Redirect to the frontend feed page.
+	// The ?from=magic-link param lets the frontend detect a fresh magic-link
+	// login so it can prompt the user to register a passkey.
+	http.Redirect(w, r, h.cfg.FrontendURL+"/feed?from=magic-link", http.StatusFound)
 }
 
 // GetCurrentUser handles GET /api/auth/me.
