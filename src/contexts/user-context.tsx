@@ -32,6 +32,17 @@ export function UserProvider({ children }: { children: ReactNode }) {
           { credentials: "include" }
         );
         if (!res.ok) {
+          if (res.status === 401) {
+            // Session cookie exists but the backend session is expired/invalid.
+            // Call logout to clear the HttpOnly cookie via Set-Cookie header
+            // (document.cookie can't touch HttpOnly cookies), then redirect.
+            await fetch(
+              `${process.env.NEXT_PUBLIC_API_URL}/api/auth/logout`,
+              { method: "POST", credentials: "include" }
+            ).catch(() => {});
+            router.replace("/login");
+            return;
+          }
           setLoading(false);
           return;
         }
@@ -62,7 +73,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
     } catch {
       // Even if the API call fails, still redirect
     }
-    document.cookie = "session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     router.push("/");
   };
 
