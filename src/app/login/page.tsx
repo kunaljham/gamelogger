@@ -48,7 +48,9 @@ export default function Login() {
       const { options, challengeID } = await beginRes.json();
 
       // Step 2: Prompt the user's authenticator
-      const credential = await startAuthentication({ optionsJSON: options });
+      // go-webauthn wraps the WebAuthn options inside a "publicKey" field,
+      // but @simplewebauthn/browser expects the inner object directly.
+      const credential = await startAuthentication({ optionsJSON: options.publicKey });
 
       // Step 3: Send the signed response back for verification
       const finishRes = await fetch(

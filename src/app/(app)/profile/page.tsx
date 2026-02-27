@@ -115,7 +115,9 @@ export default function Profile() {
       const { options, challengeID } = await beginRes.json();
 
       // Step 2: Prompt the authenticator (Face ID, fingerprint, 1Password, etc.)
-      const credential = await startRegistration({ optionsJSON: options });
+      // go-webauthn wraps the WebAuthn options inside a "publicKey" field,
+      // but @simplewebauthn/browser expects the inner object directly.
+      const credential = await startRegistration({ optionsJSON: options.publicKey });
 
       // Step 3: Send attestation to server for verification and storage
       const finishRes = await fetch(
