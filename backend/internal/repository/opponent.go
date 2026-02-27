@@ -140,7 +140,7 @@ func (r *OpponentRepository) FindByName(ctx context.Context, userID uuid.UUID, n
 
 // ListByUser returns a paginated list of opponents for a user, ordered by created_at DESC.
 // Uses cursor-based pagination where the cursor is the last opponent's created_at timestamp.
-// If search is non-nil, filters by name using case-insensitive prefix matching.
+// If search is non-nil, filters by name or email using case-insensitive prefix matching.
 func (r *OpponentRepository) ListByUser(ctx context.Context, userID uuid.UUID, limit int, cursor *string, search *string) ([]models.Opponent, error) {
 	var rows pgx.Rows
 	var err error
@@ -149,7 +149,7 @@ func (r *OpponentRepository) ListByUser(ctx context.Context, userID uuid.UUID, l
 		rows, err = r.db.Query(ctx, `
 			SELECT `+opponentColumns+`
 			FROM opponents
-			WHERE user_id = $1 AND created_at < $2 AND LOWER(name) LIKE LOWER($4) || '%'
+			WHERE user_id = $1 AND created_at < $2 AND (LOWER(name) LIKE $4 ESCAPE '\' OR LOWER(COALESCE(email, '')) LIKE $4 ESCAPE '\')
 			ORDER BY created_at DESC
 			LIMIT $3
 		`, userID, *cursor, limit, *search)
@@ -157,7 +157,7 @@ func (r *OpponentRepository) ListByUser(ctx context.Context, userID uuid.UUID, l
 		rows, err = r.db.Query(ctx, `
 			SELECT `+opponentColumns+`
 			FROM opponents
-			WHERE user_id = $1 AND LOWER(name) LIKE LOWER($3) || '%'
+			WHERE user_id = $1 AND (LOWER(name) LIKE $3 ESCAPE '\' OR LOWER(COALESCE(email, '')) LIKE $3 ESCAPE '\')
 			ORDER BY created_at DESC
 			LIMIT $2
 		`, userID, limit, *search)
@@ -224,7 +224,7 @@ const opponentStatsJoin = `
 // ListByUserWithStats returns a paginated list of opponents for a user with win/loss counts,
 // ordered by created_at DESC, id DESC. Uses cursor-based pagination with a composite cursor
 // (created_at + id) to handle ties in created_at timestamps.
-// If search is non-nil, filters by name using case-insensitive prefix matching.
+// If search is non-nil, filters by name or email using case-insensitive prefix matching.
 func (r *OpponentRepository) ListByUserWithStats(ctx context.Context, userID uuid.UUID, limit int, cursorTime *string, cursorID *uuid.UUID, search *string) ([]models.OpponentWithStats, error) {
 	var rows pgx.Rows
 	var err error
@@ -236,7 +236,7 @@ func (r *OpponentRepository) ListByUserWithStats(ctx context.Context, userID uui
 				COALESCE(SUM(stats.losses), 0) AS losses
 			FROM opponents o
 			`+opponentStatsJoin+`
-			WHERE o.user_id = $1 AND (o.created_at, o.id) < ($2, $5) AND LOWER(o.name) LIKE LOWER($4) || '%'
+			WHERE o.user_id = $1 AND (o.created_at, o.id) < ($2, $5) AND (LOWER(o.name) LIKE $4 ESCAPE '\' OR LOWER(COALESCE(o.email, '')) LIKE $4 ESCAPE '\')
 			GROUP BY o.id
 			ORDER BY o.created_at DESC, o.id DESC
 			LIMIT $3
@@ -248,7 +248,7 @@ func (r *OpponentRepository) ListByUserWithStats(ctx context.Context, userID uui
 				COALESCE(SUM(stats.losses), 0) AS losses
 			FROM opponents o
 			`+opponentStatsJoin+`
-			WHERE o.user_id = $1 AND LOWER(o.name) LIKE LOWER($3) || '%'
+			WHERE o.user_id = $1 AND (LOWER(o.name) LIKE $3 ESCAPE '\' OR LOWER(COALESCE(o.email, '')) LIKE $3 ESCAPE '\')
 			GROUP BY o.id
 			ORDER BY o.created_at DESC, o.id DESC
 			LIMIT $2

@@ -57,6 +57,7 @@ function LogMatch() {
     { userScore: "", opponentScore: "" },
   ]);
   const [newOpponentEmail, setNewOpponentEmail] = useState("");
+  const [newOpponentName, setNewOpponentName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -127,13 +128,20 @@ function LogMatch() {
   // In server-search mode, the API already filters, so show all results.
   // In client-filter mode (<= 25 opponents), filter locally.
   const trimmedQuery = opponentQuery.trim();
+  const isEmailQuery = trimmedQuery.indexOf("@") > 0;
   const filteredOpponents = useServerSearch
     ? opponents
-    : opponents.filter((opp) =>
-        opp.name.toLowerCase().includes(trimmedQuery.toLowerCase())
-      );
+    : opponents.filter((opp) => {
+        const q = trimmedQuery.toLowerCase();
+        return (
+          opp.name.toLowerCase().includes(q) ||
+          (opp.email && opp.email.toLowerCase().includes(q))
+        );
+      });
   const exactMatch = filteredOpponents.some(
-    (opp) => opp.name.toLowerCase() === trimmedQuery.toLowerCase()
+    (opp) =>
+      opp.name.toLowerCase() === trimmedQuery.toLowerCase() ||
+      (opp.email && opp.email.toLowerCase() === trimmedQuery.toLowerCase())
   );
   const showAddOption = trimmedQuery.length > 0 && !exactMatch;
 
@@ -182,6 +190,14 @@ function LogMatch() {
       setError("Please select or add an opponent.");
       return;
     }
+    if (
+      selectedOpponent.type === "new" &&
+      !selectedOpponent.name &&
+      !newOpponentName.trim()
+    ) {
+      setError("Please enter the opponent's name.");
+      return;
+    }
 
     // Validate each filled game
     for (let i = 0; i < filledGames.length; i++) {
@@ -208,7 +224,8 @@ function LogMatch() {
       // If the opponent is new, create them first
       let opponentId: string;
       if (selectedOpponent.type === "new") {
-        const oppBody: Record<string, string> = { name: selectedOpponent.name };
+        const oppName = selectedOpponent.name || newOpponentName.trim();
+        const oppBody: Record<string, string> = { name: oppName };
         if (newOpponentEmail.trim()) {
           oppBody.email = newOpponentEmail.trim();
         }
@@ -339,6 +356,8 @@ function LogMatch() {
                 onRemove={() => {
                   setSelectedOpponent(null);
                   setOpponentQuery("");
+                  setNewOpponentName("");
+                  setNewOpponentEmail("");
                 }}
               />
             ) : (
@@ -359,6 +378,8 @@ function LogMatch() {
                   onChange={(e) => {
                     setOpponentQuery(e.target.value);
                     setSelectedOpponent(null);
+                    setNewOpponentName("");
+                    setNewOpponentEmail("");
                     setComboboxOpen(true);
                     setHighlightedIndex(0);
                     if (useServerSearch) searchOpponents(e.target.value);
@@ -405,12 +426,18 @@ function LogMatch() {
                         });
                         setOpponentQuery(opp.name);
                       } else if (showAddOption) {
-                        setSelectedOpponent({
-                          type: "new",
-                          name: trimmedQuery,
-                        });
+                        if (isEmailQuery) {
+                          setSelectedOpponent({ type: "new", name: "" });
+                          setNewOpponentEmail(trimmedQuery);
+                          setNewOpponentName("");
+                        } else {
+                          setSelectedOpponent({
+                            type: "new",
+                            name: trimmedQuery,
+                          });
+                          setNewOpponentEmail("");
+                        }
                         setOpponentQuery(trimmedQuery);
-                        setNewOpponentEmail("");
                       }
                       setComboboxOpen(false);
                     } else if (e.key === "Escape") {
@@ -418,7 +445,7 @@ function LogMatch() {
                     }
                   }}
                   disabled={loading}
-                  placeholder="Search or add opponent"
+                  placeholder="Search by name or email"
                   className="w-full rounded-lg border border-stone-300 bg-white px-4 py-3 text-base text-stone-900 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
                 />
                 {comboboxOpen &&
@@ -452,7 +479,12 @@ function LogMatch() {
                               : ""
                           }`}
                         >
-                          {opp.name}
+                          <span>{opp.name}</span>
+                          {opp.email && isEmailQuery && (
+                            <span className="ml-2 text-sm text-stone-400 dark:text-stone-500">
+                              {opp.email}
+                            </span>
+                          )}
                         </li>
                       ))}
                       {showAddOption && (
@@ -464,10 +496,17 @@ function LogMatch() {
                           }
                           onMouseDown={(e) => {
                             e.preventDefault();
-                            setSelectedOpponent({
-                              type: "new",
-                              name: trimmedQuery,
-                            });
+                            if (isEmailQuery) {
+                              setSelectedOpponent({ type: "new", name: "" });
+                              setNewOpponentEmail(trimmedQuery);
+                              setNewOpponentName("");
+                            } else {
+                              setSelectedOpponent({
+                                type: "new",
+                                name: trimmedQuery,
+                              });
+                              setNewOpponentEmail("");
+                            }
                             setOpponentQuery(trimmedQuery);
                             setComboboxOpen(false);
                           }}
@@ -489,22 +528,43 @@ function LogMatch() {
             )}
           </div>
 
-          {/* Email for new opponent */}
+          {/* Extra fields for new opponent */}
           {selectedOpponent?.type === "new" && (
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-stone-700 dark:text-stone-300">
-                Opponent Email{" "}
-                <span className="font-normal text-stone-400">(optional)</span>
-              </label>
-              <input
-                type="email"
-                value={newOpponentEmail}
-                onChange={(e) => setNewOpponentEmail(e.target.value)}
-                disabled={loading}
-                placeholder="opponent@example.com"
-                className="w-full rounded-lg border border-stone-300 bg-white px-4 py-3 text-base text-stone-900 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
-              />
-            </div>
+            <>
+              {!selectedOpponent.name && (
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-stone-700 dark:text-stone-300">
+                    Opponent Name
+                  </label>
+                  <input
+                    type="text"
+                    value={newOpponentName}
+                    onChange={(e) => setNewOpponentName(e.target.value)}
+                    disabled={loading}
+                    placeholder="Enter opponent's name"
+                    className="w-full rounded-lg border border-stone-300 bg-white px-4 py-3 text-base text-stone-900 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
+                  />
+                </div>
+              )}
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-stone-700 dark:text-stone-300">
+                  Opponent Email{" "}
+                  {selectedOpponent.name && (
+                    <span className="font-normal text-stone-400">
+                      (optional)
+                    </span>
+                  )}
+                </label>
+                <input
+                  type="email"
+                  value={newOpponentEmail}
+                  onChange={(e) => setNewOpponentEmail(e.target.value)}
+                  disabled={loading}
+                  placeholder="opponent@example.com"
+                  className="w-full rounded-lg border border-stone-300 bg-white px-4 py-3 text-base text-stone-900 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
+                />
+              </div>
+            </>
           )}
 
           {/* Date and time played */}
