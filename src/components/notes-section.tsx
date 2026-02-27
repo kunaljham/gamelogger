@@ -5,6 +5,7 @@ import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import { preserveNewlines } from "@/lib/markdown";
 import { formatDateTime } from "@/lib/match";
+import ExpandableTextarea from "@/components/expandable-textarea";
 
 interface NotesSectionProps {
   notes?: string;
@@ -74,13 +75,13 @@ export default function NotesSection({
           </a>{" "}
           supported.
         </p>
-        <textarea
+        <ExpandableTextarea
           value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
+          onChange={setEditValue}
           disabled={saving}
           placeholder={placeholder}
           rows={4}
-          className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 placeholder-stone-400 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:placeholder-stone-500 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
+          className="w-full rounded-lg border border-stone-300 bg-white pl-3 py-2 text-sm text-stone-900 placeholder-stone-400 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:placeholder-stone-500 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
         />
         {error && (
           <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
