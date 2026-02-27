@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -51,7 +52,7 @@ func (h *Handler) BeginPasskeyRegistration(w http.ResponseWriter, r *http.Reques
 
 	// Store challenge for verification in the finish step
 	expiresAt := time.Now().Add(h.cfg.WebAuthnChallengeTTL)
-	challengeID, err := h.passkeyRepo.SaveChallenge(r.Context(), session, expiresAt)
+	challengeID, err := h.passkeyRepo.SaveChallenge(r.Context(), session, expiresAt, &user.ID, repository.CeremonyRegistration)
 	if err != nil {
 		slog.Error("Failed to save challenge", "error", err, "user_id", user.ID)
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to process request"})
@@ -93,7 +94,7 @@ func (h *Handler) FinishPasskeyRegistration(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	session, err := h.passkeyRepo.GetChallenge(r.Context(), challengeID)
+	session, err := h.passkeyRepo.GetChallenge(r.Context(), challengeID, &user.ID, repository.CeremonyRegistration)
 	if err != nil {
 		slog.Warn("Challenge lookup failed", "error", err, "challenge_id", req.ChallengeID)
 		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid or expired challenge"})
@@ -127,7 +128,11 @@ func (h *Handler) FinishPasskeyRegistration(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Choose display name: use client-provided name or auto-number
-	displayName := req.DisplayName
+	displayName := strings.TrimSpace(req.DisplayName)
+	if len(displayName) > 255 {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Display name must be 255 characters or less"})
+		return
+	}
 	if displayName == "" {
 		displayName = fmt.Sprintf("Passkey %d", len(passkeys)+1)
 	}
@@ -158,7 +163,7 @@ func (h *Handler) BeginPasskeyLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	expiresAt := time.Now().Add(h.cfg.WebAuthnChallengeTTL)
-	challengeID, err := h.passkeyRepo.SaveChallenge(r.Context(), session, expiresAt)
+	challengeID, err := h.passkeyRepo.SaveChallenge(r.Context(), session, expiresAt, nil, repository.CeremonyLogin)
 	if err != nil {
 		slog.Error("Failed to save challenge", "error", err)
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to process request"})
@@ -193,7 +198,7 @@ func (h *Handler) FinishPasskeyLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err := h.passkeyRepo.GetChallenge(r.Context(), challengeID)
+	session, err := h.passkeyRepo.GetChallenge(r.Context(), challengeID, nil, repository.CeremonyLogin)
 	if err != nil {
 		slog.Warn("Challenge lookup failed", "error", err, "challenge_id", req.ChallengeID)
 		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid or expired challenge"})
