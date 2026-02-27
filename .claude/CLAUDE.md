@@ -16,10 +16,11 @@ After every non-trivial code change (new features, multi-file edits, logic chang
 1. Run the **qa-tester** agent — runs tests, build, and lint; reviews coverage gaps
 2. Run the **sre** agent — audits for N+1 queries, missing/redundant indexes, slow query patterns, transaction scope, and bundle size. Also checks whether fixes introduce index overlap or unnecessary database objects.
 3. Run the **code-reviewer** agent — reviews simplicity, maintainability, correctness, and dead code. Also checks whether fixes leave behind unused methods, redundant abstractions, or stale references.
+4. Run the **security** agent — audits for injection flaws, auth bypass, IDOR, XSS, CSRF, missing input validation, secrets exposure, and insecure defaults. Skip only when the change is purely frontend styling or documentation.
 
-All three must run and their findings must be addressed before the commit is made. Skip only for trivial changes (typo fixes, comment edits, config tweaks).
+All four must run and their findings must be addressed before the commit is made. Skip only for trivial changes (typo fixes, comment edits, config tweaks). Agents 2–4 can run in parallel after qa-tester passes.
 
-**Iterate until clean:** When you fix issues reported by the agents, those fixes themselves are non-trivial changes. Re-run the agents after applying fixes before committing. Fixes often introduce secondary issues (e.g., replacing a method with a batched version leaves the old method as dead code; consolidating two indexes makes an older index redundant). Keep running the review cycle until all three agents report no actionable issues, then commit everything together.
+**Iterate until clean:** When you fix issues reported by the agents, those fixes themselves are non-trivial changes. Re-run the agents after applying fixes before committing. Fixes often introduce secondary issues (e.g., replacing a method with a batched version leaves the old method as dead code; consolidating two indexes makes an older index redundant). Keep running the review cycle until all four agents report no actionable issues, then commit everything together.
 
 ## Tech Stack
 
