@@ -666,6 +666,10 @@ else
   fail "User 1 list opponents → expected 200, got $STATUS"
 fi
 
+# Wait for the worker to process the reciprocal opponent job (polls every 5 seconds).
+echo "  ⏳ Waiting for worker to process reciprocal job..."
+sleep 7
+
 # User 2 lists their matches — should include the match created by user 1
 COOKIE_JAR="$COOKIE_JAR_2"
 api GET /api/matches
