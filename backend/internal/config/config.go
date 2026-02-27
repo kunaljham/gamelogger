@@ -35,6 +35,7 @@ type Config struct {
 	FrontendURL  string   `env:"FRONTEND_URL,required"`
 	BackendURL   string   `env:"BACKEND_URL" envDefault:"http://localhost:8080"`
 	CookieDomain string   `env:"COOKIE_DOMAIN,required"`
+	CookieName   string   `env:"COOKIE_NAME" envDefault:"session"`
 	AllowedOrigins []string `env:"ALLOWED_ORIGINS,required" envSeparator:","`
 
 	// WebAuthn / Passkeys

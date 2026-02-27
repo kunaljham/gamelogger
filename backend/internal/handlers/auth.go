@@ -167,7 +167,7 @@ func (h *Handler) VerifyMagicLink(w http.ResponseWriter, r *http.Request) {
 	// Set the session cookie. HTTP-only means JavaScript can't access it,
 	// which protects against XSS attacks. Secure means it only sends over HTTPS.
 	http.SetCookie(w, &http.Cookie{
-		Name:     "session",
+		Name:     h.cfg.CookieName,
 		Value:    sessionToken,
 		Path:     "/",
 		Domain:   h.cfg.CookieDomain,
@@ -242,7 +242,7 @@ func (h *Handler) UpdateCurrentUser(w http.ResponseWriter, r *http.Request) {
 // Deletes the session and clears the cookie.
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	// Read the session cookie
-	cookie, err := r.Cookie("session")
+	cookie, err := r.Cookie(h.cfg.CookieName)
 	if err != nil {
 		writeJSON(w, http.StatusOK, sendLinkResponse{Message: "Logged out"})
 		return
@@ -255,7 +255,7 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 
 	// Clear the cookie by setting it to expire immediately
 	http.SetCookie(w, &http.Cookie{
-		Name:     "session",
+		Name:     h.cfg.CookieName,
 		Value:    "",
 		Path:     "/",
 		Domain:   h.cfg.CookieDomain,
@@ -331,7 +331,7 @@ func (h *Handler) DevLogin(w http.ResponseWriter, r *http.Request) {
 
 	// Set the session cookie
 	http.SetCookie(w, &http.Cookie{
-		Name:     "session",
+		Name:     h.cfg.CookieName,
 		Value:    sessionToken,
 		Path:     "/",
 		Domain:   h.cfg.CookieDomain,
@@ -385,7 +385,7 @@ func (h *Handler) DemoLogin(w http.ResponseWriter, r *http.Request) {
 
 	// Set the session cookie
 	http.SetCookie(w, &http.Cookie{
-		Name:     "session",
+		Name:     h.cfg.CookieName,
 		Value:    sessionToken,
 		Path:     "/",
 		Domain:   h.cfg.CookieDomain,
