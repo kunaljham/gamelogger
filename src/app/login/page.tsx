@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   startAuthentication,
   browserSupportsWebAuthn,
+  WebAuthnAbortService,
 } from "@simplewebauthn/browser";
 
 export default function Login() {
@@ -20,6 +21,64 @@ export default function Login() {
   // Check if the browser supports WebAuthn passkeys
   useEffect(() => {
     setSupportsPasskeys(browserSupportsWebAuthn());
+  }, []);
+
+  // Conditional UI: show the passkey option inside the browser's autofill
+  // dropdown when the user focuses the email field. This calls
+  // navigator.credentials.get() with mediation: "conditional", which waits
+  // silently in the background until the user picks a passkey from autofill.
+  // If they don't (e.g. they type their email instead), this just does nothing.
+  useEffect(() => {
+    if (!browserSupportsWebAuthn()) return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        // Get challenge options from the server (same endpoint as the button)
+        const beginRes = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/auth/passkey/login/begin`,
+          { method: "POST", credentials: "include" }
+        );
+        if (!beginRes.ok || cancelled) return;
+
+        const { options, challengeID } = await beginRes.json();
+
+        // Wait for the user to pick a passkey from the autofill dropdown.
+        // useBrowserAutofill: true sets mediation to "conditional" so no
+        // modal appears — the passkey shows alongside saved emails in autofill.
+        const credential = await startAuthentication({
+          optionsJSON: options.publicKey,
+          useBrowserAutofill: true,
+        });
+
+        // User picked a passkey — verify it with the server
+        const finishRes = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/auth/passkey/login/finish`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ challengeID, credential }),
+            credentials: "include",
+          }
+        );
+        if (!finishRes.ok || cancelled) return;
+
+        router.push("/feed");
+      } catch {
+        // Silently ignore — the user didn't pick a passkey, the browser
+        // doesn't support conditional UI, or the component unmounted.
+        // The manual "Sign in with passkey" button is still available.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      // Abort the pending navigator.credentials.get() call so it doesn't
+      // linger after the component unmounts (e.g. client-side navigation).
+      WebAuthnAbortService.cancelCeremony();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- router is stable; effect should only run once on mount
   }, []);
 
   // Passkey login: triggers the browser's authenticator (Face ID, fingerprint,
