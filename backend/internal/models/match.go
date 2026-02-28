@@ -16,6 +16,13 @@ type Game struct {
 }
 
 // Match represents a squash match between the user and an opponent.
+//
+// Read path: OpponentID, Opponent, and Notes are resolved from the viewer's
+// match_participants row so they reflect the viewer's perspective.
+// ViewerRole ("creator" or "opponent") tells the handler whether to flip scores.
+//
+// Write path: CreatorNotes is used when creating/updating a match — the handler
+// writes it to both matches.creator_notes and the creator's match_participants row.
 type Match struct {
 	ID           uuid.UUID `json:"id"`
 	UserID       uuid.UUID `json:"user_id"`
@@ -23,14 +30,13 @@ type Match struct {
 	Opponent     *Opponent `json:"opponent,omitempty"`
 	MatchType    string    `json:"match_type"`
 	PlayedAt     time.Time `json:"played_at"`
-	Notes         *string   `json:"notes,omitempty"`   // resolved per-viewer by handler
-	CreatorNotes  *string   `json:"-"`                 // DB column, never serialized
-	OpponentNotes *string   `json:"-"`                 // DB column, never serialized
-	CreatorName   *string   `json:"-"`                 // from users table, for opponent viewer resolution
+	Notes        *string   `json:"notes,omitempty"` // viewer's notes from match_participants
+	CreatorNotes *string   `json:"-"`               // write-only: for creating/updating matches
 	Games        []Game    `json:"games"`
-	UserWon      bool      `json:"user_won"`                // stored in DB
-	UserWins     int       `json:"user_wins"`                // computed, not stored
-	OpponentWins int       `json:"opponent_wins"`            // computed, not stored
+	UserWon      bool      `json:"user_won"`     // true if the viewer won (recomputed by resolveForViewer)
+	UserWins     int       `json:"user_wins"`     // computed, not stored
+	OpponentWins int       `json:"opponent_wins"` // computed, not stored
+	ViewerRole   string    `json:"-"`             // "creator" or "opponent" — for score flipping
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }

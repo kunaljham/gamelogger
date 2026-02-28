@@ -379,16 +379,13 @@ func TestValidateGames_Empty(t *testing.T) {
 	assert.Contains(t, err.Error(), "At least one game")
 }
 
-// --- resolveScoresForViewer tests ---
-// These now use RegisteredUserID instead of Email to identify the opponent.
+// --- resolveForViewer tests ---
+// resolveForViewer uses ViewerRole (set by the query) instead of inspecting
+// RegisteredUserID. "creator" keeps scores as-is, "opponent" flips them.
 
-func TestResolveScoresForViewer_Creator(t *testing.T) {
-	creatorID := uuid.New()
-	oppUserID := uuid.New()
-
+func TestResolveForViewer_Creator(t *testing.T) {
 	match := &models.Match{
-		UserID:   creatorID,
-		Opponent: &models.Opponent{RegisteredUserID: &oppUserID},
+		ViewerRole: "creator",
 		Games: []models.Game{
 			{GameNumber: 1, UserScore: 11, OpponentScore: 7},
 			{GameNumber: 2, UserScore: 9, OpponentScore: 11},
@@ -396,7 +393,7 @@ func TestResolveScoresForViewer_Creator(t *testing.T) {
 		},
 	}
 
-	resolveScoresForViewer(match, creatorID)
+	resolveForViewer(match)
 
 	// Scores stay from creator's perspective
 	assert.Equal(t, 11, match.Games[0].UserScore)
@@ -406,13 +403,9 @@ func TestResolveScoresForViewer_Creator(t *testing.T) {
 	assert.Equal(t, 1, match.OpponentWins)
 }
 
-func TestResolveScoresForViewer_Opponent(t *testing.T) {
-	creatorID := uuid.New()
-	oppUserID := uuid.New()
-
+func TestResolveForViewer_Opponent(t *testing.T) {
 	match := &models.Match{
-		UserID:   creatorID,
-		Opponent: &models.Opponent{RegisteredUserID: &oppUserID},
+		ViewerRole: "opponent",
 		Games: []models.Game{
 			{GameNumber: 1, UserScore: 11, OpponentScore: 7},
 			{GameNumber: 2, UserScore: 9, OpponentScore: 11},
@@ -420,7 +413,7 @@ func TestResolveScoresForViewer_Opponent(t *testing.T) {
 		},
 	}
 
-	resolveScoresForViewer(match, oppUserID)
+	resolveForViewer(match)
 
 	// Scores are flipped — opponent now sees from their perspective
 	assert.Equal(t, 7, match.Games[0].UserScore)
@@ -430,20 +423,16 @@ func TestResolveScoresForViewer_Opponent(t *testing.T) {
 	assert.Equal(t, 2, match.OpponentWins)
 }
 
-func TestResolveScoresForViewer_Neither(t *testing.T) {
-	creatorID := uuid.New()
-	oppUserID := uuid.New()
-
+func TestResolveForViewer_EmptyRole(t *testing.T) {
 	match := &models.Match{
-		UserID:   creatorID,
-		Opponent: &models.Opponent{RegisteredUserID: &oppUserID},
+		ViewerRole: "",
 		Games: []models.Game{
 			{GameNumber: 1, UserScore: 11, OpponentScore: 7},
 			{GameNumber: 2, UserScore: 11, OpponentScore: 9},
 		},
 	}
 
-	resolveScoresForViewer(match, uuid.New())
+	resolveForViewer(match)
 
 	// Scores unchanged (defaults to creator's perspective)
 	assert.Equal(t, 11, match.Games[0].UserScore)
@@ -451,155 +440,6 @@ func TestResolveScoresForViewer_Neither(t *testing.T) {
 	assert.True(t, match.UserWon)
 	assert.Equal(t, 2, match.UserWins)
 	assert.Equal(t, 0, match.OpponentWins)
-}
-
-// --- resolveNotesForViewer tests ---
-
-func TestResolveNotesForViewer_Creator(t *testing.T) {
-	creatorID := uuid.New()
-	oppUserID := uuid.New()
-	creatorNotes := "my creator notes"
-	oppNotes := "opponent notes"
-
-	match := &models.Match{
-		UserID:        creatorID,
-		CreatorNotes:  &creatorNotes,
-		OpponentNotes: &oppNotes,
-		Opponent:      &models.Opponent{RegisteredUserID: &oppUserID},
-	}
-
-	resolveNotesForViewer(match, creatorID)
-
-	require.NotNil(t, match.Notes)
-	assert.Equal(t, "my creator notes", *match.Notes)
-}
-
-func TestResolveNotesForViewer_Opponent(t *testing.T) {
-	creatorID := uuid.New()
-	oppUserID := uuid.New()
-	creatorNotes := "creator notes"
-	oppNotes := "my opponent notes"
-
-	match := &models.Match{
-		UserID:        creatorID,
-		CreatorNotes:  &creatorNotes,
-		OpponentNotes: &oppNotes,
-		Opponent:      &models.Opponent{RegisteredUserID: &oppUserID},
-	}
-
-	resolveNotesForViewer(match, oppUserID)
-
-	require.NotNil(t, match.Notes)
-	assert.Equal(t, "my opponent notes", *match.Notes)
-}
-
-func TestResolveNotesForViewer_Neither(t *testing.T) {
-	creatorID := uuid.New()
-	oppUserID := uuid.New()
-	creatorNotes := "creator notes"
-
-	match := &models.Match{
-		UserID:       creatorID,
-		CreatorNotes: &creatorNotes,
-		Opponent:     &models.Opponent{RegisteredUserID: &oppUserID},
-	}
-
-	resolveNotesForViewer(match, uuid.New())
-
-	assert.Nil(t, match.Notes)
-}
-
-// --- resolveOpponentForViewer tests ---
-
-func TestResolveOpponentForViewer_Creator(t *testing.T) {
-	creatorID := uuid.New()
-	oppUserID := uuid.New()
-	creatorName := "Seed User"
-
-	match := &models.Match{
-		UserID:      creatorID,
-		CreatorName: &creatorName,
-		Opponent:    &models.Opponent{Name: "Alice Chen", RegisteredUserID: &oppUserID},
-	}
-
-	resolveOpponentForViewer(match, creatorID, nil)
-
-	// Creator sees the original opponent name
-	assert.Equal(t, "Alice Chen", match.Opponent.Name)
-}
-
-func TestResolveOpponentForViewer_Opponent(t *testing.T) {
-	creatorID := uuid.New()
-	oppUserID := uuid.New()
-	creatorName := "Seed User"
-
-	match := &models.Match{
-		UserID:      creatorID,
-		CreatorName: &creatorName,
-		Opponent:    &models.Opponent{Name: "Alice Chen", RegisteredUserID: &oppUserID},
-	}
-
-	resolveOpponentForViewer(match, oppUserID, nil)
-
-	// Opponent sees the creator's name instead of their own
-	assert.Equal(t, "Seed User", match.Opponent.Name)
-}
-
-func TestResolveOpponentForViewer_OpponentWithIDSwap(t *testing.T) {
-	creatorID := uuid.New()
-	oppUserID := uuid.New()
-	originalOppID := uuid.New()
-	reciprocalOppID := uuid.New()
-	creatorName := "Seed User"
-
-	match := &models.Match{
-		UserID:      creatorID,
-		OpponentID:  originalOppID,
-		CreatorName: &creatorName,
-		Opponent:    &models.Opponent{ID: originalOppID, Name: "Alice Chen", RegisteredUserID: &oppUserID},
-	}
-
-	reciprocalIDs := map[uuid.UUID]uuid.UUID{creatorID: reciprocalOppID}
-	resolveOpponentForViewer(match, oppUserID, reciprocalIDs)
-
-	// Opponent sees the creator's name
-	assert.Equal(t, "Seed User", match.Opponent.Name)
-	// Opponent ID is swapped to their own reciprocal record
-	assert.Equal(t, reciprocalOppID, match.OpponentID)
-	assert.Equal(t, reciprocalOppID, match.Opponent.ID)
-}
-
-func TestResolveOpponentForViewer_OpponentCreatorNameNil(t *testing.T) {
-	creatorID := uuid.New()
-	oppUserID := uuid.New()
-
-	match := &models.Match{
-		UserID:      creatorID,
-		CreatorName: nil,
-		Opponent:    &models.Opponent{Name: "Alice Chen", RegisteredUserID: &oppUserID},
-	}
-
-	resolveOpponentForViewer(match, oppUserID, nil)
-
-	// Falls back to "Unknown" when creator hasn't set a name
-	assert.Equal(t, "Unknown", match.Opponent.Name)
-}
-
-func TestResolveOpponentForViewer_Neither(t *testing.T) {
-	creatorID := uuid.New()
-	oppUserID := uuid.New()
-	creatorName := "Seed User"
-
-	match := &models.Match{
-		UserID:      creatorID,
-		CreatorName: &creatorName,
-		Opponent:    &models.Opponent{Name: "Alice Chen", RegisteredUserID: &oppUserID},
-	}
-
-	resolveOpponentForViewer(match, uuid.New(), nil)
-
-	// Stranger sees the original opponent name
-	assert.Equal(t, "Alice Chen", match.Opponent.Name)
 }
 
 // --- UpdateMatchNotes handler tests ---
@@ -643,9 +483,9 @@ func TestUpdateMatchNotes_InvalidJSON(t *testing.T) {
 }
 
 func TestUpdateMatchNotes_OpponentDoesNotOverwriteCreatorNotes(t *testing.T) {
-	// Requires database — the CTE in UpdateNotes needs a real match with creator + opponent.
-	// Verifies that when a registered opponent updates their notes via PUT /matches/{id}/notes,
-	// only opponent_notes is set and creator_notes remains untouched.
+	// Requires database — each participant has their own row in match_participants,
+	// so their notes are naturally isolated. Updating one participant's notes
+	// never touches the other's.
 	// Covered by integration tests (test-api.sh step 25: Notes edge cases).
 	t.Skip("Requires database — will be covered by integration tests")
 }

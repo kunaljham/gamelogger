@@ -79,47 +79,6 @@ func (r *OpponentRepository) FindByID(ctx context.Context, id uuid.UUID) (*model
 	`, id))
 }
 
-// FindByUserAndRegisteredUser finds an opponent record owned by userID that
-// points to the given registered user. Used to resolve the reciprocal opponent
-// when a non-creator views a match (so the opponent link points to their own
-// opponent record, not the creator's).
-func (r *OpponentRepository) FindByUserAndRegisteredUser(ctx context.Context, userID, registeredUserID uuid.UUID) (*models.Opponent, error) {
-	return scanOpponent(r.db.QueryRow(ctx, `
-		SELECT `+opponentColumns+`
-		FROM opponents
-		WHERE user_id = $1 AND registered_user_id = $2
-	`, userID, registeredUserID))
-}
-
-// FindReciprocalIDs returns a map from registered_user_id to opponent ID for
-// all opponent records owned by userID that point to any of the given registered
-// users. Used to batch-resolve reciprocal opponent IDs in list endpoints,
-// avoiding N+1 queries.
-func (r *OpponentRepository) FindReciprocalIDs(ctx context.Context, userID uuid.UUID, registeredUserIDs []uuid.UUID) (map[uuid.UUID]uuid.UUID, error) {
-	if len(registeredUserIDs) == 0 {
-		return nil, nil
-	}
-	rows, err := r.db.Query(ctx, `
-		SELECT registered_user_id, id
-		FROM opponents
-		WHERE user_id = $1 AND registered_user_id = ANY($2)
-	`, userID, registeredUserIDs)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	result := make(map[uuid.UUID]uuid.UUID, len(registeredUserIDs))
-	for rows.Next() {
-		var regID, oppID uuid.UUID
-		if err := rows.Scan(&regID, &oppID); err != nil {
-			return nil, err
-		}
-		result[regID] = oppID
-	}
-	return result, rows.Err()
-}
-
 // FindByEmail finds an opponent by email for a given user.
 func (r *OpponentRepository) FindByEmail(ctx context.Context, userID uuid.UUID, email string) (*models.Opponent, error) {
 	return scanOpponent(r.db.QueryRow(ctx, `
@@ -195,29 +154,25 @@ func (r *OpponentRepository) ListByUser(ctx context.Context, userID uuid.UUID, l
 }
 
 // opponentStatsJoin is the shared stats subquery for opponent win/loss counts.
-// Uses UNION ALL to count both outgoing matches (user created)
-// and incoming matches (opponent created against this user, with inverted win/loss).
-// SUM aggregates across the two branches per opponent.
+// Uses match_participants to find all matches for the user, then counts
+// wins/losses per opponent_id. The viewer's role determines the win/loss
+// direction: creator wins when user_won=TRUE, opponent wins when user_won=FALSE.
 // $1 must always be the user ID.
 const opponentStatsJoin = `
 	LEFT JOIN (
-		SELECT m.opponent_id,
-			COUNT(*) FILTER (WHERE m.user_won = TRUE) AS wins,
-			COUNT(*) FILTER (WHERE m.user_won = FALSE) AS losses
-		FROM matches m
-		WHERE m.user_id = $1
-		GROUP BY m.opponent_id
-
-		UNION ALL
-
-		SELECT o_ours.id AS opponent_id,
-			COUNT(*) FILTER (WHERE m2.user_won = FALSE) AS wins,
-			COUNT(*) FILTER (WHERE m2.user_won = TRUE) AS losses
-		FROM matches m2
-		JOIN opponents o_theirs ON o_theirs.id = m2.opponent_id AND o_theirs.registered_user_id = $1
-		JOIN opponents o_ours ON o_ours.user_id = $1 AND o_ours.registered_user_id = m2.user_id
-		WHERE m2.user_id != $1
-		GROUP BY o_ours.id
+		SELECT mp.opponent_id,
+			COUNT(*) FILTER (WHERE
+				(mp.role = 'creator' AND m.user_won = TRUE) OR
+				(mp.role = 'opponent' AND m.user_won = FALSE)
+			) AS wins,
+			COUNT(*) FILTER (WHERE
+				(mp.role = 'creator' AND m.user_won = FALSE) OR
+				(mp.role = 'opponent' AND m.user_won = TRUE)
+			) AS losses
+		FROM match_participants mp
+		JOIN matches m ON m.id = mp.match_id
+		WHERE mp.user_id = $1 AND mp.opponent_id IS NOT NULL
+		GROUP BY mp.opponent_id
 	) AS stats ON stats.opponent_id = o.id
 `
 
@@ -296,38 +251,33 @@ func (r *OpponentRepository) ListByUserWithStats(ctx context.Context, userID uui
 
 // FindByIDWithStats returns a single opponent with win/loss stats, scoped to the requesting user.
 // Also joins the users table to get the registered user's account creation date.
-// Unlike ListByUserWithStats, this uses a targeted stats subquery filtered by opponent ID
-// so it only aggregates matches for the single opponent being requested.
+// Uses match_participants for a targeted stats subquery filtered by opponent ID.
 // Returns ErrOpponentNotFound if the opponent doesn't exist or doesn't belong to the user.
 func (r *OpponentRepository) FindByIDWithStats(ctx context.Context, id, userID uuid.UUID) (*models.OpponentWithStats, error) {
 	var o models.OpponentWithStats
 	err := r.db.QueryRow(ctx, `
 		SELECT o.id, o.user_id, o.email, o.name, o.status, o.invited_at, o.registered_user_id, o.notes, o.notes_updated_at, o.created_at, o.updated_at,
-			COALESCE(SUM(stats.wins), 0) AS wins,
-			COALESCE(SUM(stats.losses), 0) AS losses,
+			COALESCE(stats.wins, 0) AS wins,
+			COALESCE(stats.losses, 0) AS losses,
 			u.created_at AS registered_user_created_at
 		FROM opponents o
 		LEFT JOIN (
-			SELECT m.opponent_id,
-				COUNT(*) FILTER (WHERE m.user_won = TRUE) AS wins,
-				COUNT(*) FILTER (WHERE m.user_won = FALSE) AS losses
-			FROM matches m
-			WHERE m.user_id = $1 AND m.opponent_id = $2
-			GROUP BY m.opponent_id
-
-			UNION ALL
-
-			SELECT $2 AS opponent_id,
-				COUNT(*) FILTER (WHERE m2.user_won = FALSE) AS wins,
-				COUNT(*) FILTER (WHERE m2.user_won = TRUE) AS losses
-			FROM matches m2
-			JOIN opponents o_theirs ON o_theirs.id = m2.opponent_id AND o_theirs.registered_user_id = $1
-			JOIN opponents o_ours ON o_ours.id = $2 AND o_ours.user_id = $1 AND o_ours.registered_user_id = m2.user_id
-			WHERE m2.user_id != $1
+			SELECT mp.opponent_id,
+				COUNT(*) FILTER (WHERE
+					(mp.role = 'creator' AND m.user_won = TRUE) OR
+					(mp.role = 'opponent' AND m.user_won = FALSE)
+				) AS wins,
+				COUNT(*) FILTER (WHERE
+					(mp.role = 'creator' AND m.user_won = FALSE) OR
+					(mp.role = 'opponent' AND m.user_won = TRUE)
+				) AS losses
+			FROM match_participants mp
+			JOIN matches m ON m.id = mp.match_id
+			WHERE mp.user_id = $1 AND mp.opponent_id = $2
+			GROUP BY mp.opponent_id
 		) AS stats ON stats.opponent_id = o.id
 		LEFT JOIN users u ON u.id = o.registered_user_id
 		WHERE o.id = $2 AND o.user_id = $1
-		GROUP BY o.id, u.created_at
 	`, userID, id).Scan(
 		&o.ID, &o.UserID, &o.Email, &o.Name, &o.Status,
 		&o.InvitedAt, &o.RegisteredUserID, &o.Notes, &o.NotesUpdatedAt, &o.CreatedAt, &o.UpdatedAt,
@@ -421,19 +371,9 @@ func (r *OpponentRepository) FindUserEmailByID(ctx context.Context, userID uuid.
 	return &email, nil
 }
 
-// UpdateStatusByEmail updates all opponents with the given email to "registered"
+// UpdateStatusByEmailInTx updates all opponents with the given email to "registered"
 // status with the specified user ID. Used by the sign-in sweep to link opponents
 // when a user creates their account. Skips rows that are already correct.
-func (r *OpponentRepository) UpdateStatusByEmail(ctx context.Context, email string, status string, registeredUserID uuid.UUID) error {
-	_, err := r.db.Exec(ctx, `
-		UPDATE opponents SET status = $2, registered_user_id = $3, invited_at = NULL
-		WHERE email = $1 AND (status != 'registered' OR registered_user_id IS DISTINCT FROM $3)
-	`, email, status, registeredUserID)
-	return err
-}
-
-// UpdateStatusByEmailInTx is the same as UpdateStatusByEmail but uses an
-// existing transaction instead of the connection pool.
 func (r *OpponentRepository) UpdateStatusByEmailInTx(ctx context.Context, tx pgx.Tx, email string, status string, registeredUserID uuid.UUID) error {
 	_, err := tx.Exec(ctx, `
 		UPDATE opponents SET status = $2, registered_user_id = $3, invited_at = NULL

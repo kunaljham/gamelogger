@@ -218,6 +218,17 @@ func (h *Handler) SeedData(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		// Insert creator's participant row
+		_, err = tx.Exec(ctx, `
+			INSERT INTO match_participants (match_id, user_id, role, opponent_id, notes)
+			VALUES ($1, $2, 'creator', $3, $4)
+		`, matchID, user.ID, oppID, m.Notes)
+		if err != nil {
+			slog.Error("Failed to create match participant", "match_id", matchID, "error", err)
+			writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to create match participant"})
+			return
+		}
+
 		matchesCreated++
 	}
 
