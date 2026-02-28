@@ -16,6 +16,15 @@ import (
 	"github.com/kunaljham/gamelogger/backend/internal/repository"
 )
 
+// buildLikePrefix lowercases the input, escapes SQL LIKE metacharacters (%, _, \),
+// and appends '%' to produce a complete prefix-match pattern. The result is bound
+// directly as the LIKE operand so PostgreSQL can use text_pattern_ops indexes.
+func buildLikePrefix(s string) string {
+	lower := strings.ToLower(s)
+	r := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
+	return r.Replace(lower) + "%"
+}
+
 // createOpponentRequest is the JSON body for POST /api/opponents and PUT /api/opponents/{id}.
 type createOpponentRequest struct {
 	Name  string  `json:"name"`
@@ -142,7 +151,12 @@ func (h *Handler) ListOpponents(w http.ResponseWriter, r *http.Request) {
 
 	var search *string
 	if q := r.URL.Query().Get("q"); q != "" {
-		search = &q
+		if len(q) > 100 {
+			writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Search query too long (max 100 characters)"})
+			return
+		}
+		escaped := buildLikePrefix(q)
+		search = &escaped
 	}
 
 	opponents, err := h.opponentRepo.ListByUser(r.Context(), user.ID, limit, cursor, search)
@@ -209,10 +223,15 @@ func (h *Handler) ListOpponentsWithStats(w http.ResponseWriter, r *http.Request)
 		cursorID = &id
 	}
 
-	// Parse optional search query (prefix match on name)
+	// Parse optional search query (prefix match on name or email)
 	var search *string
 	if q := r.URL.Query().Get("q"); q != "" {
-		search = &q
+		if len(q) > 100 {
+			writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Search query too long (max 100 characters)"})
+			return
+		}
+		escaped := buildLikePrefix(q)
+		search = &escaped
 	}
 
 	opponents, err := h.opponentRepo.ListByUserWithStats(r.Context(), user.ID, limit, cursorTime, cursorID, search)
