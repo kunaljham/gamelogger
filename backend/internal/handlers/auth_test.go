@@ -26,6 +26,7 @@ func newTestHandler() (*Handler, *services.MockEmailService) {
 		MagicLinkExpiry: 15 * 60 * 1e9, // 15 minutes as time.Duration (nanoseconds)
 		FrontendURL:     "http://localhost:3000",
 		BackendURL:      "http://localhost:8080",
+		CookieName:      "session",
 	}
 	h := &Handler{
 		cfg:          cfg,

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export function middleware(request: NextRequest) {
-  const hasSession = request.cookies.has("session");
+  const cookieName = process.env.COOKIE_NAME || "session";
+  const hasSession = request.cookies.has(cookieName);
   const { pathname } = request.nextUrl;
 
   // Logged-in users visiting landing or login → redirect to /feed

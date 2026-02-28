@@ -30,7 +30,7 @@ func UserFromContext(ctx context.Context) (*models.User, bool) {
 func (h *Handler) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Read the session cookie
-		cookie, err := r.Cookie("session")
+		cookie, err := r.Cookie(h.cfg.CookieName)
 		if err != nil {
 			writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "Not authenticated"})
 			return
