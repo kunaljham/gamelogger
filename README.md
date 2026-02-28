@@ -92,6 +92,39 @@ There is also a `testutil/` package with a `TestDB` helper for writing Go-level 
 5. **Frontend unit tests:** `npm test`
 6. **Frontend E2E tests:** `npx playwright test`
 
+## AI-Assisted Code Review with Claude Code Subagents
+
+This project uses [Claude Code](https://docs.anthropic.com/en/docs/claude-code) as the primary development tool, with a multi-agent code review workflow configured in `.claude/CLAUDE.md`. The workflow runs four specialized subagents before every commit to catch issues that would otherwise slip through.
+
+### The subagents
+
+| Agent | What it does |
+|-------|-------------|
+| **qa-tester** | Runs the test suite, build, and linter. Flags coverage gaps and test failures. |
+| **sre** | Audits for N+1 queries, missing or redundant database indexes, slow query patterns, transaction scope issues, and frontend bundle size. |
+| **code-reviewer** | Reviews for simplicity, maintainability, correctness, and dead code. Catches unused methods, redundant abstractions, and stale references. |
+| **security** | Audits for injection flaws, auth bypass, IDOR, XSS, CSRF, missing input validation, secrets exposure, and insecure defaults. |
+
+The qa-tester runs first. If it passes, the other three run in parallel. This ordering ensures that tests and builds pass before spending time on deeper analysis.
+
+### Why this setup
+
+The project is a learning exercise in full-stack development, so having automated reviewers catch mistakes before they're committed has been genuinely valuable. The subagents have caught real issues — missing database indexes, dead code left behind after refactors, N+1 query patterns, and input validation gaps — that would have been easy to miss in manual review. Having these checks in the development loop means issues are caught and fixed in context, while the code is still fresh.
+
+### The iteration loop
+
+The key design choice is that fixing subagent-reported issues triggers another round of review. Fixes themselves are non-trivial changes: replacing a method with a batched version can leave the old method as dead code; consolidating two indexes can make an older index redundant. The agents re-run after every round of fixes until all four report no actionable issues. Only then is the commit made.
+
+This iterative loop has been one of the more productive aspects of the workflow. It means a single feature commit arrives with its performance optimizations, dead code cleanup, and security hardening already applied — rather than accumulating tech debt that needs a separate cleanup pass.
+
+### Honest experience: what works and what doesn't
+
+**Time cost is real.** Running four subagents takes time — often longer than the code change itself. For a small feature that takes a few minutes to implement, the review cycle can take significantly longer as agents spin up, analyze, and report back. You have to think about how to use that wait time effectively (reviewing the change yourself, planning the next task, writing documentation).
+
+**Reliability has been a challenge.** The subagents have not been robust enough in triggering automatically on every qualifying change. Despite clear instructions in `CLAUDE.md` that all four agents must run before committing, Claude Code has frequently skipped them or only run a subset. This has required repeatedly questioning Claude Code about why the agents weren't run and finding ways to make the instructions more explicit and harder to ignore. On many occasions the agents have had to be manually triggered by asking Claude Code directly to run them. The `CLAUDE.md` instructions have been refined multiple times to try to make the agents run consistently — adding explicit notes about when to skip (only trivial changes), emphasizing that fixes require re-running, and spelling out that all four must pass.
+
+This is worth being aware of if you're setting up a similar workflow: the instructions work, but they require active enforcement. Treat the `CLAUDE.md` configuration as a living document that you'll need to tighten based on what you observe Claude Code actually doing.
+
 ## Specification
 
 [Full Specification Document](https://docs.google.com/document/d/1pPZOikLIrGjvN0sUy4kVI_5H8Xi0PRL2_RZ_cl9badY/edit?usp=sharing)
