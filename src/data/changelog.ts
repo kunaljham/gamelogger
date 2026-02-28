@@ -6,6 +6,13 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-02-27",
+    title: "Improved notes editor",
+    items: [
+      "Tap the expand icon on any notes field to open a fullscreen editor — much easier on mobile",
+    ],
+  },
+  {
     date: "2026-02-26",
     title: "Passkey support",
     items: [
