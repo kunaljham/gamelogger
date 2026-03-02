@@ -103,9 +103,11 @@ func main() {
 		r.Get("/", h.ListMatches)
 		r.Post("/", h.CreateMatch)
 		r.Get("/stats", h.GetMatchStats)
+		r.Get("/upcoming", h.ListUpcomingMatches)
 		r.Get("/{id}", h.GetMatch)
 		r.Put("/{id}", h.UpdateMatch)
 		r.Put("/{id}/notes", h.UpdateMatchNotes)
+		r.Put("/{id}/plan-notes", h.UpdateMatchPlanNotes)
 		r.Delete("/{id}", h.DeleteMatch)
 	})
 

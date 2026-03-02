@@ -11,11 +11,30 @@ export default function Feed() {
   const { isDemoUser, signOut } = useUser();
 
   const [matches, setMatches] = useState<Match[]>([]);
+  const [upcoming, setUpcoming] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
+  const [upcomingLoading, setUpcomingLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAuthError, setIsAuthError] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
+
+  // Fetch upcoming (scheduled) matches
+  const fetchUpcoming = async () => {
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/matches/upcoming`,
+        { credentials: "include" }
+      );
+      if (!res.ok) return;
+      const data: { matches: Match[] } = await res.json();
+      setUpcoming(data.matches);
+    } catch {
+      // Silently ignore — upcoming section is non-critical
+    } finally {
+      setUpcomingLoading(false);
+    }
+  };
 
   // Fetch matches from the API. If a cursor is provided, appends results.
   const fetchMatches = async (cursor?: string) => {
@@ -61,6 +80,7 @@ export default function Feed() {
 
   useEffect(() => {
     fetchMatches();
+    fetchUpcoming();
   }, []);
 
   return (
@@ -118,8 +138,8 @@ export default function Feed() {
         </div>
       )}
 
-      {/* Empty state */}
-      {!loading && !error && matches.length === 0 && (
+      {/* Empty state — only when both upcoming and completed are empty */}
+      {!loading && !upcomingLoading && !error && matches.length === 0 && upcoming.length === 0 && (
         <div className="text-center">
           <h2 className="mb-3 text-2xl font-bold text-stone-900 dark:text-stone-50 sm:text-3xl">
             No matches yet
@@ -130,9 +150,29 @@ export default function Feed() {
         </div>
       )}
 
+      {/* Upcoming section */}
+      {!upcomingLoading && upcoming.length > 0 && (
+        <div className="mb-6">
+          <h2 className="mb-3 text-lg font-semibold text-stone-900 dark:text-stone-50">
+            Upcoming
+          </h2>
+          <div className="space-y-4">
+            {upcoming.map((match) => (
+              <MatchCard key={match.id} match={match} />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Match list */}
       {!loading && matches.length > 0 && (
         <div className="space-y-4">
+          {/* Show "Recent Matches" header when both sections have content */}
+          {upcoming.length > 0 && (
+            <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-50">
+              Recent Matches
+            </h2>
+          )}
           {matches.map((match) => (
             <MatchCard key={match.id} match={match} />
           ))}

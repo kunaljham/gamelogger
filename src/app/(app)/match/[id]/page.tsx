@@ -16,6 +16,8 @@ import InviteModal from "@/components/invite-modal";
 import InviteButton from "@/components/invite-button";
 import NotesSection from "@/components/notes-section";
 import ExpandableTextarea from "@/components/expandable-textarea";
+import ReactMarkdown from "react-markdown";
+import remarkBreaks from "remark-breaks";
 
 function formatDate(iso: string): string {
   return new Intl.DateTimeFormat("en-US", {
@@ -167,6 +169,7 @@ export default function MatchDetail() {
   // ── View mode ─────────────────────────────────────────────────────
   const { user_won: didWin, user_wins: userWins, opponent_wins: opponentWins } = match;
   const totalGames = match.match_type === "bo3" ? 3 : 5;
+  const isScheduled = match.status === "scheduled";
 
   return (
     <main className="mx-auto max-w-md px-4 pb-24 pt-8">
@@ -200,27 +203,68 @@ export default function MatchDetail() {
         </div>
       )}
 
-      {/* Result card */}
-      <div className="mt-6 rounded-xl border border-stone-200 p-4 dark:border-stone-700">
-        <p className="text-base text-stone-600 dark:text-stone-400">
-          <span className={`text-lg ${didWin ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
-            {didWin ? "Won" : "Lost"} {userWins}-{opponentWins}
-          </span>
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {match.games.map((game) => {
-            const userWon = game.user_score > game.opponent_score;
-            return (
-              <span
-                key={game.game_number}
-                className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${userWon ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400" : "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-400"}`}
-              >
-                {game.user_score}-{game.opponent_score}
-              </span>
-            );
-          })}
+      {/* Result card / Scheduled card */}
+      {isScheduled ? (
+        <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30">
+          <p className="text-lg font-medium text-amber-600 dark:text-amber-400">
+            Scheduled
+          </p>
+          <p className="mt-1 text-sm text-amber-700/70 dark:text-amber-400/70">
+            Best of {totalGames} &middot; Add scores after you play
+          </p>
         </div>
-      </div>
+      ) : (
+        <div className="mt-6 rounded-xl border border-stone-200 p-4 dark:border-stone-700">
+          <p className="text-base text-stone-600 dark:text-stone-400">
+            <span className={`text-lg ${didWin ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
+              {didWin ? "Won" : "Lost"} {userWins}-{opponentWins}
+            </span>
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {match.games.map((game) => {
+              const userWon = game.user_score > game.opponent_score;
+              return (
+                <span
+                  key={game.game_number}
+                  className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${userWon ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400" : "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-400"}`}
+                >
+                  {game.user_score}-{game.opponent_score}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Plan notes — always show for scheduled matches, only if present for completed */}
+      {(isScheduled || match.plan_notes) && (
+        <div className="mt-4">
+          <NotesSection
+            notes={match.plan_notes}
+            title="Match Plan"
+            readOnly={isDemoUser}
+            placeholder="What's your game plan?"
+            emptyMessage="Add strategy notes for this match."
+            onSave={isDemoUser ? undefined : async (val) => {
+              const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/matches/${match.id}/plan-notes`,
+                {
+                  method: "PUT",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ plan_notes: val }),
+                }
+              );
+              if (!res.ok) {
+                const data = await res.json().catch(() => null);
+                throw new Error(data?.error ?? "Failed to save plan notes");
+              }
+              const updated: Match = await res.json();
+              setMatch(updated);
+            }}
+          />
+        </div>
+      )}
 
       {/* Notes */}
       {match.notes && (
@@ -240,21 +284,40 @@ export default function MatchDetail() {
       {!isDemoUser && user && (
         <div className="fixed inset-x-0 bottom-0 border-t border-stone-200 bg-stone-50/90 p-4 backdrop-blur-sm dark:border-stone-800 dark:bg-stone-950/90">
           <div className="mx-auto flex max-w-md gap-3">
-            <button
-              onClick={() =>
-                setMode(match.user_id === user.id ? "edit" : "edit-notes")
-              }
-              className="flex-1 cursor-pointer rounded-lg border border-stone-300 px-4 py-3 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100 dark:border-stone-600 dark:text-stone-300 dark:hover:bg-stone-800"
-            >
-              {match.user_id === user.id ? "Edit" : "Edit Notes"}
-            </button>
-            {match.user_id === user.id && (
-              <button
-                onClick={() => setShowDeleteModal(true)}
-                className="flex-1 cursor-pointer rounded-lg border border-red-200 px-4 py-3 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30"
-              >
-                Delete
-              </button>
+            {isScheduled && match.user_id === user.id ? (
+              <>
+                <button
+                  onClick={() => setMode("edit")}
+                  className="flex-1 cursor-pointer rounded-lg bg-amber-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-400"
+                >
+                  Add Scores
+                </button>
+                <button
+                  onClick={() => setShowDeleteModal(true)}
+                  className="flex-1 cursor-pointer rounded-lg border border-red-200 px-4 py-3 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30"
+                >
+                  Delete
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() =>
+                    setMode(match.user_id === user.id ? "edit" : "edit-notes")
+                  }
+                  className="flex-1 cursor-pointer rounded-lg border border-stone-300 px-4 py-3 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100 dark:border-stone-600 dark:text-stone-300 dark:hover:bg-stone-800"
+                >
+                  {match.user_id === user.id ? "Edit" : "Edit Notes"}
+                </button>
+                {match.user_id === user.id && (
+                  <button
+                    onClick={() => setShowDeleteModal(true)}
+                    className="flex-1 cursor-pointer rounded-lg border border-red-200 px-4 py-3 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30"
+                  >
+                    Delete
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -318,6 +381,8 @@ function EditMode({
   onCancel: () => void;
   onSaved: (updated: Match) => void;
 }) {
+  const isCompleting = match.status === "scheduled";
+
   // ── Form state ────────────────────────────────────────────────────
   const [playedAt, setPlayedAt] = useState(
     match.played_at.split("T")[0]
@@ -326,10 +391,12 @@ function EditMode({
   const [playedTime, setPlayedTime] = useState(existingTime);
   const [notes, setNotes] = useState(match.notes ?? "");
   const [games, setGames] = useState<GameScore[]>(
-    match.games.map((g) => ({
-      userScore: String(g.user_score),
-      opponentScore: String(g.opponent_score),
-    }))
+    isCompleting
+      ? [{ userScore: "", opponentScore: "" }]
+      : match.games.map((g) => ({
+          userScore: String(g.user_score),
+          opponentScore: String(g.opponent_score),
+        }))
   );
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -404,6 +471,7 @@ function EditMode({
       const body: Record<string, unknown> = {
         opponent_id: match.opponent_id,
         match_type: matchType,
+        status: "completed",
         played_at: playedTime
           ? `${playedAt}T${playedTime}:00Z`
           : `${playedAt}T${new Date().toISOString().split("T")[1]}`,
@@ -448,10 +516,24 @@ function EditMode({
   return (
     <main className="mx-auto w-full max-w-md px-4 py-8">
       <h1 className="mb-6 text-3xl font-bold tracking-tight text-stone-900 dark:text-stone-50 sm:text-4xl">
-        Edit
+        {isCompleting ? "Complete Match" : "Edit"}
       </h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Plan notes read-only reference when completing a scheduled match */}
+          {isCompleting && match.plan_notes && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30">
+              <p className="mb-2 text-xs font-medium text-amber-600 dark:text-amber-400">
+                Your Match Plan
+              </p>
+              <div className="prose prose-sm prose-amber dark:prose-invert max-w-none text-amber-800 dark:text-amber-300">
+                <ReactMarkdown remarkPlugins={[remarkBreaks]}>
+                  {match.plan_notes}
+                </ReactMarkdown>
+              </div>
+            </div>
+          )}
+
           {/* Opponent (read-only) */}
           <div>
             <label className="mb-1.5 block text-sm font-medium text-stone-700 dark:text-stone-300">
@@ -598,9 +680,15 @@ function EditMode({
             <button
               type="submit"
               disabled={saving}
-              className="w-full rounded-lg bg-purple-700 px-4 py-3 text-base font-medium text-white transition-colors hover:bg-purple-800 disabled:opacity-50 dark:bg-purple-600 dark:text-white dark:hover:bg-purple-500"
+              className={`w-full rounded-lg px-4 py-3 text-base font-medium text-white transition-colors disabled:opacity-50 ${
+                isCompleting
+                  ? "bg-amber-600 hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-400"
+                  : "bg-purple-700 hover:bg-purple-800 dark:bg-purple-600 dark:hover:bg-purple-500"
+              }`}
             >
-              {saving ? "Saving..." : "Save Changes"}
+              {saving
+                ? isCompleting ? "Completing..." : "Saving..."
+                : isCompleting ? "Complete Match" : "Save Changes"}
             </button>
           </div>
         </form>

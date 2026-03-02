@@ -13,6 +13,7 @@ interface NotesSectionProps {
   readOnly?: boolean;
   placeholder?: string;
   emptyMessage?: string;
+  title?: string;
   onSave?: (notes: string | null) => Promise<void>;
 }
 
@@ -22,6 +23,7 @@ export default function NotesSection({
   readOnly = false,
   placeholder = "How did the match go?",
   emptyMessage = "Add private notes that only you can see.",
+  title = "Notes",
   onSave,
 }: NotesSectionProps) {
   const [editing, setEditing] = useState(false);
@@ -61,7 +63,7 @@ export default function NotesSection({
     return (
       <div className="space-y-3">
         <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-50">
-          Notes
+          {title}
         </h2>
         <p className="text-xs text-stone-400 dark:text-stone-500">
           Private to you.{" "}
@@ -110,7 +112,7 @@ export default function NotesSection({
     <>
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-50">
-          Notes
+          {title}
         </h2>
         {!readOnly && (
           <button

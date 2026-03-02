@@ -29,10 +29,12 @@ export interface Match {
   opponent_id: string;
   opponent?: Opponent;
   match_type: "bo3" | "bo5";
+  status: "scheduled" | "completed";
   played_at: string;
   notes?: string;
+  plan_notes?: string;
   games: Game[];
-  user_won: boolean;
+  user_won: boolean | null;
   user_wins: number;
   opponent_wins: number;
   created_at: string;

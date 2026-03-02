@@ -16,11 +16,18 @@ function formatDate(iso: string): string {
 export default function MatchCard({ match }: { match: Match }) {
   const { user_won: didWin, user_wins: userWins, opponent_wins: opponentWins } = match;
   const totalGames = match.match_type === "bo3" ? 3 : 5;
+  const isScheduled = match.status === "scheduled";
+
+  const borderClass = isScheduled
+    ? "border-amber-300 dark:border-amber-700"
+    : didWin
+      ? "border-emerald-300 dark:border-emerald-700"
+      : "border-red-300 dark:border-red-700";
 
   return (
     <Link
       href={`/match/${match.id}`}
-      className={`block rounded-xl border bg-white px-5 py-4 transition-colors hover:bg-stone-50 dark:bg-stone-900 dark:hover:bg-stone-800/70 ${didWin ? "border-emerald-300 dark:border-emerald-700" : "border-red-300 dark:border-red-700"}`}
+      className={`block rounded-xl border bg-white px-5 py-4 transition-colors hover:bg-stone-50 dark:bg-stone-900 dark:hover:bg-stone-800/70 ${borderClass}`}
     >
       {/* Row 1: Opponent name + date */}
       <div className="flex items-center justify-between">
@@ -32,34 +39,49 @@ export default function MatchCard({ match }: { match: Match }) {
         </span>
       </div>
 
-      {/* Row 2: Win/loss result + match type */}
+      {/* Row 2: Result or scheduled label + match type */}
       <div className="mt-1 flex items-center gap-2 text-sm">
-        <span className="font-medium text-stone-700 dark:text-stone-300">
-          {didWin ? "Won" : "Lost"} {userWins}-{opponentWins}
-        </span>
+        {isScheduled ? (
+          <span className="font-medium text-amber-600 dark:text-amber-400">
+            Scheduled
+          </span>
+        ) : (
+          <span className="font-medium text-stone-700 dark:text-stone-300">
+            {didWin ? "Won" : "Lost"} {userWins}-{opponentWins}
+          </span>
+        )}
         <span className="text-stone-300 dark:text-stone-600">&middot;</span>
         <span className="text-stone-500 dark:text-stone-400">
           Best of {totalGames}
         </span>
       </div>
 
-      {/* Row 3: Game scores */}
-      <div className="mt-2 flex flex-wrap gap-2">
-        {match.games.map((game) => {
-          const userWon = game.user_score > game.opponent_score;
-          return (
-            <span
-              key={game.game_number}
-              className={`rounded-lg border px-2.5 py-1 text-xs font-medium ${userWon ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400" : "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-400"}`}
-            >
-              {game.user_score}-{game.opponent_score}
-            </span>
-          );
-        })}
-      </div>
+      {/* Row 3: Game scores (only for completed matches) */}
+      {!isScheduled && match.games.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {match.games.map((game) => {
+            const userWon = game.user_score > game.opponent_score;
+            return (
+              <span
+                key={game.game_number}
+                className={`rounded-lg border px-2.5 py-1 text-xs font-medium ${userWon ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400" : "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-400"}`}
+              >
+                {game.user_score}-{game.opponent_score}
+              </span>
+            );
+          })}
+        </div>
+      )}
 
-      {/* Row 4: Notes (if present) */}
-      {match.notes && (
+      {/* Row 4: Plan notes preview (for scheduled) or match notes (for completed) */}
+      {isScheduled && match.plan_notes && (
+        <div className="mt-2 border-l-2 border-amber-400 pl-3 dark:border-amber-600">
+          <div className="line-clamp-2 prose prose-sm prose-stone dark:prose-invert max-w-none text-stone-500 dark:text-stone-400">
+            <ReactMarkdown remarkPlugins={[remarkBreaks]}>{preserveNewlines(match.plan_notes)}</ReactMarkdown>
+          </div>
+        </div>
+      )}
+      {!isScheduled && match.notes && (
         <div className="mt-2 border-l-2 border-purple-400 pl-3 dark:border-purple-600">
           <div className="line-clamp-2 prose prose-sm prose-stone dark:prose-invert max-w-none text-stone-500 dark:text-stone-400">
             <ReactMarkdown remarkPlugins={[remarkBreaks]}>{preserveNewlines(match.notes)}</ReactMarkdown>

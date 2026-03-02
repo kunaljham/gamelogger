@@ -48,11 +48,13 @@ function LogMatch() {
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const comboboxRef = useRef<HTMLDivElement>(null);
   const matchType = "bo5";
+  const [isScheduleMode, setIsScheduleMode] = useState(false);
   const [playedAt, setPlayedAt] = useState(
     new Date().toISOString().split("T")[0]
   );
   const [playedTime, setPlayedTime] = useState("");
   const [notes, setNotes] = useState("");
+  const [planNotes, setPlanNotes] = useState("");
   const [games, setGames] = useState<GameScore[]>([
     { userScore: "", opponentScore: "" },
   ]);
@@ -199,23 +201,24 @@ function LogMatch() {
       return;
     }
 
-    // Validate each filled game
-    for (let i = 0; i < filledGames.length; i++) {
-      const u = parseInt(filledGames[i].userScore, 10);
-      const o = parseInt(filledGames[i].opponentScore, 10);
-      const err = validateGameScore(u, o);
-      if (err) {
-        setError(`Game ${i + 1}: ${err}`);
+    // For completed matches, validate games
+    if (!isScheduleMode) {
+      for (let i = 0; i < filledGames.length; i++) {
+        const u = parseInt(filledGames[i].userScore, 10);
+        const o = parseInt(filledGames[i].opponentScore, 10);
+        const err = validateGameScore(u, o);
+        if (err) {
+          setError(`Game ${i + 1}: ${err}`);
+          return;
+        }
+      }
+
+      if (!matchComplete) {
+        setError(
+          `Match is not complete. One player must win ${requiredWins} games.`
+        );
         return;
       }
-    }
-
-    // Validate match completeness
-    if (!matchComplete) {
-      setError(
-        `Match is not complete. One player must win ${requiredWins} games.`
-      );
-      return;
     }
 
     setLoading(true);
@@ -256,22 +259,26 @@ function LogMatch() {
         opponentId = selectedOpponent.id;
       }
 
-      const gamePayload = filledGames.map((g, i) => ({
-        game_number: i + 1,
-        user_score: parseInt(g.userScore, 10),
-        opponent_score: parseInt(g.opponentScore, 10),
-      }));
-
       const body: Record<string, unknown> = {
         opponent_id: opponentId,
         match_type: matchType,
         played_at: playedTime
           ? `${playedAt}T${playedTime}:00Z`
           : `${playedAt}T${new Date().toISOString().split("T")[1]}`,
-        games: gamePayload,
+        status: isScheduleMode ? "scheduled" : "completed",
+        games: isScheduleMode
+          ? []
+          : filledGames.map((g, i) => ({
+              game_number: i + 1,
+              user_score: parseInt(g.userScore, 10),
+              opponent_score: parseInt(g.opponentScore, 10),
+            })),
       };
 
-      if (notes.trim()) {
+      if (isScheduleMode && planNotes.trim()) {
+        body.plan_notes = planNotes.trim();
+      }
+      if (!isScheduleMode && notes.trim()) {
         body.notes = notes.trim();
       }
 
@@ -325,9 +332,35 @@ function LogMatch() {
         </svg>
         Back
       </button>
-      <h1 className="mb-6 text-3xl font-bold tracking-tight text-stone-900 dark:text-stone-50 sm:text-4xl">
-        Log a Match
+      <h1 className="mb-4 text-3xl font-bold tracking-tight text-stone-900 dark:text-stone-50 sm:text-4xl">
+        {isScheduleMode ? "Schedule Match" : "Log a Match"}
       </h1>
+
+      {/* Mode toggle */}
+      <div className="mb-6 flex rounded-lg border border-stone-200 dark:border-stone-700">
+        <button
+          type="button"
+          onClick={() => setIsScheduleMode(false)}
+          className={`flex-1 rounded-l-lg px-4 py-2 text-sm font-medium transition-colors ${
+            !isScheduleMode
+              ? "bg-purple-700 text-white dark:bg-purple-600"
+              : "text-stone-600 hover:bg-stone-50 dark:text-stone-400 dark:hover:bg-stone-800"
+          }`}
+        >
+          Log Match
+        </button>
+        <button
+          type="button"
+          onClick={() => setIsScheduleMode(true)}
+          className={`flex-1 rounded-r-lg px-4 py-2 text-sm font-medium transition-colors ${
+            isScheduleMode
+              ? "bg-amber-600 text-white dark:bg-amber-500"
+              : "text-stone-600 hover:bg-stone-50 dark:text-stone-400 dark:hover:bg-stone-800"
+          }`}
+        >
+          Schedule Match
+        </button>
+      </div>
 
       {opponentsLoading ? (
         <div className="animate-pulse space-y-4">
@@ -567,10 +600,10 @@ function LogMatch() {
             </>
           )}
 
-          {/* Date and time played */}
+          {/* Date and time */}
           <div>
             <label className="mb-1.5 block text-sm font-medium text-stone-700 dark:text-stone-300">
-              Date Played
+              {isScheduleMode ? "Match Date" : "Date Played"}
             </label>
             <div className="flex gap-3">
               <input
@@ -594,99 +627,133 @@ function LogMatch() {
             </p>
           </div>
 
-          {/* Game scores */}
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-stone-700 dark:text-stone-300">
-              Game Scores
-            </label>
-            <div className="space-y-3">
-              {/* Column headers */}
-              <div className="flex items-center gap-2">
-                <span className="w-6 text-xs text-stone-400" />
-                <span className="flex-1 text-center text-xs font-medium text-stone-500 dark:text-stone-400">
-                  You
-                </span>
-                <span className="w-3" />
-                <span className="flex-1 text-center text-xs font-medium text-stone-500 dark:text-stone-400">
-                  Opp
-                </span>
+          {/* Game scores — only for completed matches */}
+          {!isScheduleMode && (
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-stone-700 dark:text-stone-300">
+                Game Scores
+              </label>
+              <div className="space-y-3">
+                {/* Column headers */}
+                <div className="flex items-center gap-2">
+                  <span className="w-6 text-xs text-stone-400" />
+                  <span className="flex-1 text-center text-xs font-medium text-stone-500 dark:text-stone-400">
+                    You
+                  </span>
+                  <span className="w-3" />
+                  <span className="flex-1 text-center text-xs font-medium text-stone-500 dark:text-stone-400">
+                    Opp
+                  </span>
+                </div>
+
+                {games.map((game, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="w-6 text-sm text-stone-500 dark:text-stone-400">
+                      {i + 1}
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      inputMode="numeric"
+                      value={game.userScore}
+                      onChange={(e) =>
+                        updateGame(i, "userScore", e.target.value)
+                      }
+                      disabled={loading}
+                      placeholder="0"
+                      className="min-w-0 flex-1 rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-center text-base text-stone-900 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
+                    />
+                    <span className="text-sm text-stone-400 dark:text-stone-500">–</span>
+                    <input
+                      type="number"
+                      min="0"
+                      inputMode="numeric"
+                      value={game.opponentScore}
+                      onChange={(e) =>
+                        updateGame(i, "opponentScore", e.target.value)
+                      }
+                      disabled={loading}
+                      placeholder="0"
+                      className="min-w-0 flex-1 rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-center text-base text-stone-900 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
+                    />
+                  </div>
+                ))}
               </div>
 
-              {games.map((game, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <span className="w-6 text-sm text-stone-500 dark:text-stone-400">
-                    {i + 1}
-                  </span>
-                  <input
-                    type="number"
-                    min="0"
-                    inputMode="numeric"
-                    value={game.userScore}
-                    onChange={(e) =>
-                      updateGame(i, "userScore", e.target.value)
-                    }
-                    disabled={loading}
-                    placeholder="0"
-                    className="min-w-0 flex-1 rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-center text-base text-stone-900 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
-                  />
-                  <span className="text-sm text-stone-400 dark:text-stone-500">–</span>
-                  <input
-                    type="number"
-                    min="0"
-                    inputMode="numeric"
-                    value={game.opponentScore}
-                    onChange={(e) =>
-                      updateGame(i, "opponentScore", e.target.value)
-                    }
-                    disabled={loading}
-                    placeholder="0"
-                    className="min-w-0 flex-1 rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-center text-base text-stone-900 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
-                  />
-                </div>
-              ))}
+              {/* Match status */}
+              {statusMessage && (
+                <p
+                  className={`mt-3 text-sm font-medium ${
+                    matchComplete
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-stone-500 dark:text-stone-400"
+                  }`}
+                >
+                  {statusMessage}
+                </p>
+              )}
             </div>
+          )}
 
-            {/* Match status */}
-            {statusMessage && (
-              <p
-                className={`mt-3 text-sm font-medium ${
-                  matchComplete
-                    ? "text-emerald-600 dark:text-emerald-400"
-                    : "text-stone-500 dark:text-stone-400"
-                }`}
-              >
-                {statusMessage}
+          {/* Plan notes — only for scheduled matches */}
+          {isScheduleMode && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
+                Match Plan{" "}
+                <span className="font-normal text-stone-400">(optional)</span>
+              </label>
+              <p className="mb-1.5 text-xs text-stone-400 dark:text-stone-500">
+                Private to you. Strategy notes for this match.{" "}
+                <a
+                  href="https://www.markdownguide.org/basic-syntax/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-stone-600 dark:hover:text-stone-300"
+                >
+                  Markdown
+                </a>{" "}
+                supported.
               </p>
-            )}
-          </div>
+              <ExpandableTextarea
+                value={planNotes}
+                onChange={setPlanNotes}
+                disabled={loading}
+                placeholder="What's your game plan?"
+                rows={3}
+                className="w-full rounded-lg border border-stone-300 bg-white pl-4 py-3 text-base text-stone-900 placeholder-stone-400 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:placeholder-stone-500 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
+              />
+            </div>
+          )}
 
-          {/* Notes */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
-              Notes{" "}
-              <span className="font-normal text-stone-400">(optional)</span>
-            </label>
-            <p className="mb-1.5 text-xs text-stone-400 dark:text-stone-500">
-              Private to you.{" "}
-              <a
-                href="https://www.markdownguide.org/basic-syntax/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline hover:text-stone-600 dark:hover:text-stone-300"
-              >
-                Markdown
-              </a>{" "}
-              supported.
-            </p>
-            <ExpandableTextarea
-              value={notes}
-              onChange={setNotes}
-              disabled={loading}
-              placeholder="How did the match go?"
-              rows={3}
-              className="w-full rounded-lg border border-stone-300 bg-white pl-4 py-3 text-base text-stone-900 placeholder-stone-400 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:placeholder-stone-500 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
-            />
-          </div>
+          {/* Notes — only for completed matches */}
+          {!isScheduleMode && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
+                Notes{" "}
+                <span className="font-normal text-stone-400">(optional)</span>
+              </label>
+              <p className="mb-1.5 text-xs text-stone-400 dark:text-stone-500">
+                Private to you.{" "}
+                <a
+                  href="https://www.markdownguide.org/basic-syntax/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-stone-600 dark:hover:text-stone-300"
+                >
+                  Markdown
+                </a>{" "}
+                supported.
+              </p>
+              <ExpandableTextarea
+                value={notes}
+                onChange={setNotes}
+                disabled={loading}
+                placeholder="How did the match go?"
+                rows={3}
+                className="w-full rounded-lg border border-stone-300 bg-white pl-4 py-3 text-base text-stone-900 placeholder-stone-400 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:placeholder-stone-500 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
+              />
+            </div>
+          )}
 
           {/* Error */}
           {error && (
@@ -706,9 +773,15 @@ function LogMatch() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-lg bg-purple-700 px-4 py-3 text-base font-medium text-white transition-colors hover:bg-purple-800 disabled:opacity-50 dark:bg-purple-600 dark:text-white dark:hover:bg-purple-500"
+              className={`w-full rounded-lg px-4 py-3 text-base font-medium text-white transition-colors disabled:opacity-50 ${
+                isScheduleMode
+                  ? "bg-amber-600 hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-400"
+                  : "bg-purple-700 hover:bg-purple-800 dark:bg-purple-600 dark:hover:bg-purple-500"
+              }`}
             >
-              {loading ? "Logging..." : "Log Match"}
+              {loading
+                ? isScheduleMode ? "Scheduling..." : "Logging..."
+                : isScheduleMode ? "Schedule Match" : "Log Match"}
             </button>
           </div>
         </form>
