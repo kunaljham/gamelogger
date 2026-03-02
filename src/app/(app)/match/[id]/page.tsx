@@ -209,10 +209,10 @@ export default function MatchDetail() {
       {isScheduled ? (
         <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30">
           <p className="text-lg font-medium text-amber-600 dark:text-amber-400">
-            {formatDate(match.played_at)}
+            Scheduled
           </p>
           <p className="mt-1 text-sm text-amber-700/70 dark:text-amber-400/70">
-            Best of {totalGames} &middot; Add scores after you play
+            {formatDate(match.played_at)} &middot; Best of {totalGames}
           </p>
         </div>
       ) : (
