@@ -196,10 +196,10 @@ func (h *Handler) SeedData(w http.ResponseWriter, r *http.Request) {
 
 		var matchID uuid.UUID
 		err = tx.QueryRow(ctx, `
-			INSERT INTO matches (user_id, opponent_id, match_type, played_at, creator_notes, user_won)
-			VALUES ($1, $2, $3, $4, $5, $6)
+			INSERT INTO matches (user_id, opponent_id, match_type, played_at, user_won)
+			VALUES ($1, $2, $3, $4, $5)
 			RETURNING id
-		`, user.ID, oppID, m.MatchType, playedAt, m.Notes, userWon).Scan(&matchID)
+		`, user.ID, oppID, m.MatchType, playedAt, userWon).Scan(&matchID)
 		if err != nil {
 			slog.Error("Failed to create match", "opponent_key", m.OpponentKey, "error", err)
 			writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to create match"})

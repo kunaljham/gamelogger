@@ -21,8 +21,7 @@ type Game struct {
 // match_participants row so they reflect the viewer's perspective.
 // ViewerRole ("creator" or "opponent") tells the handler whether to flip scores.
 //
-// Write path: CreatorNotes is used when creating/updating a match — the handler
-// writes it to both matches.creator_notes and the creator's match_participants row.
+// Write path: CreatorNotes carries the creator's notes for writing to match_participants.
 type Match struct {
 	ID           uuid.UUID `json:"id"`
 	UserID       uuid.UUID `json:"user_id"`
