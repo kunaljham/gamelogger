@@ -145,6 +145,12 @@ func (h *Handler) CreateMatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if status == "scheduled" {
+		// Scheduled matches must be in the future
+		if !playedAt.After(time.Now()) {
+			writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Scheduled matches must have a future date"})
+			return
+		}
+
 		// Scheduled matches must have no games
 		if len(req.Games) > 0 {
 			writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Scheduled matches must not include games"})
@@ -443,6 +449,12 @@ func (h *Handler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if newStatus == "scheduled" {
+		// Scheduled matches must be in the future
+		if !playedAt.After(time.Now()) {
+			writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Scheduled matches must have a future date"})
+			return
+		}
+
 		// Scheduled matches must have no games
 		if len(req.Games) > 0 {
 			writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Scheduled matches must not include games"})

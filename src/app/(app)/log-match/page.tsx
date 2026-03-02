@@ -201,6 +201,19 @@ function LogMatch() {
       return;
     }
 
+    // Scheduled matches must be in the future
+    if (isScheduleMode) {
+      const selectedDate = new Date(
+        playedTime
+          ? `${playedAt}T${playedTime}:00`
+          : `${playedAt}T23:59:59`
+      );
+      if (selectedDate <= new Date()) {
+        setError("Scheduled matches must have a future date.");
+        return;
+      }
+    }
+
     // For completed matches, validate games
     if (!isScheduleMode) {
       for (let i = 0; i < filledGames.length; i++) {
@@ -275,10 +288,10 @@ function LogMatch() {
             })),
       };
 
-      if (isScheduleMode && planNotes.trim()) {
+      if (planNotes.trim()) {
         body.plan_notes = planNotes.trim();
       }
-      if (!isScheduleMode && notes.trim()) {
+      if (notes.trim()) {
         body.notes = notes.trim();
       }
 
@@ -695,65 +708,61 @@ function LogMatch() {
             </div>
           )}
 
-          {/* Plan notes — only for scheduled matches */}
-          {isScheduleMode && (
-            <div>
-              <label className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
-                Match Plan{" "}
-                <span className="font-normal text-stone-400">(optional)</span>
-              </label>
-              <p className="mb-1.5 text-xs text-stone-400 dark:text-stone-500">
-                Private to you. Strategy notes for this match.{" "}
-                <a
-                  href="https://www.markdownguide.org/basic-syntax/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline hover:text-stone-600 dark:hover:text-stone-300"
-                >
-                  Markdown
-                </a>{" "}
-                supported.
-              </p>
-              <ExpandableTextarea
-                value={planNotes}
-                onChange={setPlanNotes}
-                disabled={loading}
-                placeholder="What's your game plan?"
-                rows={3}
-                className="w-full rounded-lg border border-stone-300 bg-white pl-4 py-3 text-base text-stone-900 placeholder-stone-400 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:placeholder-stone-500 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
-              />
-            </div>
-          )}
+          {/* Match Plan */}
+          <div>
+            <label className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
+              Match Plan{" "}
+              <span className="font-normal text-stone-400">(optional)</span>
+            </label>
+            <p className="mb-1.5 text-xs text-stone-400 dark:text-stone-500">
+              Private to you. Strategy notes for this match.{" "}
+              <a
+                href="https://www.markdownguide.org/basic-syntax/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-stone-600 dark:hover:text-stone-300"
+              >
+                Markdown
+              </a>{" "}
+              supported.
+            </p>
+            <ExpandableTextarea
+              value={planNotes}
+              onChange={setPlanNotes}
+              disabled={loading}
+              placeholder="What's your game plan?"
+              rows={3}
+              className="w-full rounded-lg border border-stone-300 bg-white pl-4 py-3 text-base text-stone-900 placeholder-stone-400 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:placeholder-stone-500 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
+            />
+          </div>
 
-          {/* Notes — only for completed matches */}
-          {!isScheduleMode && (
-            <div>
-              <label className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
-                Notes{" "}
-                <span className="font-normal text-stone-400">(optional)</span>
-              </label>
-              <p className="mb-1.5 text-xs text-stone-400 dark:text-stone-500">
-                Private to you.{" "}
-                <a
-                  href="https://www.markdownguide.org/basic-syntax/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline hover:text-stone-600 dark:hover:text-stone-300"
-                >
-                  Markdown
-                </a>{" "}
-                supported.
-              </p>
-              <ExpandableTextarea
-                value={notes}
-                onChange={setNotes}
-                disabled={loading}
-                placeholder="How did the match go?"
-                rows={3}
-                className="w-full rounded-lg border border-stone-300 bg-white pl-4 py-3 text-base text-stone-900 placeholder-stone-400 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:placeholder-stone-500 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
-              />
-            </div>
-          )}
+          {/* Notes */}
+          <div>
+            <label className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
+              Notes{" "}
+              <span className="font-normal text-stone-400">(optional)</span>
+            </label>
+            <p className="mb-1.5 text-xs text-stone-400 dark:text-stone-500">
+              Private to you.{" "}
+              <a
+                href="https://www.markdownguide.org/basic-syntax/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-stone-600 dark:hover:text-stone-300"
+              >
+                Markdown
+              </a>{" "}
+              supported.
+            </p>
+            <ExpandableTextarea
+              value={notes}
+              onChange={setNotes}
+              disabled={loading}
+              placeholder="How did the match go?"
+              rows={3}
+              className="w-full rounded-lg border border-stone-300 bg-white pl-4 py-3 text-base text-stone-900 placeholder-stone-400 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:placeholder-stone-500 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
+            />
+          </div>
 
           {/* Error */}
           {error && (

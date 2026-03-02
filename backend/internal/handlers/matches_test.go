@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -462,6 +463,7 @@ func TestCreateMatch_ScheduledWithGames(t *testing.T) {
 	h := matchTestHandler()
 	body := validBo3Match()
 	body.Status = "scheduled"
+	body.PlayedAt = time.Now().Add(24 * time.Hour).Format(time.RFC3339)
 	req := matchRequest(http.MethodPost, "/api/matches", body)
 	w := httptest.NewRecorder()
 
