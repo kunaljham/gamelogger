@@ -187,11 +187,13 @@ export default function MatchDetail() {
           "Unknown"
         )}
       </h1>
-      <p className="mt-1 text-sm text-stone-400 dark:text-stone-500">
-        {formatDate(match.played_at)}
-        <span className="mx-2 text-stone-300 dark:text-stone-600">&middot;</span>
-        Best of {totalGames}
-      </p>
+      {!isScheduled && (
+        <p className="mt-1 text-sm text-stone-400 dark:text-stone-500">
+          {formatDate(match.played_at)}
+          <span className="mx-2 text-stone-300 dark:text-stone-600">&middot;</span>
+          Best of {totalGames}
+        </p>
+      )}
 
       {/* Invite button — shown for non-registered opponents (hidden for demo) */}
       {!isDemoUser && match.opponent && match.opponent.status !== "registered" && (
@@ -207,7 +209,7 @@ export default function MatchDetail() {
       {isScheduled ? (
         <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30">
           <p className="text-lg font-medium text-amber-600 dark:text-amber-400">
-            Scheduled
+            {formatDate(match.played_at)}
           </p>
           <p className="mt-1 text-sm text-amber-700/70 dark:text-amber-400/70">
             Best of {totalGames} &middot; Add scores after you play
