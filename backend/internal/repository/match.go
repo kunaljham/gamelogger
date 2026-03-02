@@ -45,12 +45,12 @@ func (r *MatchRepository) Create(ctx context.Context, match *models.Match, outbo
 
 	// Insert the match
 	err = tx.QueryRow(ctx, `
-		INSERT INTO matches (user_id, opponent_id, match_type, played_at, creator_notes, user_won)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id, user_id, opponent_id, match_type, played_at, creator_notes, user_won, created_at, updated_at
-	`, match.UserID, match.OpponentID, match.MatchType, match.PlayedAt, match.CreatorNotes, match.UserWon).Scan(
+		INSERT INTO matches (user_id, opponent_id, match_type, played_at, user_won)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id, user_id, opponent_id, match_type, played_at, user_won, created_at, updated_at
+	`, match.UserID, match.OpponentID, match.MatchType, match.PlayedAt, match.UserWon).Scan(
 		&match.ID, &match.UserID, &match.OpponentID, &match.MatchType,
-		&match.PlayedAt, &match.CreatorNotes, &match.UserWon, &match.CreatedAt, &match.UpdatedAt,
+		&match.PlayedAt, &match.UserWon, &match.CreatedAt, &match.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -257,12 +257,12 @@ func (r *MatchRepository) Update(ctx context.Context, match *models.Match, outbo
 	// Update the match
 	err = tx.QueryRow(ctx, `
 		UPDATE matches
-		SET opponent_id = $1, match_type = $2, played_at = $3, creator_notes = $4, user_won = $5
-		WHERE id = $6 AND user_id = $7
-		RETURNING id, user_id, opponent_id, match_type, played_at, creator_notes, user_won, created_at, updated_at
-	`, match.OpponentID, match.MatchType, match.PlayedAt, match.CreatorNotes, match.UserWon, match.ID, match.UserID).Scan(
+		SET opponent_id = $1, match_type = $2, played_at = $3, user_won = $4
+		WHERE id = $5 AND user_id = $6
+		RETURNING id, user_id, opponent_id, match_type, played_at, user_won, created_at, updated_at
+	`, match.OpponentID, match.MatchType, match.PlayedAt, match.UserWon, match.ID, match.UserID).Scan(
 		&match.ID, &match.UserID, &match.OpponentID, &match.MatchType,
-		&match.PlayedAt, &match.CreatorNotes, &match.UserWon, &match.CreatedAt, &match.UpdatedAt,
+		&match.PlayedAt, &match.UserWon, &match.CreatedAt, &match.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrMatchNotFound
@@ -332,18 +332,10 @@ func (r *MatchRepository) Delete(ctx context.Context, id uuid.UUID, userID uuid.
 	return nil
 }
 
-// UpdateNotes sets the viewer's notes on a match via their match_participants row,
-// and keeps the legacy matches columns in sync, all within a single transaction.
+// UpdateNotes sets the viewer's notes on a match via their match_participants row.
 // Returns the full match from the viewer's perspective.
 func (r *MatchRepository) UpdateNotes(ctx context.Context, matchID uuid.UUID, userID uuid.UUID, notes *string) (*models.Match, error) {
-	tx, err := r.db.Begin(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback(ctx)
-
-	// Update the participant's notes
-	result, err := tx.Exec(ctx, `
+	result, err := r.db.Exec(ctx, `
 		UPDATE match_participants SET notes = $1
 		WHERE match_id = $2 AND user_id = $3
 	`, notes, matchID, userID)
@@ -352,21 +344,6 @@ func (r *MatchRepository) UpdateNotes(ctx context.Context, matchID uuid.UUID, us
 	}
 	if result.RowsAffected() == 0 {
 		return nil, ErrMatchNotFound
-	}
-
-	// Also keep matches.creator_notes / opponent_notes in sync for backward compat
-	_, err = tx.Exec(ctx, `
-		UPDATE matches SET
-			creator_notes = CASE WHEN user_id = $3 THEN $1 ELSE creator_notes END,
-			opponent_notes = CASE WHEN user_id != $3 THEN $1 ELSE opponent_notes END
-		WHERE id = $2
-	`, notes, matchID, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return nil, err
 	}
 
 	// Return the match from the viewer's perspective

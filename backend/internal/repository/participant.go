@@ -27,7 +27,7 @@ func (r *ParticipantRepository) InsertBatchForUser(ctx context.Context, tx pgx.T
 		INSERT INTO match_participants (match_id, user_id, role, opponent_id, notes)
 		SELECT m.id, $1, 'opponent',
 		       reciprocal.id,
-		       m.opponent_notes
+		       NULL
 		FROM matches m
 		JOIN opponents o ON o.id = m.opponent_id
 		LEFT JOIN opponents reciprocal
