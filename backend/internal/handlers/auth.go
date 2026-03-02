@@ -400,9 +400,10 @@ func (h *Handler) DemoLogin(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, user)
 }
 
-// signInSweep links opponents and enqueues reciprocal creation in a single
-// transaction. Called during sign-in (both magic link and dev-login) to ensure
-// we never lose the opponent status update or the reciprocal outbox job.
+// signInSweep links opponents, backfills participant rows, and enqueues
+// reciprocal creation in a single transaction. Called during sign-in (both
+// magic link and dev-login) to ensure we never lose the opponent status
+// update, participant backfill, or the reciprocal outbox job.
 func (h *Handler) signInSweep(ctx context.Context, email string, userID uuid.UUID) error {
 	tx, err := h.db.Begin(ctx)
 	if err != nil {
@@ -412,6 +413,12 @@ func (h *Handler) signInSweep(ctx context.Context, email string, userID uuid.UUI
 
 	// Mark all opponent records matching this email as "registered"
 	if err := h.opponentRepo.UpdateStatusByEmailInTx(ctx, tx, email, "registered", userID); err != nil {
+		return err
+	}
+
+	// Backfill match_participants rows for all matches where this user is the
+	// opponent but doesn't yet have a participant row.
+	if err := h.participantRepo.InsertBatchForUser(ctx, tx, userID); err != nil {
 		return err
 	}
 
