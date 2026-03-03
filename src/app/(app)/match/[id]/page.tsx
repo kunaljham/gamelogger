@@ -16,8 +16,6 @@ import InviteModal from "@/components/invite-modal";
 import InviteButton from "@/components/invite-button";
 import NotesSection from "@/components/notes-section";
 import ExpandableTextarea from "@/components/expandable-textarea";
-import ReactMarkdown from "react-markdown";
-import remarkBreaks from "remark-breaks";
 
 function formatDate(iso: string): string {
   return new Intl.DateTimeFormat("en-US", {
@@ -526,26 +524,6 @@ function EditMode({
       </h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Plan notes read-only reference when completing a scheduled match */}
-          {isCompleting && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30">
-              <p className="mb-2 text-xs font-medium text-amber-600 dark:text-amber-400">
-                Your Match Plan
-              </p>
-              {match.plan_notes ? (
-                <div className="prose prose-sm prose-amber dark:prose-invert max-w-none text-amber-800 dark:text-amber-300">
-                  <ReactMarkdown remarkPlugins={[remarkBreaks]}>
-                    {match.plan_notes}
-                  </ReactMarkdown>
-                </div>
-              ) : (
-                <p className="text-sm italic text-amber-700/50 dark:text-amber-400/50">
-                  No match plan added.
-                </p>
-              )}
-            </div>
-          )}
-
           {/* Opponent (read-only) */}
           <div>
             <label className="mb-1.5 block text-sm font-medium text-stone-700 dark:text-stone-300">
@@ -647,34 +625,32 @@ function EditMode({
           </div>
 
           {/* Match Plan */}
-          {!isCompleting && (
-            <div>
-              <label className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
-                Match Plan{" "}
-                <span className="font-normal text-stone-400">(optional)</span>
-              </label>
-              <p className="mb-1.5 text-xs text-stone-400 dark:text-stone-500">
-                Private to you. Strategy notes for this match.{" "}
-                <a
-                  href="https://www.markdownguide.org/basic-syntax/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline hover:text-stone-600 dark:hover:text-stone-300"
-                >
-                  Markdown
-                </a>{" "}
-                supported.
-              </p>
-              <ExpandableTextarea
-                value={planNotes}
-                onChange={setPlanNotes}
-                disabled={saving}
-                placeholder="What's your game plan?"
-                rows={3}
-                className="w-full rounded-lg border border-stone-300 bg-white pl-4 py-3 text-base text-stone-900 placeholder-stone-400 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:placeholder-stone-500 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
-              />
-            </div>
-          )}
+          <div>
+            <label className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
+              Match Plan{" "}
+              <span className="font-normal text-stone-400">(optional)</span>
+            </label>
+            <p className="mb-1.5 text-xs text-stone-400 dark:text-stone-500">
+              Private to you. Strategy notes for this match.{" "}
+              <a
+                href="https://www.markdownguide.org/basic-syntax/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-stone-600 dark:hover:text-stone-300"
+              >
+                Markdown
+              </a>{" "}
+              supported.
+            </p>
+            <ExpandableTextarea
+              value={planNotes}
+              onChange={setPlanNotes}
+              disabled={saving}
+              placeholder="What's your game plan?"
+              rows={3}
+              className="w-full rounded-lg border border-stone-300 bg-white pl-4 py-3 text-base text-stone-900 placeholder-stone-400 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:placeholder-stone-500 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
+            />
+          </div>
 
           {/* Notes */}
           <div>
