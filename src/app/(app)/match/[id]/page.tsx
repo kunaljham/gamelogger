@@ -527,16 +527,22 @@ function EditMode({
 
       <form onSubmit={handleSubmit} className="space-y-6">
           {/* Plan notes read-only reference when completing a scheduled match */}
-          {isCompleting && match.plan_notes && (
+          {isCompleting && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30">
               <p className="mb-2 text-xs font-medium text-amber-600 dark:text-amber-400">
                 Your Match Plan
               </p>
-              <div className="prose prose-sm prose-amber dark:prose-invert max-w-none text-amber-800 dark:text-amber-300">
-                <ReactMarkdown remarkPlugins={[remarkBreaks]}>
-                  {match.plan_notes}
-                </ReactMarkdown>
-              </div>
+              {match.plan_notes ? (
+                <div className="prose prose-sm prose-amber dark:prose-invert max-w-none text-amber-800 dark:text-amber-300">
+                  <ReactMarkdown remarkPlugins={[remarkBreaks]}>
+                    {match.plan_notes}
+                  </ReactMarkdown>
+                </div>
+              ) : (
+                <p className="text-sm italic text-amber-700/50 dark:text-amber-400/50">
+                  No match plan added.
+                </p>
+              )}
             </div>
           )}
 
