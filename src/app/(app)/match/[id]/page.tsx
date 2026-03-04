@@ -376,7 +376,7 @@ function EditMode({
   const existingTime = match.played_at.split("T")[1]?.slice(0, 5) ?? "";
   const [playedTime, setPlayedTime] = useState(existingTime);
   const [notes, setNotes] = useState(match.notes ?? "");
-  const [planNotes, setPlanNotes] = useState(match.plan_notes ?? "");
+  const planNotes = match.plan_notes ?? "";
   const [games, setGames] = useState<GameScore[]>(
     isCompleting
       ? [{ userScore: "", opponentScore: "" }]
@@ -467,9 +467,6 @@ function EditMode({
 
       if (notes.trim()) {
         body.notes = notes.trim();
-      }
-      if (planNotes.trim()) {
-        body.plan_notes = planNotes.trim();
       }
 
       const res = await fetch(
@@ -610,45 +607,15 @@ function EditMode({
             )}
           </div>
 
-          {/* Match Plan — editable for scheduled, read-only for completed */}
-          {(isCompleting || planNotes) && (
+          {/* Match Plan — always read-only in edit mode */}
+          {planNotes && (
             <div>
               <label className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
-                Match Plan{" "}
-                {isCompleting ? (
-                  <span className="font-normal text-stone-400">(optional)</span>
-                ) : (
-                  <span className="font-normal text-stone-400">(locked after completing)</span>
-                )}
+                Match Plan
               </label>
-              {isCompleting ? (
-                <>
-                  <p className="mb-1.5 text-xs text-stone-400 dark:text-stone-500">
-                    Private to you. Strategy notes for this match.{" "}
-                    <a
-                      href="https://www.markdownguide.org/basic-syntax/"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline hover:text-stone-600 dark:hover:text-stone-300"
-                    >
-                      Markdown
-                    </a>{" "}
-                    supported.
-                  </p>
-                  <ExpandableTextarea
-                    value={planNotes}
-                    onChange={setPlanNotes}
-                    disabled={saving}
-                    placeholder="What's your game plan?"
-                    rows={3}
-                    className="w-full rounded-lg border border-stone-300 bg-white pl-4 py-3 text-base text-stone-900 placeholder-stone-400 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:placeholder-stone-500 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
-                  />
-                </>
-              ) : (
-                <p className="rounded-lg border border-stone-200 bg-stone-50 px-4 py-3 text-base text-stone-500 whitespace-pre-wrap dark:border-stone-700 dark:bg-stone-800/50 dark:text-stone-400">
-                  {planNotes || "No match plan."}
-                </p>
-              )}
+              <p className="rounded-lg border border-stone-200 bg-stone-50 px-4 py-3 text-base text-stone-500 whitespace-pre-wrap dark:border-stone-700 dark:bg-stone-800/50 dark:text-stone-400">
+                {planNotes}
+              </p>
             </div>
           )}
 
