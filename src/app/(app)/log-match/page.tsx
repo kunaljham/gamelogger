@@ -735,33 +735,35 @@ function LogMatch() {
             />
           </div>
 
-          {/* Notes */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
-              Notes{" "}
-              <span className="font-normal text-stone-400">(optional)</span>
-            </label>
-            <p className="mb-1.5 text-xs text-stone-400 dark:text-stone-500">
-              Private to you.{" "}
-              <a
-                href="https://www.markdownguide.org/basic-syntax/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline hover:text-stone-600 dark:hover:text-stone-300"
-              >
-                Markdown
-              </a>{" "}
-              supported.
-            </p>
-            <ExpandableTextarea
-              value={notes}
-              onChange={setNotes}
-              disabled={loading}
-              placeholder="How did the match go?"
-              rows={3}
-              className="w-full rounded-lg border border-stone-300 bg-white pl-4 py-3 text-base text-stone-900 placeholder-stone-400 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:placeholder-stone-500 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
-            />
-          </div>
+          {/* Notes — only for completed matches */}
+          {!isScheduleMode && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
+                Notes{" "}
+                <span className="font-normal text-stone-400">(optional)</span>
+              </label>
+              <p className="mb-1.5 text-xs text-stone-400 dark:text-stone-500">
+                Private to you.{" "}
+                <a
+                  href="https://www.markdownguide.org/basic-syntax/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-stone-600 dark:hover:text-stone-300"
+                >
+                  Markdown
+                </a>{" "}
+                supported.
+              </p>
+              <ExpandableTextarea
+                value={notes}
+                onChange={setNotes}
+                disabled={loading}
+                placeholder="How did the match go?"
+                rows={3}
+                className="w-full rounded-lg border border-stone-300 bg-white pl-4 py-3 text-base text-stone-900 placeholder-stone-400 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:placeholder-stone-500 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
+              />
+            </div>
+          )}
 
           {/* Error */}
           {error && (
