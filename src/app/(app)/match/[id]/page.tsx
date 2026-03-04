@@ -242,26 +242,8 @@ export default function MatchDetail() {
           <NotesSection
             notes={match.plan_notes}
             title="Match Plan"
-            readOnly={!isScheduled || isDemoUser}
-            placeholder="What's your game plan?"
+            readOnly
             emptyMessage="Add strategy notes for this match."
-            onSave={!isScheduled || isDemoUser ? undefined : async (val) => {
-              const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/matches/${match.id}/plan-notes`,
-                {
-                  method: "PUT",
-                  credentials: "include",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ plan_notes: val }),
-                }
-              );
-              if (!res.ok) {
-                const data = await res.json().catch(() => null);
-                throw new Error(data?.error ?? "Failed to save plan notes");
-              }
-              const updated: Match = await res.json();
-              setMatch(updated);
-            }}
           />
         </div>
       )}
