@@ -708,10 +708,10 @@ function LogMatch() {
             </div>
           )}
 
-          {/* Match Plan */}
+          {/* Pre-Match Plan */}
           <div>
             <label className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
-              Match Plan{" "}
+              Pre-Match Plan{" "}
               <span className="font-normal text-stone-400">(optional)</span>
             </label>
             <p className="mb-1.5 text-xs text-stone-400 dark:text-stone-500">
@@ -736,10 +736,10 @@ function LogMatch() {
             />
           </div>
 
-          {/* Notes */}
+          {/* Post-Match Notes */}
           <div>
             <label className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
-              Notes{" "}
+              Post-Match Notes{" "}
               <span className="font-normal text-stone-400">(optional)</span>
             </label>
             <p className="mb-1.5 text-xs text-stone-400 dark:text-stone-500">
