@@ -12,7 +12,7 @@ import (
 type EmailService interface {
 	SendMagicLink(ctx context.Context, email, token string) error
 	SendInvitation(ctx context.Context, toEmail, fromUserName string) error
-	SendMatchNotification(ctx context.Context, toEmail, fromUserName, matchURL, matchDate string, isNew bool) error
+	SendMatchNotification(ctx context.Context, toEmail, fromUserName, matchURL, matchDate string, isNew bool, isScheduled bool) error
 }
 
 // ResendEmailService implements EmailService using the Resend API.
@@ -165,15 +165,32 @@ If you're not interested, you can safely ignore this email.
 
 // SendMatchNotification sends an email notifying an opponent about a match.
 // isNew=true means the match was just created; false means it was updated.
-func (s *ResendEmailService) SendMatchNotification(ctx context.Context, toEmail, fromUserName, matchURL, matchDate string, isNew bool) error {
-	subject := fmt.Sprintf("%s logged a match with you", fromUserName)
-	action := "logged a new match"
-	if !isNew {
+func (s *ResendEmailService) SendMatchNotification(ctx context.Context, toEmail, fromUserName, matchURL, matchDate string, isNew bool, isScheduled bool) error {
+	var subject, heading, body, cta, htmlBody, textBody string
+
+	if isScheduled {
+		subject = fmt.Sprintf("%s scheduled a match with you", fromUserName)
+		heading = "Upcoming Match"
+		body = fmt.Sprintf("%s scheduled a match with you on <strong>%s</strong>.", fromUserName, matchDate)
+		cta = "Add your match plan and any pre-match notes."
+	} else if isNew {
+		subject = fmt.Sprintf("%s logged a match with you", fromUserName)
+		heading = "New Match to Review"
+		body = fmt.Sprintf("%s logged a new match with you, played on <strong>%s</strong>.", fromUserName, matchDate)
+		cta = "Review the scores and add any notes while it's fresh."
+	} else {
 		subject = fmt.Sprintf("%s updated a match with you", fromUserName)
-		action = "updated a match"
+		heading = "New Match to Review"
+		body = fmt.Sprintf("%s updated a match with you, played on <strong>%s</strong>.", fromUserName, matchDate)
+		cta = "Review the scores and add any notes while it's fresh."
 	}
 
-	htmlBody := fmt.Sprintf(`
+	buttonLabel := "Review Match"
+	if isScheduled {
+		buttonLabel = "View Match"
+	}
+
+	htmlBody = fmt.Sprintf(`
 <!DOCTYPE html>
 <html>
 <head>
@@ -182,15 +199,15 @@ func (s *ResendEmailService) SendMatchNotification(ctx context.Context, toEmail,
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px; background-color: #fafafa;">
     <div style="max-width: 400px; margin: 0 auto; background: white; border-radius: 8px; padding: 40px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-        <h1 style="font-size: 24px; font-weight: 600; margin: 0 0 16px 0; color: #18181b;">New Match to Review</h1>
+        <h1 style="font-size: 24px; font-weight: 600; margin: 0 0 16px 0; color: #18181b;">%s</h1>
         <p style="font-size: 16px; color: #52525b; margin: 0 0 16px 0; line-height: 1.5;">
-            %s %s with you, played on <strong>%s</strong>.
+            %s
         </p>
         <p style="font-size: 15px; color: #52525b; margin: 0 0 24px 0; line-height: 1.5;">
-            Review the scores and add any notes while it's fresh.
+            %s
         </p>
         <a href="%s" style="display: inline-block; background-color: #18181b; color: white; text-decoration: none; padding: 12px 24px; border-radius: 9999px; font-size: 14px; font-weight: 500;">
-            Review Match
+            %s
         </a>
         <p style="font-size: 14px; color: #a1a1aa; margin: 24px 0 0 0; line-height: 1.5;">
             You're receiving this because you have a GameLogger account linked to this email.
@@ -198,18 +215,26 @@ func (s *ResendEmailService) SendMatchNotification(ctx context.Context, toEmail,
     </div>
 </body>
 </html>
-`, fromUserName, action, matchDate, matchURL)
+`, heading, body, cta, matchURL, buttonLabel)
 
-	textBody := fmt.Sprintf(`New Match to Review
+	// Strip HTML tags for plain text version
+	plainBody := fmt.Sprintf("%s scheduled a match with you on %s.", fromUserName, matchDate)
+	if !isScheduled && isNew {
+		plainBody = fmt.Sprintf("%s logged a new match with you, played on %s.", fromUserName, matchDate)
+	} else if !isScheduled {
+		plainBody = fmt.Sprintf("%s updated a match with you, played on %s.", fromUserName, matchDate)
+	}
 
-%s %s with you, played on %s.
+	textBody = fmt.Sprintf(`%s
 
-Review the scores and add any notes while it's fresh.
+%s
 
-Review the match: %s
+%s
+
+%s: %s
 
 You're receiving this because you have a GameLogger account linked to this email.
-`, fromUserName, action, matchDate, matchURL)
+`, heading, plainBody, cta, buttonLabel, matchURL)
 
 	params := &resend.SendEmailRequest{
 		From:    s.fromEmail,

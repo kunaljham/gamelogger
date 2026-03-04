@@ -25,6 +25,7 @@ type matchNotificationPayload struct {
 	MatchID      string `json:"match_id"`
 	MatchDate    string `json:"match_date"`
 	IsNew        bool   `json:"is_new"`
+	IsScheduled  bool   `json:"is_scheduled"`
 }
 
 // EmailWorker polls the email outbox and sends pending emails.
@@ -118,7 +119,7 @@ func (w *EmailWorker) sendMatchNotification(ctx context.Context, row repository.
 	}
 
 	matchURL := fmt.Sprintf("%s/match/%s", w.frontendURL, payload.MatchID)
-	return w.emailService.SendMatchNotification(ctx, payload.ToEmail, payload.FromUserName, matchURL, payload.MatchDate, payload.IsNew)
+	return w.emailService.SendMatchNotification(ctx, payload.ToEmail, payload.FromUserName, matchURL, payload.MatchDate, payload.IsNew, payload.IsScheduled)
 }
 
 // createReciprocalOpponents handles the "create_reciprocal_opponents" outbox job.

@@ -21,7 +21,7 @@ import (
 // buildMatchOutbox creates an outbox entry for notifying a registered opponent about a match.
 // Returns nil if the opponent is not registered or has no email.
 // For new matches, pass uuid.Nil as matchID — the repository will inject it after INSERT.
-func (h *Handler) buildMatchOutbox(ctx context.Context, opponent *models.Opponent, user *models.User, matchID uuid.UUID, playedAt time.Time, isNew bool) *repository.OutboxEntry {
+func (h *Handler) buildMatchOutbox(ctx context.Context, opponent *models.Opponent, user *models.User, matchID uuid.UUID, playedAt time.Time, isNew bool, isScheduled bool) *repository.OutboxEntry {
 	if opponent.RegisteredUserID == nil {
 		return nil
 	}
@@ -44,6 +44,7 @@ func (h *Handler) buildMatchOutbox(ctx context.Context, opponent *models.Opponen
 		"from_user_name": userName,
 		"match_date":     playedAt.Format("January 2, 2006"),
 		"is_new":         isNew,
+		"is_scheduled":   isScheduled,
 	}
 	// For updates, we already know the match ID. For creates, it's injected by the repo.
 	if matchID != uuid.Nil {
@@ -217,7 +218,7 @@ func (h *Handler) CreateMatch(w http.ResponseWriter, r *http.Request) {
 	match.ComputeResult()
 
 	// Build notification for registered opponent (match_id injected by repo after INSERT)
-	outbox := h.buildMatchOutbox(r.Context(), opponent, user, uuid.Nil, playedAt, true)
+	outbox := h.buildMatchOutbox(r.Context(), opponent, user, uuid.Nil, playedAt, true, status == "scheduled")
 
 	// If the opponent is a registered user, create a reciprocal opponent record
 	// so they can see the match creator in their opponents list.
