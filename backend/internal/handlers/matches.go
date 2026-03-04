@@ -514,7 +514,13 @@ func (h *Handler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 	// Compute user_won from validated games before persisting
 	match.ComputeResult()
 
-	updated, err := h.matchRepo.Update(r.Context(), match, nil)
+	// Send notification when completing a scheduled match (scheduled → completed)
+	var outbox *repository.OutboxEntry
+	if currentMatch.Status == "scheduled" && newStatus == "completed" {
+		outbox = h.buildMatchOutbox(r.Context(), opponent, user, id, playedAt, true, false)
+	}
+
+	updated, err := h.matchRepo.Update(r.Context(), match, outbox)
 	if err != nil {
 		if errors.Is(err, repository.ErrMatchNotFound) {
 			writeJSON(w, http.StatusNotFound, errorResponse{Error: "Match not found"})
