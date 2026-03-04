@@ -4,42 +4,42 @@ test.describe('Scheduled match flow', () => {
   // These tests verify the schedule mode UI in the log-match form.
   // They don't require a running backend — they check frontend behavior only.
 
-  test('log-match page shows mode toggle', async ({ page }) => {
+  test('log-match page shows future match toggle', async ({ page }) => {
     await page.goto('/log-match');
 
-    // Both toggle buttons should be visible
-    await expect(page.getByRole('button', { name: 'Log Match' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Schedule Match' })).toBeVisible();
+    // Toggle switch should be visible
+    await expect(page.getByRole('switch')).toBeVisible();
+    await expect(page.getByText('Future match — add scores later')).toBeVisible();
   });
 
-  test('switching to schedule mode hides game scores and shows plan notes', async ({ page }) => {
+  test('toggling future match hides game scores and notes, shows plan notes', async ({ page }) => {
     await page.goto('/log-match');
 
-    // Initially in log mode — game scores visible
+    // Initially in log mode — game scores and notes visible, plan notes hidden
     await expect(page.getByText('Game Scores')).toBeVisible();
     await expect(page.getByText('Match Plan')).not.toBeVisible();
 
-    // Switch to schedule mode
-    await page.getByRole('button', { name: 'Schedule Match' }).click();
+    // Toggle future match on
+    await page.getByRole('switch').click();
 
-    // Game scores hidden, plan notes shown
+    // Game scores and notes hidden, plan notes shown
     await expect(page.getByText('Game Scores')).not.toBeVisible();
     await expect(page.getByText('Match Plan')).toBeVisible();
     await expect(page.getByPlaceholder("What's your game plan?")).toBeVisible();
 
     // Submit button says "Schedule Match"
-    await expect(page.getByRole('button', { name: 'Schedule Match' }).last()).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Schedule Match' })).toBeVisible();
   });
 
-  test('switching back to log mode restores game scores', async ({ page }) => {
+  test('toggling back restores game scores and notes', async ({ page }) => {
     await page.goto('/log-match');
 
-    // Switch to schedule mode
-    await page.getByRole('button', { name: 'Schedule Match' }).click();
+    // Toggle on
+    await page.getByRole('switch').click();
     await expect(page.getByText('Game Scores')).not.toBeVisible();
 
-    // Switch back to log mode
-    await page.getByRole('button', { name: 'Log Match' }).click();
+    // Toggle off
+    await page.getByRole('switch').click();
     await expect(page.getByText('Game Scores')).toBeVisible();
     await expect(page.getByText('Match Plan')).not.toBeVisible();
   });
@@ -50,21 +50,22 @@ test.describe('Scheduled match flow', () => {
     // Initially shows "Date Played"
     await expect(page.getByText('Date Played')).toBeVisible();
 
-    // Switch to schedule mode
-    await page.getByRole('button', { name: 'Schedule Match' }).click();
+    // Toggle future match on
+    await page.getByRole('switch').click();
 
     // Shows "Match Date"
     await expect(page.getByText('Match Date')).toBeVisible();
     await expect(page.getByText('Date Played')).not.toBeVisible();
   });
 
-  test('page heading changes with mode', async ({ page }) => {
+  test('heading stays "Log a Match" regardless of toggle', async ({ page }) => {
     await page.goto('/log-match');
 
     await expect(page.getByRole('heading', { name: 'Log a Match' })).toBeVisible();
 
-    await page.getByRole('button', { name: 'Schedule Match' }).click();
+    await page.getByRole('switch').click();
 
-    await expect(page.getByRole('heading', { name: 'Schedule Match' })).toBeVisible();
+    // Heading unchanged — toggle is inside the date section, not the page title
+    await expect(page.getByRole('heading', { name: 'Log a Match' })).toBeVisible();
   });
 });

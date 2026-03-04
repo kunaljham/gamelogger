@@ -1713,7 +1713,7 @@ fi
 
 # 30f. Complete a scheduled match (add scores)
 if [ -n "$SCHED_MATCH_ID" ]; then
-  api PUT "/api/matches/$SCHED_MATCH_ID" "{\"opponent_id\": \"$OPPONENT_ID\", \"match_type\": \"bo5\", \"played_at\": \"2026-04-01T10:00:00Z\", \"status\": \"completed\", \"games\": [{\"game_number\": 1, \"user_score\": 11, \"opponent_score\": 7}, {\"game_number\": 2, \"user_score\": 11, \"opponent_score\": 9}, {\"game_number\": 3, \"user_score\": 11, \"opponent_score\": 5}]}"
+  api PUT "/api/matches/$SCHED_MATCH_ID" "{\"opponent_id\": \"$OPPONENT_ID\", \"match_type\": \"bo5\", \"played_at\": \"2025-01-15T10:00:00Z\", \"status\": \"completed\", \"games\": [{\"game_number\": 1, \"user_score\": 11, \"opponent_score\": 7}, {\"game_number\": 2, \"user_score\": 11, \"opponent_score\": 9}, {\"game_number\": 3, \"user_score\": 11, \"opponent_score\": 5}]}"
   if [ "$STATUS" = "200" ]; then
     COMP_STATUS=$(jq -r '.status' "$RESPONSE")
     COMP_USER_WON=$(jq -r '.user_won' "$RESPONSE")

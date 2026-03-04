@@ -1,6 +1,3 @@
--- Drop status index
-DROP INDEX IF EXISTS idx_matches_status;
-
 -- Restore user_won NOT NULL with default
 UPDATE matches SET user_won = FALSE WHERE user_won IS NULL;
 ALTER TABLE matches ALTER COLUMN user_won SET NOT NULL;

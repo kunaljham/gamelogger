@@ -376,7 +376,7 @@ function EditMode({
   const existingTime = match.played_at.split("T")[1]?.slice(0, 5) ?? "";
   const [playedTime, setPlayedTime] = useState(existingTime);
   const [notes, setNotes] = useState(match.notes ?? "");
-  const planNotes = match.plan_notes ?? "";
+  const planNotes = match.plan_notes ?? ""; // read-only in edit mode
   const [games, setGames] = useState<GameScore[]>(
     isCompleting
       ? [{ userScore: "", opponentScore: "" }]

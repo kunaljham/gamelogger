@@ -9,5 +9,3 @@ ALTER TABLE match_participants ADD COLUMN plan_notes TEXT;
 ALTER TABLE matches ALTER COLUMN user_won DROP NOT NULL;
 ALTER TABLE matches ALTER COLUMN user_won DROP DEFAULT;
 
--- Index for status-filtered queries (ListUpcomingByUser, ListByUser with status filter)
-CREATE INDEX idx_matches_status ON matches(status);

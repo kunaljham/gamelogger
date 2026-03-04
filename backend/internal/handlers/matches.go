@@ -692,6 +692,22 @@ func (h *Handler) UpdateMatchPlanNotes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Only allow plan notes on scheduled matches
+	currentMatch, err := h.matchRepo.FindByIDForViewer(r.Context(), id, user.ID)
+	if err != nil {
+		if errors.Is(err, repository.ErrMatchNotFound) {
+			writeJSON(w, http.StatusNotFound, errorResponse{Error: "Match not found"})
+			return
+		}
+		slog.Error("Failed to find match for plan notes update", "error", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to update plan notes"})
+		return
+	}
+	if currentMatch.Status != "scheduled" {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Plan notes can only be edited for scheduled matches"})
+		return
+	}
+
 	match, err := h.matchRepo.UpdatePlanNotes(r.Context(), id, user.ID, req.PlanNotes)
 	if err != nil {
 		if errors.Is(err, repository.ErrMatchNotFound) {

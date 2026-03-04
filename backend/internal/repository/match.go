@@ -380,19 +380,9 @@ func (r *MatchRepository) ListUpcomingByUser(ctx context.Context, userID uuid.UU
 		return nil, err
 	}
 
-	// Batch-fetch all games (scheduled matches may have none, but keep consistent)
-	if len(matches) > 0 {
-		matchIDs := make([]uuid.UUID, len(matches))
-		for i := range matches {
-			matchIDs[i] = matches[i].ID
-		}
-		gamesByMatch, err := r.fetchGamesBatch(ctx, matchIDs)
-		if err != nil {
-			return nil, err
-		}
-		for i := range matches {
-			matches[i].Games = gamesByMatch[matches[i].ID]
-		}
+	// Scheduled matches never have games — initialize empty slices
+	for i := range matches {
+		matches[i].Games = []models.Game{}
 	}
 
 	return matches, nil

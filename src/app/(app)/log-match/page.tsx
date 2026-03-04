@@ -614,12 +614,18 @@ function LogMatch() {
             </p>
 
             {/* Future match toggle */}
-            <label className="mt-3 flex cursor-pointer items-center gap-2.5">
+            <div
+              className="mt-3 flex cursor-pointer items-center gap-2.5"
+              onClick={() => !loading && setIsScheduleMode(!isScheduleMode)}
+            >
               <button
                 type="button"
                 role="switch"
                 aria-checked={isScheduleMode}
-                onClick={() => setIsScheduleMode(!isScheduleMode)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsScheduleMode(!isScheduleMode);
+                }}
                 disabled={loading}
                 className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
                   isScheduleMode
@@ -636,7 +642,7 @@ function LogMatch() {
               <span className="text-sm text-stone-600 dark:text-stone-400">
                 Future match — add scores later
               </span>
-            </label>
+            </div>
           </div>
 
           {/* Game scores — only for completed matches */}

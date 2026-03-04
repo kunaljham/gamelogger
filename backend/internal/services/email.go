@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"html"
 
 	"github.com/resend/resend-go/v2"
 )
@@ -99,6 +100,7 @@ If you didn't request this email, you can safely ignore it — no account will b
 // SendInvitation sends an invitation email to a potential opponent.
 func (s *ResendEmailService) SendInvitation(ctx context.Context, toEmail, fromUserName string) error {
 	subject := fmt.Sprintf("%s invited you to GameLogger", fromUserName)
+	safeName := html.EscapeString(fromUserName)
 
 	htmlBody := fmt.Sprintf(`
 <!DOCTYPE html>
@@ -130,7 +132,7 @@ func (s *ResendEmailService) SendInvitation(ctx context.Context, toEmail, fromUs
     </div>
 </body>
 </html>
-`, fromUserName, fromUserName, s.frontendURL)
+`, safeName, safeName, s.frontendURL)
 
 	textBody := fmt.Sprintf(`You've been invited!
 
@@ -167,21 +169,22 @@ If you're not interested, you can safely ignore this email.
 // isNew=true means the match was just created; false means it was updated.
 func (s *ResendEmailService) SendMatchNotification(ctx context.Context, toEmail, fromUserName, matchURL, matchDate string, isNew bool, isScheduled bool) error {
 	var subject, heading, body, cta, htmlBody, textBody string
+	safeName := html.EscapeString(fromUserName)
 
 	if isScheduled {
 		subject = fmt.Sprintf("%s scheduled a match with you", fromUserName)
 		heading = "Upcoming Match"
-		body = fmt.Sprintf("%s scheduled a match with you on <strong>%s</strong>.", fromUserName, matchDate)
+		body = fmt.Sprintf("%s scheduled a match with you on <strong>%s</strong>.", safeName, matchDate)
 		cta = "Add your match plan and any pre-match notes."
 	} else if isNew {
 		subject = fmt.Sprintf("%s logged a match with you", fromUserName)
 		heading = "New Match to Review"
-		body = fmt.Sprintf("%s logged a new match with you, played on <strong>%s</strong>.", fromUserName, matchDate)
+		body = fmt.Sprintf("%s logged a new match with you, played on <strong>%s</strong>.", safeName, matchDate)
 		cta = "Review the scores and add any notes while it's fresh."
 	} else {
 		subject = fmt.Sprintf("%s updated a match with you", fromUserName)
-		heading = "New Match to Review"
-		body = fmt.Sprintf("%s updated a match with you, played on <strong>%s</strong>.", fromUserName, matchDate)
+		heading = "Match Updated"
+		body = fmt.Sprintf("%s updated a match with you, played on <strong>%s</strong>.", safeName, matchDate)
 		cta = "Review the scores and add any notes while it's fresh."
 	}
 
