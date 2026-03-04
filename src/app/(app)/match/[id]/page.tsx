@@ -236,72 +236,44 @@ export default function MatchDetail() {
         </div>
       )}
 
-      {/* Notes section — wraps pre-match plan and post-match notes */}
-      {(isScheduled || match.plan_notes || match.notes) && (
+      {/* Match Plan */}
+      {(isScheduled || match.plan_notes) && (
         <div className="mt-6">
-          <div className="flex items-center gap-1.5">
-            <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-50">
-              Notes
-            </h2>
-            <span className="flex items-center gap-1 text-xs font-medium text-purple-500 dark:text-purple-400">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 16 16"
-                fill="currentColor"
-                className="size-3"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M8 1a3.5 3.5 0 0 0-3.5 3.5V7A1.5 1.5 0 0 0 3 8.5v4A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5v-4A1.5 1.5 0 0 0 11 7V4.5A3.5 3.5 0 0 0 8 1Zm2 6V4.5a2 2 0 1 0-4 0V7h4Z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              Private
-            </span>
-          </div>
+          <NotesSection
+            notes={match.plan_notes}
+            title="Match Plan"
+            readOnly={!isScheduled || isDemoUser}
+            placeholder="What's your game plan?"
+            emptyMessage="Add strategy notes for this match."
+            onSave={!isScheduled || isDemoUser ? undefined : async (val) => {
+              const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/matches/${match.id}/plan-notes`,
+                {
+                  method: "PUT",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ plan_notes: val }),
+                }
+              );
+              if (!res.ok) {
+                const data = await res.json().catch(() => null);
+                throw new Error(data?.error ?? "Failed to save plan notes");
+              }
+              const updated: Match = await res.json();
+              setMatch(updated);
+            }}
+          />
+        </div>
+      )}
 
-          {/* Match Plan */}
-          {(isScheduled || match.plan_notes) && (
-            <div className="mt-3">
-              <NotesSection
-                notes={match.plan_notes}
-                title="Match Plan"
-                showPrivateLabel={false}
-                readOnly={!isScheduled || isDemoUser}
-                placeholder="What's your game plan?"
-                emptyMessage="Add strategy notes for this match."
-                onSave={!isScheduled || isDemoUser ? undefined : async (val) => {
-                  const res = await fetch(
-                    `${process.env.NEXT_PUBLIC_API_URL}/api/matches/${match.id}/plan-notes`,
-                    {
-                      method: "PUT",
-                      credentials: "include",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ plan_notes: val }),
-                    }
-                  );
-                  if (!res.ok) {
-                    const data = await res.json().catch(() => null);
-                    throw new Error(data?.error ?? "Failed to save plan notes");
-                  }
-                  const updated: Match = await res.json();
-                  setMatch(updated);
-                }}
-              />
-            </div>
-          )}
-
-          {/* Notes */}
-          {match.notes && (
-            <div className="mt-3">
-              <NotesSection
-                notes={match.notes}
-                title="Notes"
-                showPrivateLabel={false}
-                readOnly
-              />
-            </div>
-          )}
+      {/* Notes */}
+      {match.notes && (
+        <div className="mt-4">
+          <NotesSection
+            notes={match.notes}
+            title="Notes"
+            readOnly
+          />
         </div>
       )}
 

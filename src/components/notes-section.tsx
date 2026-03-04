@@ -14,7 +14,6 @@ interface NotesSectionProps {
   placeholder?: string;
   emptyMessage?: string;
   title?: string;
-  showPrivateLabel?: boolean;
   onSave?: (notes: string | null) => Promise<void>;
 }
 
@@ -25,7 +24,6 @@ export default function NotesSection({
   placeholder = "How did the match go?",
   emptyMessage = "Add private notes that only you can see.",
   title = "Notes",
-  showPrivateLabel = true,
   onSave,
 }: NotesSectionProps) {
   const [editing, setEditing] = useState(false);
@@ -113,9 +111,26 @@ export default function NotesSection({
   return (
     <>
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-50">
-          {title}
-        </h2>
+        <div>
+          <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-50">
+            {title}
+          </h2>
+            <p className="mt-0.5 flex items-center gap-1 text-xs text-stone-400 dark:text-stone-500">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 16 16"
+                fill="currentColor"
+                className="size-3"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M8 1a3.5 3.5 0 0 0-3.5 3.5V7A1.5 1.5 0 0 0 3 8.5v4A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5v-4A1.5 1.5 0 0 0 11 7V4.5A3.5 3.5 0 0 0 8 1Zm2 6V4.5a2 2 0 1 0-4 0V7h4Z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              Private
+            </p>
+        </div>
         {!readOnly && (
           <button
             onClick={handleEdit}
@@ -128,23 +143,6 @@ export default function NotesSection({
       {notes ? (
         <>
           <div className="mt-2 border-l-2 border-purple-400 pl-4 dark:border-purple-600">
-            {showPrivateLabel && (
-              <p className="mb-1 flex items-center gap-1 text-xs font-medium text-purple-500 dark:text-purple-400">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 16 16"
-                  fill="currentColor"
-                  className="size-3"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M8 1a3.5 3.5 0 0 0-3.5 3.5V7A1.5 1.5 0 0 0 3 8.5v4A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5v-4A1.5 1.5 0 0 0 11 7V4.5A3.5 3.5 0 0 0 8 1Zm2 6V4.5a2 2 0 1 0-4 0V7h4Z"
-                  clipRule="evenodd"
-                  />
-                </svg>
-                Private note — only visible to you
-              </p>
-            )}
             <div className="prose prose-sm prose-stone dark:prose-invert max-w-none text-stone-600 dark:text-stone-400">
               <ReactMarkdown remarkPlugins={[remarkBreaks]}>
                 {preserveNewlines(notes)}
