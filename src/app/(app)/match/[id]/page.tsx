@@ -273,6 +273,12 @@ export default function MatchDetail() {
             {isScheduled && match.user_id === user.id ? (
               <>
                 <button
+                  onClick={() => setMode("edit-notes")}
+                  className="flex-1 cursor-pointer rounded-lg border border-stone-300 px-4 py-3 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100 dark:border-stone-600 dark:text-stone-300 dark:hover:bg-stone-800"
+                >
+                  Edit
+                </button>
+                <button
                   onClick={() => setMode("edit")}
                   className="flex-1 cursor-pointer rounded-lg bg-amber-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-400"
                 >
