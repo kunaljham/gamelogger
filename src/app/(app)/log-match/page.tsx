@@ -345,35 +345,9 @@ function LogMatch() {
         </svg>
         Back
       </button>
-      <h1 className="mb-4 text-3xl font-bold tracking-tight text-stone-900 dark:text-stone-50 sm:text-4xl">
-        {isScheduleMode ? "Schedule Match" : "Log a Match"}
+      <h1 className="mb-6 text-3xl font-bold tracking-tight text-stone-900 dark:text-stone-50 sm:text-4xl">
+        Log a Match
       </h1>
-
-      {/* Mode toggle */}
-      <div className="mb-6 flex rounded-lg border border-stone-200 dark:border-stone-700">
-        <button
-          type="button"
-          onClick={() => setIsScheduleMode(false)}
-          className={`flex-1 rounded-l-lg px-4 py-2 text-sm font-medium transition-colors ${
-            !isScheduleMode
-              ? "bg-purple-700 text-white dark:bg-purple-600"
-              : "text-stone-600 hover:bg-stone-50 dark:text-stone-400 dark:hover:bg-stone-800"
-          }`}
-        >
-          Log Match
-        </button>
-        <button
-          type="button"
-          onClick={() => setIsScheduleMode(true)}
-          className={`flex-1 rounded-r-lg px-4 py-2 text-sm font-medium transition-colors ${
-            isScheduleMode
-              ? "bg-amber-600 text-white dark:bg-amber-500"
-              : "text-stone-600 hover:bg-stone-50 dark:text-stone-400 dark:hover:bg-stone-800"
-          }`}
-        >
-          Schedule Match
-        </button>
-      </div>
 
       {opponentsLoading ? (
         <div className="animate-pulse space-y-4">
@@ -638,6 +612,31 @@ function LogMatch() {
             <p className="mt-1 text-xs text-stone-400 dark:text-stone-500">
               Time is optional — defaults to now if left blank.
             </p>
+
+            {/* Future match toggle */}
+            <label className="mt-3 flex cursor-pointer items-center gap-2.5">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={isScheduleMode}
+                onClick={() => setIsScheduleMode(!isScheduleMode)}
+                disabled={loading}
+                className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
+                  isScheduleMode
+                    ? "bg-amber-500 dark:bg-amber-500"
+                    : "bg-stone-300 dark:bg-stone-600"
+                }`}
+              >
+                <span
+                  className={`inline-block size-3.5 rounded-full bg-white shadow-sm transition-transform ${
+                    isScheduleMode ? "translate-x-[18px]" : "translate-x-[3px]"
+                  }`}
+                />
+              </button>
+              <span className="text-sm text-stone-600 dark:text-stone-400">
+                Future match — add scores later
+              </span>
+            </label>
           </div>
 
           {/* Game scores — only for completed matches */}
@@ -782,14 +781,10 @@ function LogMatch() {
             <button
               type="submit"
               disabled={loading}
-              className={`w-full rounded-lg px-4 py-3 text-base font-medium text-white transition-colors disabled:opacity-50 ${
-                isScheduleMode
-                  ? "bg-amber-600 hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-400"
-                  : "bg-purple-700 hover:bg-purple-800 dark:bg-purple-600 dark:hover:bg-purple-500"
-              }`}
+              className="w-full rounded-lg bg-purple-700 px-4 py-3 text-base font-medium text-white transition-colors hover:bg-purple-800 disabled:opacity-50 dark:bg-purple-600 dark:hover:bg-purple-500"
             >
               {loading
-                ? isScheduleMode ? "Scheduling..." : "Logging..."
+                ? "Saving..."
                 : isScheduleMode ? "Schedule Match" : "Log Match"}
             </button>
           </div>
