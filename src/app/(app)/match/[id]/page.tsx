@@ -236,10 +236,33 @@ export default function MatchDetail() {
         </div>
       )}
 
-      {/* Plan notes */}
-      {match.plan_notes && (
+      {/* Plan notes — editable for scheduled, read-only for completed */}
+      {(isScheduled || match.plan_notes) && (
         <div className="mt-4">
-          <NotesSection notes={match.plan_notes} title="Match Plan" readOnly />
+          <NotesSection
+            notes={match.plan_notes}
+            title="Match Plan"
+            readOnly={!isScheduled || isDemoUser}
+            placeholder="What's your game plan?"
+            emptyMessage="Add strategy notes for this match."
+            onSave={!isScheduled || isDemoUser ? undefined : async (val) => {
+              const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/matches/${match.id}/plan-notes`,
+                {
+                  method: "PUT",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ plan_notes: val }),
+                }
+              );
+              if (!res.ok) {
+                const data = await res.json().catch(() => null);
+                throw new Error(data?.error ?? "Failed to save plan notes");
+              }
+              const updated: Match = await res.json();
+              setMatch(updated);
+            }}
+          />
         </div>
       )}
 
@@ -601,33 +624,47 @@ function EditMode({
             )}
           </div>
 
-          {/* Match Plan */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
-              Match Plan{" "}
-              <span className="font-normal text-stone-400">(optional)</span>
-            </label>
-            <p className="mb-1.5 text-xs text-stone-400 dark:text-stone-500">
-              Private to you. Strategy notes for this match.{" "}
-              <a
-                href="https://www.markdownguide.org/basic-syntax/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline hover:text-stone-600 dark:hover:text-stone-300"
-              >
-                Markdown
-              </a>{" "}
-              supported.
-            </p>
-            <ExpandableTextarea
-              value={planNotes}
-              onChange={setPlanNotes}
-              disabled={saving}
-              placeholder="What's your game plan?"
-              rows={3}
-              className="w-full rounded-lg border border-stone-300 bg-white pl-4 py-3 text-base text-stone-900 placeholder-stone-400 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:placeholder-stone-500 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
-            />
-          </div>
+          {/* Match Plan — editable for scheduled, read-only for completed */}
+          {(isCompleting || planNotes) && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
+                Match Plan{" "}
+                {isCompleting ? (
+                  <span className="font-normal text-stone-400">(optional)</span>
+                ) : (
+                  <span className="font-normal text-stone-400">(locked after completing)</span>
+                )}
+              </label>
+              {isCompleting ? (
+                <>
+                  <p className="mb-1.5 text-xs text-stone-400 dark:text-stone-500">
+                    Private to you. Strategy notes for this match.{" "}
+                    <a
+                      href="https://www.markdownguide.org/basic-syntax/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline hover:text-stone-600 dark:hover:text-stone-300"
+                    >
+                      Markdown
+                    </a>{" "}
+                    supported.
+                  </p>
+                  <ExpandableTextarea
+                    value={planNotes}
+                    onChange={setPlanNotes}
+                    disabled={saving}
+                    placeholder="What's your game plan?"
+                    rows={3}
+                    className="w-full rounded-lg border border-stone-300 bg-white pl-4 py-3 text-base text-stone-900 placeholder-stone-400 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:placeholder-stone-500 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
+                  />
+                </>
+              ) : (
+                <p className="rounded-lg border border-stone-200 bg-stone-50 px-4 py-3 text-base text-stone-500 whitespace-pre-wrap dark:border-stone-700 dark:bg-stone-800/50 dark:text-stone-400">
+                  {planNotes || "No match plan."}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Notes */}
           <div>
@@ -703,7 +740,9 @@ function EditNotesMode({
   onCancel: () => void;
   onSaved: (updated: Match) => void;
 }) {
+  const isScheduled = match.status === "scheduled";
   const [notes, setNotes] = useState(match.notes ?? "");
+  const [planNotes, setPlanNotes] = useState(match.plan_notes ?? "");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -713,7 +752,8 @@ function EditNotesMode({
     setSaving(true);
 
     try {
-      const res = await fetch(
+      // Save notes
+      const notesRes = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/matches/${match.id}/notes`,
         {
           method: "PUT",
@@ -723,12 +763,33 @@ function EditNotesMode({
         }
       );
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        throw new Error(data?.error ?? `Failed to save notes (${res.status})`);
+      if (!notesRes.ok) {
+        const data = await notesRes.json().catch(() => null);
+        throw new Error(data?.error ?? `Failed to save notes (${notesRes.status})`);
       }
 
-      const updated: Match = await res.json();
+      let updated: Match = await notesRes.json();
+
+      // Save plan notes if scheduled
+      if (isScheduled) {
+        const planRes = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/matches/${match.id}/plan-notes`,
+          {
+            method: "PUT",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ plan_notes: planNotes.trim() || null }),
+          }
+        );
+
+        if (!planRes.ok) {
+          const data = await planRes.json().catch(() => null);
+          throw new Error(data?.error ?? `Failed to save plan notes (${planRes.status})`);
+        }
+
+        updated = await planRes.json();
+      }
+
       onSaved(updated);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -747,6 +808,36 @@ function EditNotesMode({
       </p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-6">
+        {/* Match Plan — only editable for scheduled matches */}
+        {isScheduled && (
+          <div>
+            <label className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
+              Match Plan{" "}
+              <span className="font-normal text-stone-400">(optional)</span>
+            </label>
+            <p className="mb-1.5 text-xs text-stone-400 dark:text-stone-500">
+              Strategy notes for this match.{" "}
+              <a
+                href="https://www.markdownguide.org/basic-syntax/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-stone-600 dark:hover:text-stone-300"
+              >
+                Markdown
+              </a>{" "}
+              supported.
+            </p>
+            <ExpandableTextarea
+              value={planNotes}
+              onChange={setPlanNotes}
+              disabled={saving}
+              placeholder="What's your game plan?"
+              rows={4}
+              className="w-full rounded-lg border border-stone-300 bg-white pl-4 py-3 text-base text-stone-900 placeholder-stone-400 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:placeholder-stone-500 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
+            />
+          </div>
+        )}
+
         <div>
           <label className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
             Notes{" "}
@@ -791,7 +882,7 @@ function EditNotesMode({
             disabled={saving}
             className="w-full rounded-lg bg-purple-700 px-4 py-3 text-base font-medium text-white transition-colors hover:bg-purple-800 disabled:opacity-50 dark:bg-purple-600 dark:text-white dark:hover:bg-purple-500"
           >
-            {saving ? "Saving..." : "Save Notes"}
+            {saving ? "Saving..." : "Save"}
           </button>
         </div>
       </form>
