@@ -260,12 +260,12 @@ export default function MatchDetail() {
             </span>
           </div>
 
-          {/* Pre-Match Plan */}
+          {/* Match Plan */}
           {(isScheduled || match.plan_notes) && (
             <div className="mt-3">
               <NotesSection
                 notes={match.plan_notes}
-                title="Pre-Match Plan"
+                title="Match Plan"
                 showPrivateLabel={false}
                 readOnly={!isScheduled || isDemoUser}
                 placeholder="What's your game plan?"
@@ -291,12 +291,12 @@ export default function MatchDetail() {
             </div>
           )}
 
-          {/* Post-Match Notes */}
+          {/* Notes */}
           {match.notes && (
             <div className="mt-3">
               <NotesSection
                 notes={match.notes}
-                title="Post-Match Notes"
+                title="Notes"
                 showPrivateLabel={false}
                 readOnly
               />
@@ -656,11 +656,11 @@ function EditMode({
             )}
           </div>
 
-          {/* Pre-Match Plan — editable for scheduled, read-only for completed */}
+          {/* Match Plan — editable for scheduled, read-only for completed */}
           {(isCompleting || planNotes) && (
             <div>
               <label className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
-                Pre-Match Plan{" "}
+                Match Plan{" "}
                 {isCompleting ? (
                   <span className="font-normal text-stone-400">(optional)</span>
                 ) : (
@@ -698,10 +698,10 @@ function EditMode({
             </div>
           )}
 
-          {/* Post-Match Notes */}
+          {/* Notes */}
           <div>
             <label className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
-              Post-Match Notes{" "}
+              Notes{" "}
               <span className="font-normal text-stone-400">(optional)</span>
             </label>
             <p className="mb-1.5 text-xs text-stone-400 dark:text-stone-500">
@@ -840,11 +840,11 @@ function EditNotesMode({
       </p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-6">
-        {/* Pre-Match Plan — only editable for scheduled matches */}
+        {/* Match Plan — only editable for scheduled matches */}
         {isScheduled && (
           <div>
             <label className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
-              Pre-Match Plan{" "}
+              Match Plan{" "}
               <span className="font-normal text-stone-400">(optional)</span>
             </label>
             <p className="mb-1.5 text-xs text-stone-400 dark:text-stone-500">
@@ -872,7 +872,7 @@ function EditNotesMode({
 
         <div>
           <label className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
-            Post-Match Notes{" "}
+            Notes{" "}
             <span className="font-normal text-stone-400">(optional)</span>
           </label>
           <p className="mb-1.5 text-xs text-stone-400 dark:text-stone-500">
