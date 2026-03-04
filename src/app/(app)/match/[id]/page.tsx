@@ -446,6 +446,17 @@ function EditMode({
       return;
     }
 
+    // Completed matches must not be in the future
+    const selectedDate = new Date(
+      playedTime
+        ? `${playedAt}T${playedTime}:00`
+        : `${playedAt}T23:59:59`
+    );
+    if (selectedDate > new Date()) {
+      setError("Completed matches must have a date in the past.");
+      return;
+    }
+
     setSaving(true);
 
     try {

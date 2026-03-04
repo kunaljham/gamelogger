@@ -462,6 +462,12 @@ func (h *Handler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
+		// Completed matches must not be in the future
+		if playedAt.After(time.Now()) {
+			writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Completed matches must have a date in the past"})
+			return
+		}
+
 		// Completed matches require valid games
 		if err := validateGames(req.Games, req.MatchType); err != nil {
 			writeJSON(w, http.StatusBadRequest, errorResponse{Error: err.Error()})
