@@ -156,12 +156,13 @@ backend/
 - Shared SiteHeader and SiteFooter components for public pages (landing, changelog)
 - Feedback modal with email link (accessible from nav and site footer)
 - Authenticated nav includes Changelog and Feedback links (hidden on mobile)
+- Remotion demo video on landing page
 
 ### Not Yet Implemented
 - (nothing pending)
 
 ### Ideas to Explore
-- **Remotion demo video:** Use Remotion (React-based video framework) with Claude Code prompting to create a programmatic demo video of GameLogger
+- (nothing pending)
 
 ## MVP Requirements (from spec)
 
