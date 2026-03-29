@@ -167,6 +167,7 @@ export default function MatchDetail() {
   // ── View mode ─────────────────────────────────────────────────────
   const { user_won: didWin, user_wins: userWins, opponent_wins: opponentWins } = match;
   const totalGames = match.match_type === "bo3" ? 3 : 5;
+  const isScheduled = match.status === "scheduled";
 
   return (
     <main className="mx-auto max-w-md px-4 pb-24 pt-8">
@@ -184,11 +185,13 @@ export default function MatchDetail() {
           "Unknown"
         )}
       </h1>
-      <p className="mt-1 text-sm text-stone-400 dark:text-stone-500">
-        {formatDate(match.played_at)}
-        <span className="mx-2 text-stone-300 dark:text-stone-600">&middot;</span>
-        Best of {totalGames}
-      </p>
+      {!isScheduled && (
+        <p className="mt-1 text-sm text-stone-400 dark:text-stone-500">
+          {formatDate(match.played_at)}
+          <span className="mx-2 text-stone-300 dark:text-stone-600">&middot;</span>
+          Best of {totalGames}
+        </p>
+      )}
 
       {/* Invite button — shown for non-registered opponents (hidden for demo) */}
       {!isDemoUser && match.opponent && match.opponent.status !== "registered" && (
@@ -200,32 +203,59 @@ export default function MatchDetail() {
         </div>
       )}
 
-      {/* Result card */}
-      <div className="mt-6 rounded-xl border border-stone-200 p-4 dark:border-stone-700">
-        <p className="text-base text-stone-600 dark:text-stone-400">
-          <span className={`text-lg ${didWin ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
-            {didWin ? "Won" : "Lost"} {userWins}-{opponentWins}
-          </span>
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {match.games.map((game) => {
-            const userWon = game.user_score > game.opponent_score;
-            return (
-              <span
-                key={game.game_number}
-                className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${userWon ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400" : "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-400"}`}
-              >
-                {game.user_score}-{game.opponent_score}
-              </span>
-            );
-          })}
+      {/* Result card / Scheduled card */}
+      {isScheduled ? (
+        <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30">
+          <p className="text-lg font-medium text-amber-600 dark:text-amber-400">
+            Scheduled
+          </p>
+          <p className="mt-1 text-sm text-amber-700/70 dark:text-amber-400/70">
+            {formatDate(match.played_at)} &middot; Best of {totalGames}
+          </p>
         </div>
-      </div>
+      ) : (
+        <div className="mt-6 rounded-xl border border-stone-200 p-4 dark:border-stone-700">
+          <p className="text-base text-stone-600 dark:text-stone-400">
+            <span className={`text-lg ${didWin ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
+              {didWin ? "Won" : "Lost"} {userWins}-{opponentWins}
+            </span>
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {match.games.map((game) => {
+              const userWon = game.user_score > game.opponent_score;
+              return (
+                <span
+                  key={game.game_number}
+                  className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${userWon ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400" : "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-400"}`}
+                >
+                  {game.user_score}-{game.opponent_score}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Match Plan */}
+      {(isScheduled || match.plan_notes) && (
+        <div className="mt-6">
+          <NotesSection
+            notes={match.plan_notes}
+            title="Match Plan"
+            readOnly
+            emptyMessage="Add strategy notes for this match."
+          />
+        </div>
+      )}
 
       {/* Notes */}
       {match.notes && (
         <div className="mt-4">
-          <NotesSection notes={match.notes} readOnly />
+          <NotesSection
+            notes={match.notes}
+            title="Notes"
+            readOnly
+          />
         </div>
       )}
 
@@ -240,21 +270,46 @@ export default function MatchDetail() {
       {!isDemoUser && user && (
         <div className="fixed inset-x-0 bottom-0 border-t border-stone-200 bg-stone-50/90 p-4 backdrop-blur-sm dark:border-stone-800 dark:bg-stone-950/90">
           <div className="mx-auto flex max-w-md gap-3">
-            <button
-              onClick={() =>
-                setMode(match.user_id === user.id ? "edit" : "edit-notes")
-              }
-              className="flex-1 cursor-pointer rounded-lg border border-stone-300 px-4 py-3 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100 dark:border-stone-600 dark:text-stone-300 dark:hover:bg-stone-800"
-            >
-              {match.user_id === user.id ? "Edit" : "Edit Notes"}
-            </button>
-            {match.user_id === user.id && (
-              <button
-                onClick={() => setShowDeleteModal(true)}
-                className="flex-1 cursor-pointer rounded-lg border border-red-200 px-4 py-3 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30"
-              >
-                Delete
-              </button>
+            {isScheduled && match.user_id === user.id ? (
+              <>
+                <button
+                  onClick={() => setMode("edit-notes")}
+                  className="flex-1 cursor-pointer rounded-lg border border-stone-300 px-4 py-3 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100 dark:border-stone-600 dark:text-stone-300 dark:hover:bg-stone-800"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => setMode("edit")}
+                  className="flex-1 cursor-pointer rounded-lg bg-amber-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-400"
+                >
+                  Add Scores
+                </button>
+                <button
+                  onClick={() => setShowDeleteModal(true)}
+                  className="flex-1 cursor-pointer rounded-lg border border-red-200 px-4 py-3 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30"
+                >
+                  Delete
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() =>
+                    setMode(match.user_id === user.id ? "edit" : "edit-notes")
+                  }
+                  className="flex-1 cursor-pointer rounded-lg border border-stone-300 px-4 py-3 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100 dark:border-stone-600 dark:text-stone-300 dark:hover:bg-stone-800"
+                >
+                  {match.user_id === user.id ? "Edit" : "Edit Notes"}
+                </button>
+                {match.user_id === user.id && (
+                  <button
+                    onClick={() => setShowDeleteModal(true)}
+                    className="flex-1 cursor-pointer rounded-lg border border-red-200 px-4 py-3 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30"
+                  >
+                    Delete
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -318,6 +373,8 @@ function EditMode({
   onCancel: () => void;
   onSaved: (updated: Match) => void;
 }) {
+  const isCompleting = match.status === "scheduled";
+
   // ── Form state ────────────────────────────────────────────────────
   const [playedAt, setPlayedAt] = useState(
     match.played_at.split("T")[0]
@@ -325,11 +382,14 @@ function EditMode({
   const existingTime = match.played_at.split("T")[1]?.slice(0, 5) ?? "";
   const [playedTime, setPlayedTime] = useState(existingTime);
   const [notes, setNotes] = useState(match.notes ?? "");
+  const planNotes = match.plan_notes ?? ""; // read-only in edit mode
   const [games, setGames] = useState<GameScore[]>(
-    match.games.map((g) => ({
-      userScore: String(g.user_score),
-      opponentScore: String(g.opponent_score),
-    }))
+    isCompleting
+      ? [{ userScore: "", opponentScore: "" }]
+      : match.games.map((g) => ({
+          userScore: String(g.user_score),
+          opponentScore: String(g.opponent_score),
+        }))
   );
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -392,6 +452,17 @@ function EditMode({
       return;
     }
 
+    // Completed matches must not be in the future
+    const selectedDate = new Date(
+      playedTime
+        ? `${playedAt}T${playedTime}:00`
+        : `${playedAt}T23:59:59`
+    );
+    if (selectedDate > new Date()) {
+      setError("Completed matches must have a date in the past.");
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -404,6 +475,7 @@ function EditMode({
       const body: Record<string, unknown> = {
         opponent_id: match.opponent_id,
         match_type: matchType,
+        status: "completed",
         played_at: playedTime
           ? `${playedAt}T${playedTime}:00Z`
           : `${playedAt}T${new Date().toISOString().split("T")[1]}`,
@@ -448,7 +520,7 @@ function EditMode({
   return (
     <main className="mx-auto w-full max-w-md px-4 py-8">
       <h1 className="mb-6 text-3xl font-bold tracking-tight text-stone-900 dark:text-stone-50 sm:text-4xl">
-        Edit
+        {isCompleting ? "Complete Match" : "Edit"}
       </h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -552,6 +624,18 @@ function EditMode({
             )}
           </div>
 
+          {/* Match Plan — always read-only in edit mode */}
+          {planNotes && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
+                Match Plan
+              </label>
+              <p className="rounded-lg border border-stone-200 bg-stone-50 px-4 py-3 text-base text-stone-500 whitespace-pre-wrap dark:border-stone-700 dark:bg-stone-800/50 dark:text-stone-400">
+                {planNotes}
+              </p>
+            </div>
+          )}
+
           {/* Notes */}
           <div>
             <label className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
@@ -598,9 +682,15 @@ function EditMode({
             <button
               type="submit"
               disabled={saving}
-              className="w-full rounded-lg bg-purple-700 px-4 py-3 text-base font-medium text-white transition-colors hover:bg-purple-800 disabled:opacity-50 dark:bg-purple-600 dark:text-white dark:hover:bg-purple-500"
+              className={`w-full rounded-lg px-4 py-3 text-base font-medium text-white transition-colors disabled:opacity-50 ${
+                isCompleting
+                  ? "bg-amber-600 hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-400"
+                  : "bg-purple-700 hover:bg-purple-800 dark:bg-purple-600 dark:hover:bg-purple-500"
+              }`}
             >
-              {saving ? "Saving..." : "Save Changes"}
+              {saving
+                ? isCompleting ? "Completing..." : "Saving..."
+                : isCompleting ? "Complete Match" : "Save Changes"}
             </button>
           </div>
         </form>
@@ -620,7 +710,9 @@ function EditNotesMode({
   onCancel: () => void;
   onSaved: (updated: Match) => void;
 }) {
+  const isScheduled = match.status === "scheduled";
   const [notes, setNotes] = useState(match.notes ?? "");
+  const [planNotes, setPlanNotes] = useState(match.plan_notes ?? "");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -630,22 +722,46 @@ function EditNotesMode({
     setSaving(true);
 
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/matches/${match.id}/notes`,
-        {
-          method: "PUT",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ notes: notes.trim() || null }),
-        }
-      );
+      let updated: Match;
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        throw new Error(data?.error ?? `Failed to save notes (${res.status})`);
+      if (isScheduled) {
+        // Scheduled matches: only save plan notes
+        const planRes = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/matches/${match.id}/plan-notes`,
+          {
+            method: "PUT",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ plan_notes: planNotes.trim() || null }),
+          }
+        );
+
+        if (!planRes.ok) {
+          const data = await planRes.json().catch(() => null);
+          throw new Error(data?.error ?? `Failed to save plan notes (${planRes.status})`);
+        }
+
+        updated = await planRes.json();
+      } else {
+        // Completed matches: only save notes
+        const notesRes = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/matches/${match.id}/notes`,
+          {
+            method: "PUT",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ notes: notes.trim() || null }),
+          }
+        );
+
+        if (!notesRes.ok) {
+          const data = await notesRes.json().catch(() => null);
+          throw new Error(data?.error ?? `Failed to save notes (${notesRes.status})`);
+        }
+
+        updated = await notesRes.json();
       }
 
-      const updated: Match = await res.json();
       onSaved(updated);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -664,21 +780,53 @@ function EditNotesMode({
       </p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-6">
-        <div>
-          <label className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
-            Notes{" "}
-            <span className="font-normal text-stone-400">(optional)</span>
-          </label>
-          <p className="mb-1.5 text-xs text-stone-400 dark:text-stone-500">
-            <a
-              href="https://www.markdownguide.org/basic-syntax/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-stone-600 dark:hover:text-stone-300"
-            >
-              Markdown
-            </a>{" "}
-            supported.
+        {/* Match Plan — only editable for scheduled matches */}
+        {isScheduled && (
+          <div>
+            <label className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
+              Match Plan{" "}
+              <span className="font-normal text-stone-400">(optional)</span>
+            </label>
+            <p className="mb-1.5 text-xs text-stone-400 dark:text-stone-500">
+              Strategy notes for this match.{" "}
+              <a
+                href="https://www.markdownguide.org/basic-syntax/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-stone-600 dark:hover:text-stone-300"
+              >
+                Markdown
+              </a>{" "}
+              supported.
+            </p>
+            <ExpandableTextarea
+              value={planNotes}
+              onChange={setPlanNotes}
+              disabled={saving}
+              placeholder="What's your game plan?"
+              rows={4}
+              className="w-full rounded-lg border border-stone-300 bg-white pl-4 py-3 text-base text-stone-900 placeholder-stone-400 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:placeholder-stone-500 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
+            />
+          </div>
+        )}
+
+        {/* Notes — only for completed matches */}
+        {!isScheduled && (
+          <div>
+            <label className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
+              Notes{" "}
+              <span className="font-normal text-stone-400">(optional)</span>
+            </label>
+            <p className="mb-1.5 text-xs text-stone-400 dark:text-stone-500">
+              <a
+                href="https://www.markdownguide.org/basic-syntax/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-stone-600 dark:hover:text-stone-300"
+              >
+                Markdown
+              </a>{" "}
+              supported.
           </p>
           <ExpandableTextarea
             value={notes}
@@ -688,7 +836,8 @@ function EditNotesMode({
             rows={4}
             className="w-full rounded-lg border border-stone-300 bg-white pl-4 py-3 text-base text-stone-900 placeholder-stone-400 transition-colors focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-600/20 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-50 dark:placeholder-stone-500 dark:focus:border-purple-500 dark:focus:ring-purple-500/20"
           />
-        </div>
+          </div>
+        )}
 
         {error && (
           <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
@@ -708,7 +857,7 @@ function EditNotesMode({
             disabled={saving}
             className="w-full rounded-lg bg-purple-700 px-4 py-3 text-base font-medium text-white transition-colors hover:bg-purple-800 disabled:opacity-50 dark:bg-purple-600 dark:text-white dark:hover:bg-purple-500"
           >
-            {saving ? "Saving..." : "Save Notes"}
+            {saving ? "Saving..." : "Save"}
           </button>
         </div>
       </form>

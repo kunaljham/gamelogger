@@ -24,9 +24,10 @@ func NewParticipantRepository(db *pgxpool.Pool) *ParticipantRepository {
 // Idempotent via ON CONFLICT DO NOTHING — safe to call on every sign-in.
 func (r *ParticipantRepository) InsertBatchForUser(ctx context.Context, tx pgx.Tx, userID uuid.UUID) error {
 	_, err := tx.Exec(ctx, `
-		INSERT INTO match_participants (match_id, user_id, role, opponent_id, notes)
+		INSERT INTO match_participants (match_id, user_id, role, opponent_id, notes, plan_notes)
 		SELECT m.id, $1, 'opponent',
 		       reciprocal.id,
+		       NULL,
 		       NULL
 		FROM matches m
 		JOIN opponents o ON o.id = m.opponent_id

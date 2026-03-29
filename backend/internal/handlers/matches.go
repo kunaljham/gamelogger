@@ -21,7 +21,7 @@ import (
 // buildMatchOutbox creates an outbox entry for notifying a registered opponent about a match.
 // Returns nil if the opponent is not registered or has no email.
 // For new matches, pass uuid.Nil as matchID — the repository will inject it after INSERT.
-func (h *Handler) buildMatchOutbox(ctx context.Context, opponent *models.Opponent, user *models.User, matchID uuid.UUID, playedAt time.Time, isNew bool) *repository.OutboxEntry {
+func (h *Handler) buildMatchOutbox(ctx context.Context, opponent *models.Opponent, user *models.User, matchID uuid.UUID, playedAt time.Time, isNew bool, isScheduled bool) *repository.OutboxEntry {
 	if opponent.RegisteredUserID == nil {
 		return nil
 	}
@@ -44,6 +44,7 @@ func (h *Handler) buildMatchOutbox(ctx context.Context, opponent *models.Opponen
 		"from_user_name": userName,
 		"match_date":     playedAt.Format("January 2, 2006"),
 		"is_new":         isNew,
+		"is_scheduled":   isScheduled,
 	}
 	// For updates, we already know the match ID. For creates, it's injected by the repo.
 	if matchID != uuid.Nil {
@@ -67,6 +68,8 @@ type createMatchRequest struct {
 	MatchType  string        `json:"match_type"`
 	PlayedAt   string        `json:"played_at"`
 	Notes      *string       `json:"notes,omitempty"`
+	PlanNotes  *string       `json:"plan_notes,omitempty"`
+	Status     string        `json:"status,omitempty"` // "scheduled" or "completed" (defaults to "completed")
 	Games      []gameRequest `json:"games"`
 }
 
@@ -104,6 +107,16 @@ func (h *Handler) CreateMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Default status to "completed" if not specified
+	status := req.Status
+	if status == "" {
+		status = "completed"
+	}
+	if status != "scheduled" && status != "completed" {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "status must be \"scheduled\" or \"completed\""})
+		return
+	}
+
 	// Validate and parse fields
 	opponentID, err := uuid.Parse(req.OpponentID)
 	if err != nil {
@@ -122,9 +135,46 @@ func (h *Handler) CreateMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := validateGames(req.Games, req.MatchType); err != nil {
-		writeJSON(w, http.StatusBadRequest, errorResponse{Error: err.Error()})
+	// Validate text field lengths
+	if req.Notes != nil && len(*req.Notes) > 10000 {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Notes must be 10,000 characters or fewer"})
 		return
+	}
+	if req.PlanNotes != nil && len(*req.PlanNotes) > 10000 {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Plan notes must be 10,000 characters or fewer"})
+		return
+	}
+
+	if status == "scheduled" {
+		// Scheduled matches must be in the future
+		if !playedAt.After(time.Now()) {
+			writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Scheduled matches must have a future date"})
+			return
+		}
+
+		// Scheduled matches must have no games
+		if len(req.Games) > 0 {
+			writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Scheduled matches must not include games"})
+			return
+		}
+
+		// Enforce limit of 10 scheduled matches per user
+		count, err := h.matchRepo.CountScheduledByUser(r.Context(), user.ID)
+		if err != nil {
+			slog.Error("Failed to count scheduled matches", "error", err)
+			writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to create match"})
+			return
+		}
+		if count >= 10 {
+			writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Maximum of 10 scheduled matches allowed"})
+			return
+		}
+	} else {
+		// Completed matches require valid games
+		if err := validateGames(req.Games, req.MatchType); err != nil {
+			writeJSON(w, http.StatusBadRequest, errorResponse{Error: err.Error()})
+			return
+		}
 	}
 
 	// Verify the opponent belongs to this user
@@ -154,19 +204,21 @@ func (h *Handler) CreateMatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	match := &models.Match{
-		UserID:       user.ID,
-		OpponentID:   opponentID,
-		MatchType:    req.MatchType,
-		PlayedAt:     playedAt,
-		CreatorNotes: req.Notes,
-		Games:        games,
+		UserID:           user.ID,
+		OpponentID:       opponentID,
+		MatchType:        req.MatchType,
+		Status:           status,
+		PlayedAt:         playedAt,
+		CreatorNotes:     req.Notes,
+		CreatorPlanNotes: req.PlanNotes,
+		Games:            games,
 	}
 
 	// Compute user_won from validated games before persisting
 	match.ComputeResult()
 
 	// Build notification for registered opponent (match_id injected by repo after INSERT)
-	outbox := h.buildMatchOutbox(r.Context(), opponent, user, uuid.Nil, playedAt, true)
+	outbox := h.buildMatchOutbox(r.Context(), opponent, user, uuid.Nil, playedAt, true, status == "scheduled")
 
 	// If the opponent is a registered user, create a reciprocal opponent record
 	// so they can see the match creator in their opponents list.
@@ -188,7 +240,7 @@ func (h *Handler) CreateMatch(w http.ResponseWriter, r *http.Request) {
 	// The creator always sees the match from their own perspective
 	created.Opponent = opponent
 	created.Notes = created.CreatorNotes
-	created.ComputeResult()
+	created.PlanNotes = created.CreatorPlanNotes
 
 	writeJSON(w, http.StatusCreated, created)
 }
@@ -335,21 +387,38 @@ func (h *Handler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify match exists and belongs to the current user before validating
-	// the rest of the request. Non-owners must get 404 (not a 400 from a
-	// downstream validation step like opponent ownership).
-	ownerID, err := h.matchRepo.FindOwner(r.Context(), id)
+	// Determine new status — default to "completed" if not provided
+	newStatus := req.Status
+	if newStatus == "" {
+		newStatus = "completed"
+	}
+	if newStatus != "scheduled" && newStatus != "completed" {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "status must be \"scheduled\" or \"completed\""})
+		return
+	}
+
+	// Fetch current match to check ownership and status transition.
+	// FindByIDForViewer returns ErrMatchNotFound if the user has no
+	// participant row (i.e., they're not involved in this match).
+	currentMatch, err := h.matchRepo.FindByIDForViewer(r.Context(), id, user.ID)
 	if err != nil {
 		if errors.Is(err, repository.ErrMatchNotFound) {
 			writeJSON(w, http.StatusNotFound, errorResponse{Error: "Match not found"})
 			return
 		}
-		slog.Error("Failed to find match owner", "error", err)
+		slog.Error("Failed to find match", "error", err)
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to update match"})
 		return
 	}
-	if ownerID != user.ID {
+	// Only the match creator can edit scores and status
+	if currentMatch.UserID != user.ID {
 		writeJSON(w, http.StatusNotFound, errorResponse{Error: "Match not found"})
+		return
+	}
+
+	// Prevent completed → scheduled transition
+	if currentMatch.Status == "completed" && newStatus == "scheduled" {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Cannot change a completed match back to scheduled"})
 		return
 	}
 
@@ -370,9 +439,40 @@ func (h *Handler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := validateGames(req.Games, req.MatchType); err != nil {
-		writeJSON(w, http.StatusBadRequest, errorResponse{Error: err.Error()})
+	// Validate text field lengths
+	if req.Notes != nil && len(*req.Notes) > 10000 {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Notes must be 10,000 characters or fewer"})
 		return
+	}
+	if req.PlanNotes != nil && len(*req.PlanNotes) > 10000 {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Plan notes must be 10,000 characters or fewer"})
+		return
+	}
+
+	if newStatus == "scheduled" {
+		// Scheduled matches must be in the future
+		if !playedAt.After(time.Now()) {
+			writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Scheduled matches must have a future date"})
+			return
+		}
+
+		// Scheduled matches must have no games
+		if len(req.Games) > 0 {
+			writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Scheduled matches must not include games"})
+			return
+		}
+	} else {
+		// Completed matches must not be in the future
+		if playedAt.After(time.Now()) {
+			writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Completed matches must have a date in the past"})
+			return
+		}
+
+		// Completed matches require valid games
+		if err := validateGames(req.Games, req.MatchType); err != nil {
+			writeJSON(w, http.StatusBadRequest, errorResponse{Error: err.Error()})
+			return
+		}
 	}
 
 	// Verify opponent belongs to user
@@ -401,18 +501,26 @@ func (h *Handler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	match := &models.Match{
-		ID:           id,
-		UserID:       user.ID,
-		OpponentID:   opponentID,
-		MatchType:    req.MatchType,
-		PlayedAt:     playedAt,
-		CreatorNotes: req.Notes,
-		Games:        games,
+		ID:               id,
+		UserID:           user.ID,
+		OpponentID:       opponentID,
+		MatchType:        req.MatchType,
+		Status:           newStatus,
+		PlayedAt:         playedAt,
+		CreatorNotes:     req.Notes,
+		CreatorPlanNotes: req.PlanNotes,
+		Games:            games,
 	}
 	// Compute user_won from validated games before persisting
 	match.ComputeResult()
 
-	updated, err := h.matchRepo.Update(r.Context(), match, nil)
+	// Send notification when completing a scheduled match (scheduled → completed)
+	var outbox *repository.OutboxEntry
+	if currentMatch.Status == "scheduled" && newStatus == "completed" {
+		outbox = h.buildMatchOutbox(r.Context(), opponent, user, id, playedAt, true, false)
+	}
+
+	updated, err := h.matchRepo.Update(r.Context(), match, outbox)
 	if err != nil {
 		if errors.Is(err, repository.ErrMatchNotFound) {
 			writeJSON(w, http.StatusNotFound, errorResponse{Error: "Match not found"})
@@ -426,7 +534,7 @@ func (h *Handler) UpdateMatch(w http.ResponseWriter, r *http.Request) {
 	// Creator always sees their own perspective
 	updated.Opponent = opponent
 	updated.Notes = updated.CreatorNotes
-	updated.ComputeResult()
+	updated.PlanNotes = updated.CreatorPlanNotes
 	writeJSON(w, http.StatusOK, updated)
 }
 
@@ -503,6 +611,11 @@ func (h *Handler) UpdateMatchNotes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.Notes != nil && len(*req.Notes) > 10000 {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Notes must be 10,000 characters or fewer"})
+		return
+	}
+
 	match, err := h.matchRepo.UpdateNotes(r.Context(), id, user.ID, req.Notes)
 	if err != nil {
 		if errors.Is(err, repository.ErrMatchNotFound) {
@@ -511,6 +624,98 @@ func (h *Handler) UpdateMatchNotes(w http.ResponseWriter, r *http.Request) {
 		}
 		slog.Error("Failed to update match notes", "error", err)
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to update notes"})
+		return
+	}
+
+	resolveForViewer(match)
+	writeJSON(w, http.StatusOK, match)
+}
+
+// --- Upcoming Matches ---
+
+// ListUpcomingMatches handles GET /api/matches/upcoming.
+// Returns all scheduled matches for the authenticated user.
+func (h *Handler) ListUpcomingMatches(w http.ResponseWriter, r *http.Request) {
+	user, ok := UserFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "Not authenticated"})
+		return
+	}
+
+	matches, err := h.matchRepo.ListUpcomingByUser(r.Context(), user.ID)
+	if err != nil {
+		slog.Error("Failed to list upcoming matches", "error", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to list upcoming matches"})
+		return
+	}
+
+	if matches == nil {
+		matches = []models.Match{}
+	}
+
+	for i := range matches {
+		resolveForViewer(&matches[i])
+	}
+
+	writeJSON(w, http.StatusOK, listMatchesResponse{Matches: matches})
+}
+
+// --- Plan Notes ---
+
+type updatePlanNotesRequest struct {
+	PlanNotes *string `json:"plan_notes"`
+}
+
+// UpdateMatchPlanNotes handles PUT /api/matches/{id}/plan-notes.
+// Allows both the creator and the opponent to set their own plan notes.
+func (h *Handler) UpdateMatchPlanNotes(w http.ResponseWriter, r *http.Request) {
+	user, ok := UserFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "Not authenticated"})
+		return
+	}
+
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid match ID"})
+		return
+	}
+
+	var req updatePlanNotesRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Invalid request body"})
+		return
+	}
+
+	if req.PlanNotes != nil && len(*req.PlanNotes) > 10000 {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Plan notes must be 10,000 characters or fewer"})
+		return
+	}
+
+	// Only allow plan notes on scheduled matches
+	currentMatch, err := h.matchRepo.FindByIDForViewer(r.Context(), id, user.ID)
+	if err != nil {
+		if errors.Is(err, repository.ErrMatchNotFound) {
+			writeJSON(w, http.StatusNotFound, errorResponse{Error: "Match not found"})
+			return
+		}
+		slog.Error("Failed to find match for plan notes update", "error", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to update plan notes"})
+		return
+	}
+	if currentMatch.Status != "scheduled" {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Plan notes can only be edited for scheduled matches"})
+		return
+	}
+
+	match, err := h.matchRepo.UpdatePlanNotes(r.Context(), id, user.ID, req.PlanNotes)
+	if err != nil {
+		if errors.Is(err, repository.ErrMatchNotFound) {
+			writeJSON(w, http.StatusNotFound, errorResponse{Error: "Match not found"})
+			return
+		}
+		slog.Error("Failed to update match plan notes", "error", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Failed to update plan notes"})
 		return
 	}
 

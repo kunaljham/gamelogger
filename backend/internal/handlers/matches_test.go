@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -398,7 +399,8 @@ func TestResolveForViewer_Creator(t *testing.T) {
 	// Scores stay from creator's perspective
 	assert.Equal(t, 11, match.Games[0].UserScore)
 	assert.Equal(t, 7, match.Games[0].OpponentScore)
-	assert.True(t, match.UserWon)
+	require.NotNil(t, match.UserWon)
+	assert.True(t, *match.UserWon)
 	assert.Equal(t, 2, match.UserWins)
 	assert.Equal(t, 1, match.OpponentWins)
 }
@@ -418,7 +420,8 @@ func TestResolveForViewer_Opponent(t *testing.T) {
 	// Scores are flipped — opponent now sees from their perspective
 	assert.Equal(t, 7, match.Games[0].UserScore)
 	assert.Equal(t, 11, match.Games[0].OpponentScore)
-	assert.False(t, match.UserWon)
+	require.NotNil(t, match.UserWon)
+	assert.False(t, *match.UserWon)
 	assert.Equal(t, 1, match.UserWins)
 	assert.Equal(t, 2, match.OpponentWins)
 }
@@ -437,9 +440,106 @@ func TestResolveForViewer_EmptyRole(t *testing.T) {
 	// Scores unchanged (defaults to creator's perspective)
 	assert.Equal(t, 11, match.Games[0].UserScore)
 	assert.Equal(t, 7, match.Games[0].OpponentScore)
-	assert.True(t, match.UserWon)
+	require.NotNil(t, match.UserWon)
+	assert.True(t, *match.UserWon)
 	assert.Equal(t, 2, match.UserWins)
 	assert.Equal(t, 0, match.OpponentWins)
+}
+
+func TestResolveForViewer_NoGames(t *testing.T) {
+	match := &models.Match{
+		ViewerRole: "creator",
+		Games:      []models.Game{},
+	}
+
+	resolveForViewer(match)
+
+	assert.Nil(t, match.UserWon)
+	assert.Equal(t, 0, match.UserWins)
+	assert.Equal(t, 0, match.OpponentWins)
+}
+
+func TestCreateMatch_ScheduledWithGames(t *testing.T) {
+	h := matchTestHandler()
+	body := validBo3Match()
+	body.Status = "scheduled"
+	body.PlayedAt = time.Now().Add(24 * time.Hour).Format(time.RFC3339)
+	req := matchRequest(http.MethodPost, "/api/matches", body)
+	w := httptest.NewRecorder()
+
+	h.CreateMatch(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	var resp errorResponse
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&resp))
+	assert.Contains(t, resp.Error, "must not include games")
+}
+
+func TestCreateMatch_InvalidStatus(t *testing.T) {
+	h := matchTestHandler()
+	body := validBo3Match()
+	body.Status = "invalid"
+	req := matchRequest(http.MethodPost, "/api/matches", body)
+	w := httptest.NewRecorder()
+
+	h.CreateMatch(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	var resp errorResponse
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&resp))
+	assert.Contains(t, resp.Error, "status")
+}
+
+// --- ListUpcomingMatches handler tests ---
+
+func TestListUpcomingMatches_NotAuthenticated(t *testing.T) {
+	h := matchTestHandler()
+	req := httptest.NewRequest(http.MethodGet, "/api/matches/upcoming", nil)
+	w := httptest.NewRecorder()
+
+	h.ListUpcomingMatches(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+}
+
+// --- UpdateMatchPlanNotes handler tests ---
+
+func TestUpdateMatchPlanNotes_NotAuthenticated(t *testing.T) {
+	h := matchTestHandler()
+	body, _ := json.Marshal(updatePlanNotesRequest{})
+	req := httptest.NewRequest(http.MethodPut, "/api/matches/"+uuid.New().String()+"/plan-notes", bytes.NewBuffer(body))
+	w := httptest.NewRecorder()
+
+	h.UpdateMatchPlanNotes(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+}
+
+func TestUpdateMatchPlanNotes_InvalidID(t *testing.T) {
+	h := matchTestHandler()
+	body, _ := json.Marshal(updatePlanNotesRequest{})
+	req := httptest.NewRequest(http.MethodPut, "/api/matches/not-a-uuid/plan-notes", bytes.NewBuffer(body))
+	user := &models.User{ID: uuid.New(), Email: "test@example.com"}
+	ctx := context.WithValue(req.Context(), userContextKey, user)
+	req = req.WithContext(ctx)
+	w := httptest.NewRecorder()
+
+	h.UpdateMatchPlanNotes(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestUpdateMatchPlanNotes_InvalidJSON(t *testing.T) {
+	h := matchTestHandler()
+	req := httptest.NewRequest(http.MethodPut, "/api/matches/not-a-uuid/plan-notes", bytes.NewBufferString("not json"))
+	user := &models.User{ID: uuid.New(), Email: "test@example.com"}
+	ctx := context.WithValue(req.Context(), userContextKey, user)
+	req = req.WithContext(ctx)
+	w := httptest.NewRecorder()
+
+	h.UpdateMatchPlanNotes(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
 // --- UpdateMatchNotes handler tests ---

@@ -59,7 +59,7 @@ func (m *MockEmailService) SendInvitation(ctx context.Context, toEmail, fromUser
 }
 
 // SendMatchNotification records the notification instead of actually sending.
-func (m *MockEmailService) SendMatchNotification(ctx context.Context, toEmail, fromUserName, matchURL, matchDate string, isNew bool) error {
+func (m *MockEmailService) SendMatchNotification(ctx context.Context, toEmail, fromUserName, matchURL, matchDate string, isNew bool, isScheduled bool) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -68,7 +68,9 @@ func (m *MockEmailService) SendMatchNotification(ctx context.Context, toEmail, f
 	}
 
 	action := "new-match"
-	if !isNew {
+	if isScheduled {
+		action = "scheduled-match"
+	} else if !isNew {
 		action = "updated-match"
 	}
 	m.SentEmails = append(m.SentEmails, SentEmail{

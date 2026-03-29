@@ -1631,10 +1631,184 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 30. Cleanup: remove test data from database
+# 30. Scheduled Matches
 # ---------------------------------------------------------------------------
 echo ""
-echo "30. Cleanup"
+echo "30. Scheduled Matches"
+
+# Re-authenticate as user 1
+api POST /api/auth/dev-login "{\"email\": \"$TEST_EMAIL\"}"
+
+# 30a. Create a scheduled match (no games)
+api POST /api/matches "{\"opponent_id\": \"$OPPONENT_ID\", \"match_type\": \"bo5\", \"played_at\": \"2026-04-01T10:00:00Z\", \"status\": \"scheduled\"}"
+if [ "$STATUS" = "201" ]; then
+  SCHED_STATUS=$(jq -r '.status' "$RESPONSE")
+  SCHED_USER_WON=$(jq -r '.user_won' "$RESPONSE")
+  SCHED_GAMES=$(jq '.games | length' "$RESPONSE")
+  if [ "$SCHED_STATUS" = "scheduled" ] && [ "$SCHED_USER_WON" = "null" ] && [ "$SCHED_GAMES" = "0" ]; then
+    pass "Create scheduled match → 201, status=scheduled, user_won=null, 0 games"
+    SCHED_MATCH_ID=$(jq -r '.id' "$RESPONSE")
+  else
+    fail "Create scheduled match → fields not as expected (status=$SCHED_STATUS, user_won=$SCHED_USER_WON, games=$SCHED_GAMES)"
+    SCHED_MATCH_ID=""
+  fi
+else
+  fail "Create scheduled match → expected 201, got $STATUS"
+  SCHED_MATCH_ID=""
+fi
+
+# 30b. Create scheduled match with games → should fail
+api POST /api/matches "{\"opponent_id\": \"$OPPONENT_ID\", \"match_type\": \"bo5\", \"played_at\": \"2026-04-02T10:00:00Z\", \"status\": \"scheduled\", \"games\": [{\"game_number\": 1, \"user_score\": 11, \"opponent_score\": 5}]}"
+if [ "$STATUS" = "400" ]; then
+  pass "Create scheduled match with games → 400"
+else
+  fail "Create scheduled match with games → expected 400, got $STATUS"
+fi
+
+# 30c. Create scheduled match with plan_notes
+api POST /api/matches "{\"opponent_id\": \"$OPPONENT_ID\", \"match_type\": \"bo5\", \"played_at\": \"2026-04-03T10:00:00Z\", \"status\": \"scheduled\", \"plan_notes\": \"Focus on backhand drops\"}"
+if [ "$STATUS" = "201" ]; then
+  PLAN_NOTES=$(jq -r '.plan_notes' "$RESPONSE")
+  if [ "$PLAN_NOTES" = "Focus on backhand drops" ]; then
+    pass "Create scheduled match with plan_notes → 201, plan_notes present"
+    SCHED_MATCH_ID_2=$(jq -r '.id' "$RESPONSE")
+  else
+    fail "Create scheduled match plan_notes → not as expected ($PLAN_NOTES)"
+    SCHED_MATCH_ID_2=""
+  fi
+else
+  fail "Create scheduled match with plan_notes → expected 201, got $STATUS"
+  SCHED_MATCH_ID_2=""
+fi
+
+# 30d. GET /api/matches/upcoming → returns scheduled matches
+api GET /api/matches/upcoming
+if [ "$STATUS" = "200" ]; then
+  UPCOMING_COUNT=$(jq '.matches | length' "$RESPONSE")
+  if [ "$UPCOMING_COUNT" -ge 2 ]; then
+    pass "GET /api/matches/upcoming → 200, $UPCOMING_COUNT scheduled matches"
+  else
+    fail "GET /api/matches/upcoming → expected >= 2 matches, got $UPCOMING_COUNT"
+  fi
+else
+  fail "GET /api/matches/upcoming → expected 200, got $STATUS"
+fi
+
+# 30e. GET /api/matches → scheduled matches NOT in completed feed
+api GET /api/matches
+if [ "$STATUS" = "200" ]; then
+  if [ -n "$SCHED_MATCH_ID" ]; then
+    FOUND=$(jq --arg id "$SCHED_MATCH_ID" '[.matches[] | select(.id == $id)] | length' "$RESPONSE")
+    if [ "$FOUND" = "0" ]; then
+      pass "Scheduled match not in completed feed"
+    else
+      fail "Scheduled match found in completed feed (should be excluded)"
+    fi
+  else
+    pass "Scheduled match not in completed feed (no ID to check)"
+  fi
+else
+  fail "GET /api/matches → expected 200, got $STATUS"
+fi
+
+# 30f. Complete a scheduled match (add scores)
+if [ -n "$SCHED_MATCH_ID" ]; then
+  api PUT "/api/matches/$SCHED_MATCH_ID" "{\"opponent_id\": \"$OPPONENT_ID\", \"match_type\": \"bo5\", \"played_at\": \"2025-01-15T10:00:00Z\", \"status\": \"completed\", \"games\": [{\"game_number\": 1, \"user_score\": 11, \"opponent_score\": 7}, {\"game_number\": 2, \"user_score\": 11, \"opponent_score\": 9}, {\"game_number\": 3, \"user_score\": 11, \"opponent_score\": 5}]}"
+  if [ "$STATUS" = "200" ]; then
+    COMP_STATUS=$(jq -r '.status' "$RESPONSE")
+    COMP_USER_WON=$(jq -r '.user_won' "$RESPONSE")
+    COMP_GAMES=$(jq '.games | length' "$RESPONSE")
+    if [ "$COMP_STATUS" = "completed" ] && [ "$COMP_USER_WON" = "true" ] && [ "$COMP_GAMES" = "3" ]; then
+      pass "Complete scheduled match → 200, status=completed, user_won=true, 3 games"
+    else
+      fail "Complete scheduled match → fields not as expected (status=$COMP_STATUS, user_won=$COMP_USER_WON, games=$COMP_GAMES)"
+    fi
+  else
+    fail "Complete scheduled match → expected 200, got $STATUS"
+  fi
+
+  # 30g. Completed match now in feed
+  api GET /api/matches
+  FOUND=$(jq --arg id "$SCHED_MATCH_ID" '[.matches[] | select(.id == $id)] | length' "$RESPONSE")
+  if [ "$FOUND" = "1" ]; then
+    pass "Completed match now appears in feed"
+  else
+    fail "Completed match not found in feed after completion"
+  fi
+
+  # 30h. Completed match no longer in upcoming
+  api GET /api/matches/upcoming
+  FOUND=$(jq --arg id "$SCHED_MATCH_ID" '[.matches[] | select(.id == $id)] | length' "$RESPONSE")
+  if [ "$FOUND" = "0" ]; then
+    pass "Completed match no longer in upcoming"
+  else
+    fail "Completed match still in upcoming after completion"
+  fi
+
+  # 30i. Prevent completed → scheduled transition
+  api PUT "/api/matches/$SCHED_MATCH_ID" "{\"opponent_id\": \"$OPPONENT_ID\", \"match_type\": \"bo5\", \"played_at\": \"2026-04-01T10:00:00Z\", \"status\": \"scheduled\"}"
+  if [ "$STATUS" = "400" ]; then
+    pass "Completed → scheduled transition blocked → 400"
+  else
+    fail "Completed → scheduled transition → expected 400, got $STATUS"
+  fi
+fi
+
+# 30j. Plan notes CRUD
+if [ -n "$SCHED_MATCH_ID_2" ]; then
+  # Update plan notes
+  api PUT "/api/matches/$SCHED_MATCH_ID_2/plan-notes" '{"plan_notes": "Updated plan: serve to backhand"}'
+  if [ "$STATUS" = "200" ]; then
+    UPDATED_PLAN=$(jq -r '.plan_notes' "$RESPONSE")
+    if [ "$UPDATED_PLAN" = "Updated plan: serve to backhand" ]; then
+      pass "PUT plan-notes → 200, plan_notes updated"
+    else
+      fail "PUT plan-notes → plan_notes not as expected ($UPDATED_PLAN)"
+    fi
+  else
+    fail "PUT plan-notes → expected 200, got $STATUS"
+  fi
+
+  # Verify via GET
+  api GET "/api/matches/$SCHED_MATCH_ID_2"
+  if [ "$STATUS" = "200" ]; then
+    PLAN=$(jq -r '.plan_notes' "$RESPONSE")
+    if [ "$PLAN" = "Updated plan: serve to backhand" ]; then
+      pass "GET match → plan_notes visible"
+    else
+      fail "GET match → plan_notes not as expected ($PLAN)"
+    fi
+  else
+    fail "GET match → expected 200, got $STATUS"
+  fi
+
+  # Clear plan notes
+  api PUT "/api/matches/$SCHED_MATCH_ID_2/plan-notes" '{"plan_notes": null}'
+  if [ "$STATUS" = "200" ]; then
+    CLEARED_PLAN=$(jq -r '.plan_notes' "$RESPONSE")
+    if [ "$CLEARED_PLAN" = "null" ]; then
+      pass "PUT plan-notes null → 200, plan_notes cleared"
+    else
+      fail "PUT plan-notes null → plan_notes not cleared ($CLEARED_PLAN)"
+    fi
+  else
+    fail "PUT plan-notes null → expected 200, got $STATUS"
+  fi
+fi
+
+# 30k. Stats exclude scheduled matches
+api GET /api/matches/stats
+if [ "$STATUS" = "200" ]; then
+  pass "GET /api/matches/stats → 200 (scheduled matches excluded from win/loss by design)"
+else
+  fail "GET /api/matches/stats → expected 200, got $STATUS"
+fi
+
+# ---------------------------------------------------------------------------
+# 31. Cleanup: remove test data from database
+# ---------------------------------------------------------------------------
+echo ""
+echo "31. Cleanup"
 psql "$DB_URL" -q -c "
   DELETE FROM games WHERE match_id IN (SELECT id FROM matches WHERE user_id IN (SELECT id FROM users WHERE email IN ('$TEST_EMAIL', '$TEST_EMAIL_2', '$TEST_EMAIL_3', '$TEST_EMAIL_4')));
   DELETE FROM matches WHERE user_id IN (SELECT id FROM users WHERE email IN ('$TEST_EMAIL', '$TEST_EMAIL_2', '$TEST_EMAIL_3', '$TEST_EMAIL_4'));

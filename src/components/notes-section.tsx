@@ -13,6 +13,7 @@ interface NotesSectionProps {
   readOnly?: boolean;
   placeholder?: string;
   emptyMessage?: string;
+  title?: string;
   onSave?: (notes: string | null) => Promise<void>;
 }
 
@@ -22,6 +23,7 @@ export default function NotesSection({
   readOnly = false,
   placeholder = "How did the match go?",
   emptyMessage = "Add private notes that only you can see.",
+  title = "Notes",
   onSave,
 }: NotesSectionProps) {
   const [editing, setEditing] = useState(false);
@@ -61,7 +63,7 @@ export default function NotesSection({
     return (
       <div className="space-y-3">
         <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-50">
-          Notes
+          {title}
         </h2>
         <p className="text-xs text-stone-400 dark:text-stone-500">
           Private to you.{" "}
@@ -109,22 +111,11 @@ export default function NotesSection({
   return (
     <>
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-50">
-          Notes
-        </h2>
-        {!readOnly && (
-          <button
-            onClick={handleEdit}
-            className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100 dark:border-stone-600 dark:text-stone-300 dark:hover:bg-stone-800"
-          >
-            {notes ? "Edit" : "Add"}
-          </button>
-        )}
-      </div>
-      {notes ? (
-        <>
-          <div className="mt-2 border-l-2 border-purple-400 pl-4 dark:border-purple-600">
-            <p className="mb-1 flex items-center gap-1 text-xs font-medium text-purple-500 dark:text-purple-400">
+        <div>
+          <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-50">
+            {title}
+          </h2>
+            <p className="mt-0.5 flex items-center gap-1 text-xs text-stone-400 dark:text-stone-500">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 16 16"
@@ -137,8 +128,21 @@ export default function NotesSection({
                   clipRule="evenodd"
                 />
               </svg>
-              Private note — only visible to you
+              Private
             </p>
+        </div>
+        {!readOnly && (
+          <button
+            onClick={handleEdit}
+            className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100 dark:border-stone-600 dark:text-stone-300 dark:hover:bg-stone-800"
+          >
+            {notes ? "Edit" : "Add"}
+          </button>
+        )}
+      </div>
+      {notes ? (
+        <>
+          <div className="mt-2 border-l-2 border-purple-400 pl-4 dark:border-purple-600">
             <div className="prose prose-sm prose-stone dark:prose-invert max-w-none text-stone-600 dark:text-stone-400">
               <ReactMarkdown remarkPlugins={[remarkBreaks]}>
                 {preserveNewlines(notes)}
