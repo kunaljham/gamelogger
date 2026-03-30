@@ -39,3 +39,22 @@ func (r *ParticipantRepository) InsertBatchForUser(ctx context.Context, tx pgx.T
 	`, userID)
 	return err
 }
+
+// BackfillOpponentIDs updates any match_participants rows for the given user
+// that have a NULL opponent_id, setting it to the reciprocal opponent record
+// now that it exists. Called after the worker creates reciprocal opponents.
+func (r *ParticipantRepository) BackfillOpponentIDs(ctx context.Context, userID uuid.UUID) error {
+	_, err := r.db.Exec(ctx, `
+		UPDATE match_participants mp
+		SET opponent_id = reciprocal.id
+		FROM matches m
+		JOIN opponents o ON o.id = m.opponent_id
+		JOIN opponents reciprocal
+		    ON reciprocal.user_id = $1
+		    AND reciprocal.registered_user_id = m.user_id
+		WHERE mp.user_id = $1
+		    AND mp.match_id = m.id
+		    AND mp.opponent_id IS NULL
+	`, userID)
+	return err
+}

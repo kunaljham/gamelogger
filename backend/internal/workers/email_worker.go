@@ -29,19 +29,21 @@ type matchNotificationPayload struct {
 
 // EmailWorker polls the email outbox and sends pending emails.
 type EmailWorker struct {
-	outboxRepo   *repository.OutboxRepository
-	opponentRepo *repository.OpponentRepository
-	emailService services.EmailService
-	frontendURL  string
+	outboxRepo      *repository.OutboxRepository
+	opponentRepo    *repository.OpponentRepository
+	participantRepo *repository.ParticipantRepository
+	emailService    services.EmailService
+	frontendURL     string
 }
 
 // NewEmailWorker creates a new EmailWorker.
-func NewEmailWorker(outboxRepo *repository.OutboxRepository, opponentRepo *repository.OpponentRepository, emailService services.EmailService, frontendURL string) *EmailWorker {
+func NewEmailWorker(outboxRepo *repository.OutboxRepository, opponentRepo *repository.OpponentRepository, participantRepo *repository.ParticipantRepository, emailService services.EmailService, frontendURL string) *EmailWorker {
 	return &EmailWorker{
-		outboxRepo:   outboxRepo,
-		opponentRepo: opponentRepo,
-		emailService: emailService,
-		frontendURL:  frontendURL,
+		outboxRepo:      outboxRepo,
+		opponentRepo:    opponentRepo,
+		participantRepo: participantRepo,
+		emailService:    emailService,
+		frontendURL:     frontendURL,
 	}
 }
 
@@ -148,6 +150,12 @@ func (w *EmailWorker) createReciprocalOpponents(ctx context.Context, row reposit
 	// Idempotent (ON CONFLICT DO NOTHING), so retries are safe.
 	if err := w.opponentRepo.CreateReciprocalsForUser(ctx, userID, creatorIDs); err != nil {
 		return fmt.Errorf("creating reciprocals: %w", err)
+	}
+
+	// Backfill match_participants rows that were created during sign-in sweep
+	// with NULL opponent_id (because reciprocal opponents didn't exist yet).
+	if err := w.participantRepo.BackfillOpponentIDs(ctx, userID); err != nil {
+		return fmt.Errorf("backfilling participant opponent_ids: %w", err)
 	}
 
 	slog.Info("Created reciprocal opponents", "user_id", userID, "count", len(creatorIDs))

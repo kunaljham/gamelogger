@@ -135,7 +135,11 @@ func (r *MatchRepository) FindOwner(ctx context.Context, id uuid.UUID) (uuid.UUI
 // the viewer has no participant row (i.e., they're not involved in this match).
 func (r *MatchRepository) FindByIDForViewer(ctx context.Context, id uuid.UUID, viewerID uuid.UUID) (*models.Match, error) {
 	var m models.Match
-	var opp models.Opponent
+	// Scan opponent columns into nullable pointers so the LEFT JOIN doesn't
+	// blow up when mp.opponent_id is NULL (e.g. reciprocal not created yet).
+	var oppID, oppUserID, oppRegisteredUserID *uuid.UUID
+	var oppEmail, oppName, oppStatus *string
+	var oppInvitedAt, oppCreatedAt, oppUpdatedAt *time.Time
 
 	err := r.db.QueryRow(ctx, `
 		SELECT m.id, m.user_id, m.match_type, m.played_at, m.user_won, m.created_at, m.updated_at,
@@ -148,9 +152,9 @@ func (r *MatchRepository) FindByIDForViewer(ctx context.Context, id uuid.UUID, v
 	`, id, viewerID).Scan(
 		&m.ID, &m.UserID, &m.MatchType, &m.PlayedAt, &m.UserWon, &m.CreatedAt, &m.UpdatedAt,
 		&m.ViewerRole, &m.Notes, &m.OpponentID,
-		&opp.ID, &opp.UserID, &opp.Email, &opp.Name, &opp.Status,
-		&opp.InvitedAt, &opp.RegisteredUserID,
-		&opp.CreatedAt, &opp.UpdatedAt,
+		&oppID, &oppUserID, &oppEmail, &oppName, &oppStatus,
+		&oppInvitedAt, &oppRegisteredUserID,
+		&oppCreatedAt, &oppUpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrMatchNotFound
@@ -158,7 +162,14 @@ func (r *MatchRepository) FindByIDForViewer(ctx context.Context, id uuid.UUID, v
 	if err != nil {
 		return nil, err
 	}
-	m.Opponent = &opp
+	if oppID != nil {
+		m.Opponent = &models.Opponent{
+			ID: *oppID, UserID: *oppUserID, Email: oppEmail,
+			Name: derefString(oppName), Status: derefString(oppStatus),
+			InvitedAt: oppInvitedAt, RegisteredUserID: oppRegisteredUserID,
+			CreatedAt: derefTime(oppCreatedAt), UpdatedAt: derefTime(oppUpdatedAt),
+		}
+	}
 
 	games, err := r.fetchGames(ctx, m.ID)
 	if err != nil {
@@ -209,17 +220,26 @@ func (r *MatchRepository) ListByUser(ctx context.Context, userID uuid.UUID, limi
 	var matches []models.Match
 	for rows.Next() {
 		var m models.Match
-		var opp models.Opponent
+		var oppID, oppUserID, oppRegisteredUserID *uuid.UUID
+		var oppEmail, oppName, oppStatus *string
+		var oppInvitedAt, oppCreatedAt, oppUpdatedAt *time.Time
 		if err := rows.Scan(
 			&m.ID, &m.UserID, &m.MatchType, &m.PlayedAt, &m.UserWon, &m.CreatedAt, &m.UpdatedAt,
 			&m.ViewerRole, &m.Notes, &m.OpponentID,
-			&opp.ID, &opp.UserID, &opp.Email, &opp.Name, &opp.Status,
-			&opp.InvitedAt, &opp.RegisteredUserID,
-			&opp.CreatedAt, &opp.UpdatedAt,
+			&oppID, &oppUserID, &oppEmail, &oppName, &oppStatus,
+			&oppInvitedAt, &oppRegisteredUserID,
+			&oppCreatedAt, &oppUpdatedAt,
 		); err != nil {
 			return nil, err
 		}
-		m.Opponent = &opp
+		if oppID != nil {
+			m.Opponent = &models.Opponent{
+				ID: *oppID, UserID: *oppUserID, Email: oppEmail,
+				Name: derefString(oppName), Status: derefString(oppStatus),
+				InvitedAt: oppInvitedAt, RegisteredUserID: oppRegisteredUserID,
+				CreatedAt: derefTime(oppCreatedAt), UpdatedAt: derefTime(oppUpdatedAt),
+			}
+		}
 		matches = append(matches, m)
 	}
 	if err := rows.Err(); err != nil {
@@ -417,4 +437,20 @@ func (r *MatchRepository) fetchGames(ctx context.Context, matchID uuid.UUID) ([]
 		games = append(games, g)
 	}
 	return games, rows.Err()
+}
+
+// derefString safely dereferences a *string, returning "" if nil.
+func derefString(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+// derefTime safely dereferences a *time.Time, returning the zero value if nil.
+func derefTime(t *time.Time) time.Time {
+	if t == nil {
+		return time.Time{}
+	}
+	return *t
 }

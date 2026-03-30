@@ -1132,7 +1132,7 @@ COOKIE_JAR="$SAVED_COOKIE_JAR"
 echo ""
 echo "20. Cross-user opponent name resolution"
 
-# Set User 1's name so it shows up for User 2
+# Set User 1's display name (this should NOT override User 2's own opponent name)
 api PUT /api/auth/me '{"name": "Player One"}'
 if [ "$STATUS" = "200" ]; then
   pass "User 1 set name to 'Player One'"
@@ -1140,15 +1140,18 @@ else
   fail "User 1 PUT /api/auth/me → expected 200, got $STATUS"
 fi
 
-# User 2 views the cross-match — opponent name should be User 1's name
+# User 2 views the cross-match — opponent name should be User 2's own label
+# for User 1 (from their reciprocal opponent record), NOT User 1's display name.
+# The reciprocal was created with COALESCE(u.name, u.email), and User 1 had no
+# name set at that time, so it defaults to User 1's email.
 COOKIE_JAR="$COOKIE_JAR_2"
 api GET "/api/matches/$CROSS_MATCH_ID"
 if [ "$STATUS" = "200" ]; then
   OPP_NAME=$(jq -r '.opponent.name' "$RESPONSE")
-  if [ "$OPP_NAME" = "Player One" ]; then
-    pass "User 2 sees creator's name as opponent: 'Player One'"
+  if [ "$OPP_NAME" = "$TEST_EMAIL" ]; then
+    pass "User 2 sees their own opponent name for User 1: '$OPP_NAME'"
   else
-    fail "Opponent name resolution: expected 'Player One', got '$OPP_NAME'"
+    fail "Opponent name resolution: expected '$TEST_EMAIL' (User 2's own label), got '$OPP_NAME'"
   fi
 else
   fail "User 2 GET cross-match for name resolution → expected 200, got $STATUS"
